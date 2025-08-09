@@ -61,6 +61,7 @@ dscClassicKeypadInterface::dscClassicKeypadInterface(byte setClockPin, byte setR
   setBuzzer = false;
   keyBeep = false;
   beepStart = false;
+  stream = nullptr;
 }
 
 

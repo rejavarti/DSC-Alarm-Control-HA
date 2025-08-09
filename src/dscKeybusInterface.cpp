@@ -112,6 +112,8 @@ dscKeybusInterface::dscKeybusInterface(byte setClockPin, byte setReadPin, byte s
   previousKeybus = false;
   previousPower = false;
   keybusVersion1 = false;
+  stream = nullptr;
+  writeKeysArray = nullptr;
   
   // Initialize partition-specific private arrays
   for (byte partition = 0; partition < dscPartitions; partition++) {

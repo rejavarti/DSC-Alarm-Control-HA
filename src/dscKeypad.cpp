@@ -60,6 +60,7 @@ dscKeypadInterface::dscKeypadInterface(byte setClockPin, byte setReadPin, byte s
   setTone = false;
   setBuzzer = false;
   intervalStart = 0;
+  stream = nullptr;
 }
 
 
@@ -389,7 +390,7 @@ void dscKeypadInterface::beep(byte beeps) {
 void dscKeypadInterface::tone(byte beep, bool tone, byte interval) {
   panelCommand75[1] = 0;
 
-  if (tone >= 1) panelCommand75[1] |= 0x80;
+  if (tone) panelCommand75[1] |= 0x80;
 
   if (beep > 7) beep = 7;
   if (beep >= 1) {
