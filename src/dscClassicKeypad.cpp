@@ -34,6 +34,34 @@ dscClassicKeypadInterface::dscClassicKeypadInterface(byte setClockPin, byte setR
   clockInterval = 50000;  // Sets AVR timer 1 to trigger an overflow interrupt every ~1ms to generate a 500Hz clock signal
   keyInterval = 150;
   alarmKeyInterval = 1000;
+  
+  // Initialize keypad key variables
+  key = 0;
+  keyAvailable = 0;
+  
+  // Initialize keypad light variables (some are already initialized in declaration)
+  lightArmed = off;
+  lightMemory = off;
+  lightBypass = off;
+  lightTrouble = off;
+  lightProgram = off;
+  lightFire = off;
+  lightZone1 = off;
+  lightZone2 = off;
+  lightZone3 = off;
+  lightZone4 = off;
+  lightZone5 = off;
+  lightZone6 = off;
+  lightZone7 = off;
+  lightZone8 = off;
+  
+  // Initialize private member variables
+  setBeep = false;
+  setTone = false;
+  setBuzzer = false;
+  keyBeep = false;
+  beepStart = false;
+  stream = nullptr;
 }
 
 
@@ -249,13 +277,13 @@ void dscClassicKeypadInterface::buzzer(byte seconds) {
 
 
 #if defined(__AVR__)
-void dscClassicKeypadInterface::dscClockInterrupt() {
+void dscClassicKeypadInterface::dscClockInterrupt()
 #elif defined(ESP8266)
-void ICACHE_RAM_ATTR dscClassicKeypadInterface::dscClockInterrupt() {
+void ICACHE_RAM_ATTR dscClassicKeypadInterface::dscClockInterrupt()
 #elif defined(ESP32)
-void IRAM_ATTR dscClassicKeypadInterface::dscClockInterrupt() {
+void IRAM_ATTR dscClassicKeypadInterface::dscClockInterrupt()
 #endif
-
+{
   // Toggles the clock pin for the length of a panel command
   if (clockCycleCount < clockCycleTotal) {
     static bool clockHigh = true;
