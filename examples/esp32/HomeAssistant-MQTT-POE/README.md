@@ -33,10 +33,10 @@ This example provides a comprehensive DSC alarm system interface for the ESP32 w
    DSC Aux(+) --- 5V voltage regulator --- ESP32-POE 5V pin
    DSC Aux(-) --- ESP32-POE Ground
    
-   DSC Yellow --- 33kΩ resistor --- GPIO 18 (dscClockPin)
+   DSC Yellow --- 33kΩ resistor --- GPIO 4 (dscClockPin)
                                 |-- 10kΩ resistor --- Ground
    
-   DSC Green ---- 33kΩ resistor --- GPIO 19 (dscReadPin)  
+   DSC Green ---- 33kΩ resistor --- GPIO 16 (dscReadPin)  
                                 |-- 10kΩ resistor --- Ground
    
    Optional Virtual Keypad:
@@ -44,6 +44,11 @@ This example provides a comprehensive DSC alarm system interface for the ESP32 w
                                    |-- NPN base --- 1kΩ resistor --- GPIO 21 (dscWritePin)
            Ground --- NPN emitter --/
    ```
+
+   **Note:** Pin assignments changed from original to avoid conflicts with ESP32-POE Ethernet PHY:
+   - GPIO 4 (was GPIO 18) for DSC Clock - GPIO 18 is used by Ethernet MDIO
+   - GPIO 16 (was GPIO 19) for DSC Data
+   - GPIO 21 (unchanged) for DSC Write
 
 2. **Software Upload**:
    - Install required libraries: `WiFi`, `ETH`, `PubSubClient`, `dscKeybusInterface`, `WebServer`, `Preferences`
@@ -155,10 +160,10 @@ All original MQTT topics are preserved:
 
 ## Default Pins (ESP32-POE)
 
-- **GPIO 18**: DSC Clock (Yellow wire)
-- **GPIO 19**: DSC Data (Green wire)  
+- **GPIO 4**: DSC Clock (Yellow wire) - *Changed from GPIO 18 to avoid Ethernet conflict*
+- **GPIO 16**: DSC Data (Green wire) - *Changed from GPIO 19*
 - **GPIO 21**: DSC Write (Virtual keypad, optional)
-- **Ethernet**: Built-in POE connector
+- **Ethernet**: Built-in POE connector (LAN8720 PHY uses GPIO 18/23/12/0)
 
 ## Troubleshooting
 
@@ -167,17 +172,27 @@ All original MQTT topics are preserved:
    - Verify WiFi credentials in configuration
    - Try switching between Ethernet and WiFi modes
 
-2. **MQTT Connection Problems**:
+2. **Ethernet Not Connecting (No Lights on Board)**:
+   - **Most common cause**: Using old version with pin conflicts - ensure you're using the updated pin assignments
+   - Verify Ethernet cable is properly connected to ESP32-POE board
+   - Check POE injector is providing power (48V)
+   - Test cable with another device to confirm it's working
+   - Try a different Ethernet port on your router/switch
+   - Check serial output for "Ethernet PHY initialized (LAN8720)" message
+   - If still no lights: check that LAN8720 PHY is properly configured with correct GPIO pins
+
+3. **MQTT Connection Problems**:
    - Use the built-in MQTT test function
    - Verify server address and credentials
    - Check firewall settings on MQTT broker
 
-3. **DSC Keybus Issues**:
+4. **DSC Keybus Issues**:
    - Verify wiring connections and resistor values
    - Check debug page for keybus connection status
    - Ensure proper grounding between DSC and ESP32
+   - **Important**: Use updated pin assignments (GPIO 4, 16, 21) - old pins (GPIO 18, 19) conflict with Ethernet
 
-4. **Web Interface Access**:
+5. **Web Interface Access**:
    - Check device IP address in router/DHCP server
    - Ensure firewall allows HTTP traffic on port 80
    - Try factory reset if configuration is corrupted
