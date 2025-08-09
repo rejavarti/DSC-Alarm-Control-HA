@@ -72,14 +72,41 @@ void setup() {
   Serial.println();
 
   Serial.print(F("WiFi...."));
+  
+  // Check if we have WiFi credentials - if empty, provide helpful message
+  if (strlen(wifiSSID) == 0) {
+    Serial.println("ERROR: No WiFi credentials configured!");
+    Serial.println("Please set wifiSSID and wifiPassword in the sketch and recompile.");
+    Serial.println("Device will halt until configuration is provided.");
+    while (1) {
+      delay(1000);
+    }
+  }
+  
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifiSSID, wifiPassword);
-  while (WiFi.status() != WL_CONNECTED) {
+  
+  // Wait up to 30 seconds for connection instead of infinite loop
+  int connectAttempts = 0;
+  const int maxAttempts = 60; // 30 seconds with 500ms delay
+  while (WiFi.status() != WL_CONNECTED && connectAttempts < maxAttempts) {
     Serial.print(".");
     delay(500);
+    connectAttempts++;
   }
-  Serial.print(F("connected: "));
-  Serial.println(WiFi.localIP());
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print(F("connected: "));
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("TIMEOUT: Failed to connect to WiFi after 30 seconds!");
+    Serial.print("Configured SSID: '"); Serial.print(wifiSSID); Serial.println("'");
+    Serial.println("Please check your WiFi credentials and network availability.");
+    Serial.println("Device will halt - please reconfigure and restart.");
+    while (1) {
+      delay(1000);
+    }
+  }
 
   Serial.print(F("NTP time...."));
   configTime(timeZoneOffset, daylightOffset, ntpServer);  // Initiates the NTP client, synced hourly
