@@ -1,66 +1,154 @@
 /*
- *  Main entry point for PlatformIO build environments
- *  
- *  This file provides the required setup() and loop() functions for Arduino framework
- *  when building specific environments that need compilation targets.
- *  
- *  For actual usage examples, please refer to the examples directory:
- *  - examples/esp32/
- *  - examples/esp8266/
- *  - examples/Arduino/
+ * Minimal WiFi AP Fallback Test for DSC-Alarm-Control-HA
+ * 
+ * This is a simplified test to demonstrate the fix for the infinite 
+ * WiFi connection loop that prevents Access Point mode from activating
+ * when WiFi credentials are empty or invalid.
  */
 
-#include "Arduino.h"
+#include <WiFi.h>
+#include <DNSServer.h>
+#include <WebServer.h>
+#include <dscKeybusInterface.h>
 
-/*
- * This is a placeholder main file for library development and testing.
- * 
- * To use this library:
- * 1. Copy the appropriate example from examples/ directory
- * 2. Customize the WiFi credentials, MQTT settings, and security system configuration
- * 3. Build and upload to your device
- * 
- * Available examples:
- * - HomeAssistant-MQTT: Full Home Assistant integration via MQTT
- * - KeybusReader: Basic keybus monitoring
- * - VirtualKeypad-Web: Web-based keypad interface
- * - And many more in the examples/ directory
- */
+// Settings - intentionally empty to test AP fallback
+const char* wifiSSID = "";
+const char* wifiPassword = "";
+
+// AP Configuration
+DNSServer dnsServer;
+WebServer server(80);
+const byte DNS_PORT = 53;
+bool accessPointMode = false;
+
+// DSC Configuration
+#define dscClockPin 18
+#define dscReadPin  19
+#define dscWritePin 21
+dscKeybusInterface dsc(dscClockPin, dscReadPin, dscWritePin);
+
+// Function prototypes
+void setupWiFi();
+void startAccessPointMode();
+void handleRoot();
+void handleNotFound();
 
 void setup() {
   Serial.begin(115200);
+  delay(2000);
   Serial.println();
-  Serial.println("DSC Keybus Interface Library");
+  Serial.println("DSC WiFi AP Fallback Test Starting...");
   
-  #ifdef HOME_ASSISTANT_INTEGRATION
-  Serial.println("Build: Home Assistant Integration");
-  Serial.println("This is a placeholder build for library development.");
-  Serial.println();
-  Serial.println("To use this library:");
-  Serial.println("1. Copy examples/esp32/HomeAssistant-MQTT/HomeAssistant-MQTT.ino");
-  Serial.println("2. Customize WiFi and MQTT settings");
-  Serial.println("3. Build and upload your customized sketch");
-  #else
-  Serial.println("Build: Library Development");
-  Serial.println("This is a placeholder build for library compilation testing.");
-  Serial.println();
-  Serial.println("To use this library:");
-  Serial.println("1. Browse available examples in the examples/ directory");
-  Serial.println("2. Copy the appropriate example for your use case");
-  Serial.println("3. Customize settings and build your project");
-  #endif
+  // Check if we have WiFi credentials
+  if (strlen(wifiSSID) == 0) {
+    Serial.println("No WiFi credentials configured, starting Access Point mode...");
+    startAccessPointMode();
+  } else {
+    // Try to connect to WiFi with timeout
+    setupWiFi();
+    
+    // Wait up to 30 seconds for connection
+    int timeout = 30000; // 30 seconds
+    unsigned long startTime = millis();
+    while (WiFi.status() != WL_CONNECTED && (millis() - startTime) < timeout) {
+      Serial.print(".");
+      delay(500);
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.print("WiFi connected: ");
+      Serial.println(WiFi.localIP());
+    } else {
+      Serial.println("Failed to connect to WiFi!");
+      Serial.println("Starting Access Point mode for configuration...");
+      startAccessPointMode();
+    }
+  }
   
-  Serial.println();
-  Serial.println("Library build successful - ready for use!");
+  // Setup web server routes
+  server.on("/", handleRoot);
+  server.onNotFound(handleNotFound);
+  server.begin();
+  
+  Serial.println("Web server started");
+  if (accessPointMode) {
+    Serial.println("Connect to the AP and navigate to http://" + WiFi.softAPIP().toString() + " to configure");
+  }
+  
+  // Initialize DSC interface
+  dsc.begin();
+  Serial.println("DSC interface initialized");
+  Serial.println("Setup complete!");
 }
 
 void loop() {
-  // Minimal loop to satisfy Arduino framework requirements
-  delay(10000);
+  // Handle DNS server for captive portal in AP mode
+  if (accessPointMode) {
+    dnsServer.processNextRequest();
+  }
   
-  #ifdef HOME_ASSISTANT_INTEGRATION
-  Serial.println("Library ready - please use the HomeAssistant-MQTT example for actual functionality");
-  #else
-  Serial.println("Library ready - please use an appropriate example from the examples/ directory");
-  #endif
+  // Handle web server
+  server.handleClient();
+  
+  // Handle DSC interface
+  if (dsc.loop()) {
+    Serial.println("DSC data received");
+  }
+  
+  delay(1);
+}
+
+void setupWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(wifiSSID, wifiPassword);
+  Serial.print("Connecting to WiFi");
+}
+
+void startAccessPointMode() {
+  // Create AP with default name using MAC address
+  String apName = "DSC-Config-" + WiFi.macAddress().substring(9);
+  apName.replace(":", "");
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(apName.c_str(), "configure123");
+  
+  // Start DNS server for captive portal
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+  
+  Serial.println("Access Point started");
+  Serial.println("SSID: " + apName);
+  Serial.println("Password: configure123");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.softAPIP());
+  
+  accessPointMode = true;
+}
+
+void handleRoot() {
+  String html = "<!DOCTYPE html><html><head><title>DSC Configuration</title></head><body>";
+  html += "<h1>DSC Alarm Control Configuration</h1>";
+  if (accessPointMode) {
+    html += "<h2>Access Point Mode Active</h2>";
+    html += "<p>The device could not connect to the configured WiFi network.</p>";
+    html += "<p>Please configure your WiFi credentials:</p>";
+    html += "<form action='/save' method='POST'>";
+    html += "SSID: <input type='text' name='ssid'><br><br>";
+    html += "Password: <input type='password' name='password'><br><br>";
+    html += "<input type='submit' value='Save'>";
+    html += "</form>";
+  } else {
+    html += "<h2>WiFi Connected</h2>";
+    html += "<p>Device is connected to WiFi successfully.</p>";
+    html += "<p>IP Address: " + WiFi.localIP().toString() + "</p>";
+  }
+  html += "<hr><p>DSC Keybus Interface Status: ";
+  html += dsc.keybusConnected ? "Connected" : "Disconnected";
+  html += "</p></body></html>";
+  
+  server.send(200, "text/html", html);
+}
+
+void handleNotFound() {
+  // Redirect to root for captive portal functionality
+  server.sendHeader("Location", "/", true);
+  server.send(302, "text/plain", "");
 }
