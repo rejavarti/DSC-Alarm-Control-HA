@@ -8,6 +8,7 @@
 extern DSCConfig config;
 extern bool ethernetConnected;
 extern bool networkConnected;
+extern bool accessPointMode;
 
 // Web server instance
 WebServer server(80);
@@ -23,6 +24,16 @@ void setupWebServer() {
   server.on("/scan", handleWiFiScan);
   server.on("/mqtt-test", handleMQTTTest);
   
+  // Captive portal - redirect all other requests to config page in AP mode
+  server.onNotFound([]() {
+    if (accessPointMode) {
+      server.sendHeader("Location", "/config", true);
+      server.send(302, "text/plain", "");
+    } else {
+      server.send(404, "text/plain", "Page not found");
+    }
+  });
+  
   server.begin();
   Serial.println("Web server started on port 80");
 }
@@ -34,6 +45,13 @@ void handleWebServer() {
 
 // Root page handler
 void handleRoot() {
+  if (accessPointMode) {
+    // In AP mode, redirect to configuration
+    server.sendHeader("Location", "/config", true);
+    server.send(302, "text/plain", "");
+    return;
+  }
+  
   String html = getHTMLHeader("DSC Alarm Interface");
   html += "<div class='container'>";
   html += "<h1>DSC Keybus Interface - ESP32 POE</h1>";
@@ -168,7 +186,15 @@ void handleConfigSave() {
   String html = getHTMLHeader("Configuration Saved");
   html += "<div class='container'>";
   html += "<h1>Configuration Saved</h1>";
-  html += "<p>Configuration has been saved successfully. The system will need to be restarted for network changes to take effect.</p>";
+  html += "<p>Configuration has been saved successfully.</p>";
+  
+  if (accessPointMode) {
+    html += "<p><strong>Access Point Mode:</strong> The system will restart and try to connect using the new network settings.</p>";
+    html += "<p>If the connection fails, the system will return to Access Point mode for reconfiguration.</p>";
+  } else {
+    html += "<p>The system will need to be restarted for network changes to take effect.</p>";
+  }
+  
   html += "<a href='/config' class='button'>Back to Configuration</a>";
   html += "<a href='/restart' class='button danger'>Restart System</a>";
   html += "</div>";
@@ -306,6 +332,15 @@ String getHTMLFooter() {
 String getConfigPage() {
   String html = getHTMLHeader("Configuration");
   html += "<div class='container'>";
+  
+  // Show banner if in AP mode
+  if (accessPointMode) {
+    html += "<div style='background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>";
+    html += "<h3 style='margin-top: 0; color: #856404;'>📶 Initial Configuration Mode</h3>";
+    html += "<p style='margin-bottom: 0; color: #856404;'>You are connected to the temporary access point. Configure your network settings below and restart to connect to your network.</p>";
+    html += "</div>";
+  }
+  
   html += "<h1>DSC Interface Configuration</h1>";
   html += "<form action='/config/save' method='post'>";
   

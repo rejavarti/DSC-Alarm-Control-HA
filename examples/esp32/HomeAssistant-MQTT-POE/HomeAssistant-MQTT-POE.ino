@@ -69,6 +69,7 @@
 #include <PubSubClient.h>
 #include <dscKeybusInterface.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <time.h>
 #include "config.h"
 #include "webserver.h"
@@ -82,11 +83,16 @@ WiFiClient wifiClient;
 WiFiClient ethClient;
 PubSubClient mqtt;
 
+// DNS server for captive portal in AP mode
+DNSServer dnsServer;
+const byte DNS_PORT = 53;
+
 // System variables
 unsigned long mqttPreviousTime = 0;
 unsigned long lastWebUpdate = 0;
 bool networkConnected = false;
 bool ethernetConnected = false;
+bool accessPointMode = false;
 
 // DSC Keybus Interface - will be initialized with configurable pins in setup()
 dscKeybusInterface* dsc;
@@ -125,7 +131,9 @@ void setup() {
   #endif
   
   // Check if we have network configuration - if not, start AP mode
-  if (strlen(config.wifiSSID) == 0 && !config.useEthernet) {
+  bool hasNetworkConfig = (config.useEthernet || (strlen(config.wifiSSID) > 0));
+  
+  if (!hasNetworkConfig) {
     Serial.println("No network configuration found, starting Access Point mode...");
     startAccessPointMode();
   } else {
@@ -139,48 +147,52 @@ void setup() {
       handleNetworkEvents();
       delay(100);
     }
+    
+    if (!networkConnected) {
+      Serial.println("Failed to connect to configured network!");
+      Serial.println("Starting Access Point mode for reconfiguration...");
+      startAccessPointMode();
+    }
   }
   
+  // Setup web server and other services if connected (either normal network or AP mode)
   if (networkConnected) {
-    Serial.print("Network connected - IP: ");
-    if (config.useEthernet && ethernetConnected) {
-      Serial.println(ETH.localIP());
-    } else {
-      Serial.println(WiFi.localIP());
-    }
-    
-    // Setup web server
-    setupWebServer();
-    
-    // Setup time (for timestamps)
-    configTime(0, 0, "pool.ntp.org");
-    
-    // Setup MQTT
-    if (strlen(config.mqttServer) > 0) {
+    if (!accessPointMode) {
+      Serial.print("Network connected - IP: ");
       if (config.useEthernet && ethernetConnected) {
-        mqtt.setClient(ethClient);
+        Serial.println(ETH.localIP());
       } else {
-        mqtt.setClient(wifiClient);
+        Serial.println(WiFi.localIP());
       }
-      mqtt.setServer(config.mqttServer, config.mqttPort);
-      mqtt.setCallback(mqttCallback);
       
-      if (mqttConnect()) {
-        mqttPreviousTime = millis();
-        debugInfo.mqttConnected = true;
-        debugInfo.mqttLastConnectTime = millis();
+      // Setup time (for timestamps)
+      configTime(0, 0, "pool.ntp.org");
+      
+      // Setup MQTT
+      if (strlen(config.mqttServer) > 0) {
+        if (config.useEthernet && ethernetConnected) {
+          mqtt.setClient(ethClient);
+        } else {
+          mqtt.setClient(wifiClient);
+        }
+        mqtt.setServer(config.mqttServer, config.mqttPort);
+        mqtt.setCallback(mqttCallback);
         
-        // Reset DSC status to get current state if DSC is initialized
-        if (dsc && dsc->keybusConnected) {
-          dsc->resetStatus();
+        if (mqttConnect()) {
+          mqttPreviousTime = millis();
+          debugInfo.mqttConnected = true;
+          debugInfo.mqttLastConnectTime = millis();
+          
+          // Reset DSC status to get current state if DSC is initialized
+          if (dsc && dsc->keybusConnected) {
+            dsc->resetStatus();
+          }
         }
       }
     }
-  } else {
-    Serial.println("Failed to connect to network!");
-    // Start AP mode as fallback
-    Serial.println("Starting Access Point mode for configuration...");
-    startAccessPointMode();
+    
+    // Setup web server (for both normal mode and AP mode)
+    setupWebServer();
   }
   
   // Initialize DSC Keybus Interface
@@ -194,6 +206,11 @@ void setup() {
 }
 
 void loop() {
+  // Handle DNS server for captive portal in AP mode
+  if (accessPointMode) {
+    dnsServer.processNextRequest();
+  }
+  
   // Handle network connectivity
   handleNetworkEvents();
   
@@ -201,7 +218,7 @@ void loop() {
   handleWebServer();
   
   // Handle MQTT
-  if (networkConnected) {
+  if (networkConnected && !accessPointMode) {
     mqttHandle();
   }
   
@@ -316,6 +333,9 @@ void startAccessPointMode() {
   WiFi.mode(WIFI_AP);
   WiFi.softAP(apName.c_str(), "configure123");
   
+  // Start DNS server for captive portal
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+  
   Serial.println("Access Point started");
   Serial.println("SSID: " + apName);
   Serial.println("Password: configure123");
@@ -323,11 +343,13 @@ void startAccessPointMode() {
   Serial.println(WiFi.softAPIP());
   
   networkConnected = true; // Consider AP mode as connected
+  accessPointMode = true;
   
   // Setup web server for configuration
   setupWebServer();
   
   Serial.println("Connect to the AP and navigate to http://" + WiFi.softAPIP().toString() + " to configure");
+  Serial.println("Or navigate to any URL to be redirected to configuration page (captive portal)");
 }
 
 void handleNetworkEvents() {
