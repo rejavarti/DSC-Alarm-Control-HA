@@ -42,11 +42,11 @@
  *      DSC Aux(+) --- 5v voltage regulator --- ESP32-POE 5v pin
  *      DSC Aux(-) --- ESP32-POE Ground
  *
- *                                         +--- dscClockPin  // Default: GPIO 18
+ *                                         +--- dscClockPin  // Default: GPIO 4 (changed from 18 to avoid Ethernet conflict)
  *      DSC Yellow --- 33k ohm resistor ---|
  *                                         +--- 10k ohm resistor --- Ground
  *
- *                                         +--- dscReadPin   // Default: GPIO 19
+ *                                         +--- dscReadPin   // Default: GPIO 16 (changed from 19)
  *      DSC Green ---- 33k ohm resistor ---|
  *                                         +--- 10k ohm resistor --- Ground
  *
@@ -55,7 +55,7 @@
  *                                      |-- NPN base --- 1k ohm resistor --- dscWritePin  // Default: GPIO 21
  *            Ground --- NPN emitter --/
  *
- *      Ethernet: Built-in ESP32-POE connector
+ *      Ethernet: Built-in ESP32-POE connector (LAN8720 PHY uses GPIO 18,23,12,0)
  *      WiFi: Built-in ESP32 WiFi
  *
  *  This example code is in the public domain.
@@ -74,13 +74,15 @@
 #include "webserver.h"
 
 // Pin definitions for ESP32-POE
-#define dscClockPin 18  // GPIO 18
-#define dscReadPin  19  // GPIO 19
+// Note: GPIO 18 and 23 are used by Ethernet PHY (MDIO/MDC), so avoiding those for DSC
+#define dscClockPin 4   // GPIO 4 (changed from 18 to avoid Ethernet MDIO conflict)
+#define dscReadPin  16  // GPIO 16 (changed from 19 for better separation)
 #define dscPC16Pin  17  // DSC Classic Series only, GPIO 17
 #define dscWritePin 21  // GPIO 21
 
-// Ethernet configuration for ESP32-POE (Olimex)
-// These values will be used in ETH.begin() call
+// Ethernet configuration for ESP32-POE (Olimex) with LAN8720 PHY
+// Pin assignments for ESP32-POE Ethernet PHY:
+// GPIO 18: MDIO, GPIO 23: MDC, GPIO 12: PHY Power, GPIO 0: PHY Clock
 
 // Network clients
 WiFiClient wifiClient;
@@ -219,8 +221,12 @@ void setupNetwork() {
 }
 
 void setupEthernet() {
-  // Initialize Ethernet for ESP32-POE (Olimex board)
-  ETH.begin();
+  // Initialize Ethernet for ESP32-POE (Olimex board) with LAN8720 PHY
+  // Parameters: PHY_ADDR, PHY_POWER, PHY_MDC, PHY_MDIO, PHY_TYPE, CLK_MODE
+  // ESP32-POE uses external crystal oscillator, so using GPIO0_IN mode
+  ETH.begin(0, 12, 23, 18, ETH_PHY_LAN8720, ETH_CLOCK_GPIO0_IN);
+  
+  Serial.println("Ethernet PHY initialized (LAN8720)");
   
   if (!config.useDHCP) {
     IPAddress ip, gateway, subnet, dns;
@@ -230,19 +236,32 @@ void setupEthernet() {
     dns.fromString(config.staticDNS);
     
     ETH.config(ip, gateway, subnet, dns);
+    Serial.println("Static IP configuration applied");
   }
   
-  // Wait for connection
+  // Wait for connection with more detailed status reporting
+  Serial.print("Waiting for Ethernet link");
   int attempts = 0;
   while (!ethernetConnected && attempts < 20) {
     delay(500);
+    Serial.print(".");
     attempts++;
     if (ETH.linkUp()) {
       ethernetConnected = true;
       networkConnected = true;
-      Serial.println("Ethernet connected!");
+      Serial.println();
+      Serial.print("Ethernet connected! IP: ");
+      Serial.println(ETH.localIP());
+      Serial.print("MAC: ");
+      Serial.println(ETH.macAddress());
       break;
     }
+  }
+  
+  if (!ethernetConnected) {
+    Serial.println();
+    Serial.println("Ethernet connection failed - no link detected");
+    Serial.println("Check cable, POE power, and ensure no GPIO conflicts");
   }
 }
 
