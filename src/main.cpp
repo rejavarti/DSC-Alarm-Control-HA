@@ -115,6 +115,30 @@ byte systemZones[dscZones], programZones[dscZones];
 byte partition = dscPartition - 1;
 bool forceUpdate = false;
 
+// Forward declarations
+void setStatus(byte partition);
+void setLights(byte partition);
+void processStatus();
+void processProgramZones(byte startByte);
+#ifndef dscClassicSeries
+void processEventBufferAA();
+void processEventBufferEC();
+#endif
+void printPanelStatus0(byte panelByte);
+void printPanelStatus1(byte panelByte);
+void printPanelStatus2(byte panelByte);
+void printPanelStatus3(byte panelByte);
+void printPanelStatus4(byte panelByte);
+void printPanelStatus5(byte panelByte);
+void printPanelStatus14(byte panelByte);
+void printPanelStatus16(byte panelByte);
+void printPanelStatus17(byte panelByte);
+void printPanelStatus18(byte panelByte);
+void printPanelStatus1B(byte panelByte);
+void pauseZones();
+void resetZones();
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len);
+
 
 void setup() {
   Serial.begin(115200);
