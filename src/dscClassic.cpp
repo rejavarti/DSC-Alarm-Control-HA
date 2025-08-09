@@ -30,14 +30,124 @@ dscClassicInterface::dscClassicInterface(byte setClockPin, byte setReadPin, byte
   dscPC16Pin = setPC16Pin;
   dscWritePin = setWritePin;
   if (dscWritePin != 255) virtualKeypad = true;
+  else virtualKeypad = false;
   writeReady = false;
   writePartition = 1;
   pauseStatus = false;
   accessCodeStay = setAccessCode;
-  strcpy(accessCodeAway, accessCodeStay);
-  strcat(accessCodeAway, "*1");
-  strcpy(accessCodeNight, "*9");
-  strcat(accessCodeNight, accessCodeStay);
+  strncpy(accessCodeAway, accessCodeStay, sizeof(accessCodeAway) - 3);  // Reserve space for "*1" + null terminator
+  accessCodeAway[sizeof(accessCodeAway) - 3] = '\0';  // Ensure null termination
+  strncat(accessCodeAway, "*1", sizeof(accessCodeAway) - strlen(accessCodeAway) - 1);
+  
+  strncpy(accessCodeNight, "*9", sizeof(accessCodeNight) - 1);
+  accessCodeNight[sizeof(accessCodeNight) - 1] = '\0';  // Ensure null termination
+  strncat(accessCodeNight, accessCodeStay, sizeof(accessCodeNight) - strlen(accessCodeNight) - 1);
+
+  // Initialize status tracking member variables
+  hideKeypadDigits = false;
+  statusChanged = false;
+  keybusConnected = false;
+  keybusChanged = false;
+  trouble = false;
+  troubleChanged = false;
+  keypadFireAlarm = false;
+  keypadAuxAlarm = false;
+  keypadPanicAlarm = false;
+  
+  // Initialize new missing variables
+  accessCodePrompt = false;
+  decimalInput = false;
+  powerTrouble = false;
+  powerChanged = false;
+  batteryTrouble = false;
+  batteryChanged = false;
+  displayTrailingBits = false;
+  timestampChanged = false;
+  year = 0;
+  stream = nullptr;
+  writeKeysArray = nullptr;
+  
+  // Initialize array-based member variables
+  for (byte partition = 0; partition < dscPartitions; partition++) {
+    ready[partition] = false;
+    readyChanged[partition] = false;
+    armed[partition] = false;
+    armedAway[partition] = false;
+    armedStay[partition] = false;
+    noEntryDelay[partition] = false;
+    armedChanged[partition] = false;
+    alarm[partition] = false;
+    alarmChanged[partition] = false;
+    exitDelay[partition] = false;
+    exitDelayChanged[partition] = false;
+    exitState[partition] = 0;
+    exitStateChanged[partition] = 0;
+    fire[partition] = false;
+    fireChanged[partition] = false;
+    
+    // Initialize missing array variables
+    accessCodeChanged[partition] = false;
+    disabled[partition] = false;
+    disabledChanged[partition] = false;
+    entryDelay[partition] = false;
+    entryDelayChanged[partition] = false;
+  }
+  
+  openZonesStatusChanged = false;
+  alarmZonesStatusChanged = false;
+  for (byte zone = 0; zone < dscZones; zone++) {
+    openZones[zone] = 0;
+    openZonesChanged[zone] = 0;
+    alarmZones[zone] = 0;
+    alarmZonesChanged[zone] = 0;
+  }
+  
+  pgmOutputsStatusChanged = false;
+  pgmOutputs[0] = 0;
+  pgmOutputsChanged[0] = 0;
+  
+  // Initialize light status variables
+  armedLight = false;
+  memoryLight = false;
+  bypassLight = false;
+  troubleLight = false;
+  programLight = false;
+  fireLight = false;
+  beep = false;
+  readyBlink = false;
+  armedBlink = false;
+  memoryBlink = false;
+  bypassBlink = false;
+  troubleBlink = false;
+  
+  // Initialize private member variables
+  writeKeysPending = false;
+  writeArm = false;
+  previousTrouble = false;
+  previousKeybus = false;
+  previousLights = 0;
+  previousStatus = 0;
+  previousReady = false;
+  previousExitDelay = false;
+  previousEntryDelay = false;
+  exitDelayArmed = false;
+  exitDelayTriggered = false;
+  previousExitState = 0;
+  previousArmed = false;
+  previousArmedStay = false;
+  previousArmedAway = false;
+  previousAlarm = false;
+  alarmTriggered = false;
+  previousAlarmTriggered = false;
+  zonesTriggered = 0;
+  previousFire = false;
+  previousOpenZones = 0;
+  previousAlarmZones = 0;
+  previousPgmOutput = 0;
+  troubleBit = false;
+  armedBypassBit = false;
+  armedBit = false;
+  alarmBit = false;
 }
 
 
@@ -991,13 +1101,13 @@ void dscClassicInterface::printPanelCommand() {
 
 
 #if defined(__AVR__)
-bool dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+bool dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes)
 #elif defined(ESP8266)
-bool ICACHE_RAM_ATTR dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+bool ICACHE_RAM_ATTR dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes)
 #elif defined(ESP32)
-bool IRAM_ATTR dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+bool IRAM_ATTR dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes)
 #endif
-
+{
   bool redundantData = true;
   for (byte i = 0; i < checkedBytes; i++) {
     if (previousCmd[i] != currentCmd[i]) {
@@ -1016,12 +1126,13 @@ bool IRAM_ATTR dscClassicInterface::redundantPanelData(byte previousCmd[], volat
 // Called as an interrupt when the DSC clock changes to write data for virtual keypad and setup timers to read
 // data after an interval.
 #if defined(__AVR__)
-void dscClassicInterface::dscClockInterrupt() {
+void dscClassicInterface::dscClockInterrupt()
 #elif defined(ESP8266)
-void ICACHE_RAM_ATTR dscClassicInterface::dscClockInterrupt() {
+void ICACHE_RAM_ATTR dscClassicInterface::dscClockInterrupt()
 #elif defined(ESP32)
-void IRAM_ATTR dscClassicInterface::dscClockInterrupt() {
+void IRAM_ATTR dscClassicInterface::dscClockInterrupt()
 #endif
+{
 
   // Data sent from the panel and keypads/modules has latency after a clock change (observed up to 160us for
   // keypad data).  The following sets up a timer for each platform that will call dscDataInterrupt() in
@@ -1086,11 +1197,14 @@ void IRAM_ATTR dscClassicInterface::dscClockInterrupt() {
 
 // Interrupt function called by AVR Timer1, esp8266 timer1, and esp32 timer1 after 250us to read the data line
 #if defined(__AVR__)
-void dscClassicInterface::dscDataInterrupt() {
+void dscClassicInterface::dscDataInterrupt()
 #elif defined(ESP8266)
-void ICACHE_RAM_ATTR dscClassicInterface::dscDataInterrupt() {
+void ICACHE_RAM_ATTR dscClassicInterface::dscDataInterrupt()
 #elif defined(ESP32)
-void IRAM_ATTR dscClassicInterface::dscDataInterrupt() {
+void IRAM_ATTR dscClassicInterface::dscDataInterrupt()
+#endif
+{
+#if defined(ESP32)
   timerStop(timer1);
   portENTER_CRITICAL(&timer1Mux);
 #endif

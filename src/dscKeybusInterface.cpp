@@ -31,12 +31,115 @@ dscKeybusInterface::dscKeybusInterface(byte setClockPin, byte setReadPin, byte s
   dscReadPin = setReadPin;
   dscWritePin = setWritePin;
   if (dscWritePin != 255) virtualKeypad = true;
+  else virtualKeypad = false;
   writeReady = false;
   processRedundantData = true;
   displayTrailingBits = false;
   processModuleData = false;
   writePartition = 1;
   pauseStatus = false;
+  
+  // Initialize status tracking member variables
+  hideKeypadDigits = false;
+  timestampChanged = false;
+  hour = 0;
+  minute = 0;
+  day = 0;
+  month = 0;
+  year = 0;
+  statusChanged = false;
+  keybusConnected = false;
+  keybusChanged = false;
+  accessCodePrompt = false;
+  decimalInput = false;
+  trouble = false;
+  troubleChanged = false;
+  powerTrouble = false;
+  powerChanged = false;
+  batteryTrouble = false;
+  batteryChanged = false;
+  keypadFireAlarm = false;
+  keypadAuxAlarm = false;
+  keypadPanicAlarm = false;
+  
+  // Initialize array-based member variables for partitions
+  for (byte partition = 0; partition < dscPartitions; partition++) {
+    accessCode[partition] = 0;
+    accessCodeChanged[partition] = false;
+    ready[partition] = false;
+    readyChanged[partition] = false;
+    disabled[partition] = false;
+    disabledChanged[partition] = false;
+    armed[partition] = false;
+    armedAway[partition] = false;
+    armedStay[partition] = false;
+    noEntryDelay[partition] = false;
+    armedChanged[partition] = false;
+    alarm[partition] = false;
+    alarmChanged[partition] = false;
+    exitDelay[partition] = false;
+    exitDelayChanged[partition] = false;
+    exitState[partition] = 0;
+    exitStateChanged[partition] = 0;
+    entryDelay[partition] = false;
+    entryDelayChanged[partition] = false;
+    fire[partition] = false;
+    fireChanged[partition] = false;
+  }
+  
+  // Initialize zone-related arrays
+  openZonesStatusChanged = false;
+  alarmZonesStatusChanged = false;
+  for (byte zone = 0; zone < dscZones; zone++) {
+    openZones[zone] = 0;
+    openZonesChanged[zone] = 0;
+    alarmZones[zone] = 0;
+    alarmZonesChanged[zone] = 0;
+  }
+  
+  pgmOutputsStatusChanged = false;
+  for (byte i = 0; i < 2; i++) {
+    pgmOutputs[i] = 0;
+    pgmOutputsChanged[i] = 0;
+  }
+  
+  panelVersion = 0;
+  
+  // Initialize private member variables
+  writeKeysPending = false;
+  queryResponse = false;
+  previousTrouble = false;
+  previousKeybus = false;
+  previousPower = false;
+  keybusVersion1 = false;
+  
+  // Initialize partition-specific private arrays
+  for (byte partition = 0; partition < dscPartitions; partition++) {
+    writeAccessCode[partition] = false;
+    previousDisabled[partition] = false;
+    previousAccessCode[partition] = 0;
+    previousLights[partition] = 0;
+    previousStatus[partition] = 0;
+    previousReady[partition] = false;
+    previousExitDelay[partition] = false;
+    previousEntryDelay[partition] = false;
+    previousExitState[partition] = 0;
+    previousArmed[partition] = false;
+    previousArmedStay[partition] = false;
+    previousNoEntryDelay[partition] = false;
+    previousAlarm[partition] = false;
+    previousFire[partition] = false;
+  }
+  
+  // Initialize zone private arrays
+  for (byte zone = 0; zone < dscZones; zone++) {
+    previousOpenZones[zone] = 0;
+    previousAlarmZones[zone] = 0;
+  }
+  
+  for (byte i = 0; i < 2; i++) {
+    previousPgmOutputs[i] = 0;
+  }
 }
 
 
@@ -416,13 +519,13 @@ void dscKeybusInterface::setWriteKey(const char receivedKey) {
 
 
 #if defined(__AVR__)
-bool dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+bool dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes)
 #elif defined(ESP8266)
-bool ICACHE_RAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+bool ICACHE_RAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes)
 #elif defined(ESP32)
-bool IRAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+bool IRAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes)
 #endif
-
+{
   bool redundantData = true;
   for (byte i = 0; i < checkedBytes; i++) {
     if (previousCmd[i] != currentCmd[i]) {
@@ -452,13 +555,13 @@ bool dscKeybusInterface::validCRC() {
 // Called as an interrupt when the DSC clock changes to write data for virtual keypad and setup timers to read
 // data after an interval.
 #if defined(__AVR__)
-void dscKeybusInterface::dscClockInterrupt() {
+void dscKeybusInterface::dscClockInterrupt()
 #elif defined(ESP8266)
-void ICACHE_RAM_ATTR dscKeybusInterface::dscClockInterrupt() {
+void ICACHE_RAM_ATTR dscKeybusInterface::dscClockInterrupt()
 #elif defined(ESP32)
-void IRAM_ATTR dscKeybusInterface::dscClockInterrupt() {
+void IRAM_ATTR dscKeybusInterface::dscClockInterrupt()
 #endif
-
+{
   // Data sent from the panel and keypads/modules has latency after a clock change (observed up to 160us for
   // keypad data).  The following sets up a timer for each platform that will call dscDataInterrupt() in
   // 250us to read the data line.
@@ -616,11 +719,14 @@ void IRAM_ATTR dscKeybusInterface::dscClockInterrupt() {
 
 // Interrupt function called by AVR Timer1, esp8266 timer1, and esp32 timer1 after 250us to read the data line
 #if defined(__AVR__)
-void dscKeybusInterface::dscDataInterrupt() {
+void dscKeybusInterface::dscDataInterrupt()
 #elif defined(ESP8266)
-void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt() {
+void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt()
 #elif defined(ESP32)
-void IRAM_ATTR dscKeybusInterface::dscDataInterrupt() {
+void IRAM_ATTR dscKeybusInterface::dscDataInterrupt()
+#endif
+{
+#if defined(ESP32)
   timerStop(timer1);
   portENTER_CRITICAL(&timer1Mux);
 #endif
