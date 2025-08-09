@@ -205,6 +205,8 @@ entity: alarm_control_panel.security_partition_1
 
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <WebServer.h>
+#include <Preferences.h>
 #include <dscKeybusInterface.h>
 
 // Settings
@@ -246,6 +248,111 @@ WiFiClient ipClient;
 PubSubClient mqtt(mqttServer, mqttPort, ipClient);
 unsigned long mqttPreviousTime;
 
+// WiFi Manager variables
+WebServer configServer(80);
+Preferences preferences;
+bool configMode = false;
+String storedSSID = "";
+String storedPassword = "";
+
+// Forward declarations
+void mqttCallback(char* topic, byte* payload, unsigned int length);
+void mqttHandle();
+bool mqttConnect();
+void appendPartition(const char* sourceTopic, byte sourceNumber, char* publishTopic);
+void publishMessage(const char* sourceTopic, byte partition);
+
+
+// WiFi Manager functions
+void startConfigMode() {
+  configMode = true;
+  Serial.println("Starting WiFi configuration mode...");
+  
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("DSC-Config", "12345678");
+  
+  Serial.println("Access Point started");
+  Serial.println("Connect to: DSC-Config (password: 12345678)");
+  Serial.print("Configuration portal: http://");
+  Serial.println(WiFi.softAPIP());
+  
+  configServer.on("/", HTTP_GET, []() {
+    String html = "<!DOCTYPE html><html><head><title>DSC WiFi Configuration</title>";
+    html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px}";
+    html += "input[type=text],input[type=password]{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:4px}";
+    html += "input[type=submit]{background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%}";
+    html += "input[type=submit]:hover{background-color:#45a049}</style></head><body>";
+    html += "<h2>DSC WiFi Configuration</h2>";
+    html += "<form method='POST' action='/save'>";
+    html += "<p>WiFi Network Name (SSID):</p>";
+    html += "<input type='text' name='ssid' placeholder='Enter WiFi SSID' required>";
+    html += "<p>WiFi Password:</p>";
+    html += "<input type='password' name='password' placeholder='Enter WiFi Password' required>";
+    html += "<br><br><input type='submit' value='Save and Connect'>";
+    html += "</form></body></html>";
+    configServer.send(200, "text/html", html);
+  });
+  
+  configServer.on("/save", HTTP_POST, []() {
+    String ssid = configServer.arg("ssid");
+    String password = configServer.arg("password");
+    
+    if (ssid.length() > 0) {
+      preferences.begin("wifi", false);
+      preferences.putString("ssid", ssid);
+      preferences.putString("password", password);
+      preferences.end();
+      
+      String html = "<!DOCTYPE html><html><head><title>DSC WiFi Configuration</title>";
+      html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
+      html += "<h2>Configuration Saved!</h2>";
+      html += "<p>WiFi credentials have been saved. The device will now restart and attempt to connect.</p>";
+      html += "<p>If connection fails, the configuration portal will restart automatically.</p>";
+      html += "</body></html>";
+      configServer.send(200, "text/html", html);
+      
+      delay(2000);
+      ESP.restart();
+    } else {
+      configServer.send(400, "text/plain", "Invalid SSID");
+    }
+  });
+  
+  configServer.begin();
+}
+
+bool loadWiFiCredentials() {
+  preferences.begin("wifi", true);
+  storedSSID = preferences.getString("ssid", "");
+  storedPassword = preferences.getString("password", "");
+  preferences.end();
+  
+  return (storedSSID.length() > 0);
+}
+
+bool connectToWiFi(const char* ssid, const char* password) {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  
+  Serial.print("Connecting to WiFi");
+  int attempts = 0;
+  const int maxAttempts = 60; // 30 seconds with 500ms delay
+  
+  while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print(" connected! IP: ");
+    Serial.println(WiFi.localIP());
+    return true;
+  } else {
+    Serial.println(" failed!");
+    return false;
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -253,43 +360,41 @@ void setup() {
   Serial.println();
   Serial.println();
 
-  Serial.print(F("WiFi...."));
+  Serial.println("DSC Keybus Interface - WiFi Manager Enabled");
   
-  // Check if we have WiFi credentials - if empty, provide helpful message
-  if (strlen(wifiSSID) == 0) {
-    Serial.println("ERROR: No WiFi credentials configured!");
-    Serial.println("Please set wifiSSID and wifiPassword in the sketch and recompile.");
-    Serial.println("Device will halt until configuration is provided.");
-    while (1) {
-      delay(1000);
+  // Try to load saved WiFi credentials
+  bool hasStoredCredentials = loadWiFiCredentials();
+  bool wifiConnected = false;
+  
+  // If we have hardcoded credentials, try them first
+  if (strlen(wifiSSID) > 0 && strlen(wifiPassword) > 0) {
+    Serial.println("Trying hardcoded WiFi credentials...");
+    wifiConnected = connectToWiFi(wifiSSID, wifiPassword);
+    
+    // If successful, save these credentials for future use
+    if (wifiConnected) {
+      preferences.begin("wifi", false);
+      preferences.putString("ssid", wifiSSID);
+      preferences.putString("password", wifiPassword);
+      preferences.end();
+      Serial.println("Hardcoded credentials saved for future use");
     }
   }
   
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(wifiSSID, wifiPassword);
-  
-  // Wait up to 30 seconds for connection instead of infinite loop
-  int connectAttempts = 0;
-  const int maxAttempts = 60; // 30 seconds with 500ms delay
-  while (WiFi.status() != WL_CONNECTED && connectAttempts < maxAttempts) {
-    Serial.print(".");
-    delay(500);
-    connectAttempts++;
+  // If hardcoded credentials failed or don't exist, try stored credentials
+  if (!wifiConnected && hasStoredCredentials) {
+    Serial.println("Trying stored WiFi credentials...");
+    wifiConnected = connectToWiFi(storedSSID.c_str(), storedPassword.c_str());
   }
   
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print(F("connected: "));
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("TIMEOUT: Failed to connect to WiFi after 30 seconds!");
-    Serial.print("Configured SSID: '"); Serial.print(wifiSSID); Serial.println("'");
-    Serial.println("Please check your WiFi credentials and network availability.");
-    Serial.println("Device will halt - please reconfigure and restart.");
-    while (1) {
-      delay(1000);
-    }
+  // If still no connection, start configuration mode
+  if (!wifiConnected) {
+    Serial.println("WiFi connection failed. Starting configuration portal...");
+    startConfigMode();
+    return; // Exit setup, loop() will handle config mode
   }
 
+  // Only initialize MQTT and DSC if we have WiFi connection
   mqtt.setCallback(mqttCallback);
   if (mqttConnect()) mqttPreviousTime = millis();
   else mqttPreviousTime = 0;
@@ -302,7 +407,159 @@ void setup() {
 
 
 void loop() {
+  // If in configuration mode, handle the web server
+  if (configMode) {
+    configServer.handleClient();
+    return;
+  }
+
   mqttHandle();
+
+  dsc.loop();
+
+  if (dsc.statusChanged) {      // Checks if the security system status has changed
+    dsc.statusChanged = false;  // Reset the status tracking flag
+
+    // If the Keybus data buffer is exceeded, the sketch is too busy to process all Keybus commands.  Call
+    // loop() more often, or increase dscBufferSize in the library: src/dscKeybus.h or src/dscClassic.h
+    if (dsc.bufferOverflow) {
+      Serial.println(F("Keybus buffer overflow"));
+      dsc.bufferOverflow = false;
+    }
+
+    // Checks if the interface is connected to the Keybus
+    if (dsc.keybusChanged) {
+      dsc.keybusChanged = false;  // Resets the Keybus data status flag
+      if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
+      else mqtt.publish(mqttStatusTopic, mqttLwtMessage, true);
+    }
+
+    // Sends the access code when needed by the panel for arming or command outputs
+    if (dsc.accessCodePrompt) {
+      dsc.accessCodePrompt = false;
+      dsc.write(accessCode);
+    }
+
+    if (dsc.troubleChanged) {
+      dsc.troubleChanged = false;  // Resets the trouble status flag
+      if (dsc.trouble) mqtt.publish(mqttTroubleTopic, "1", true);
+      else mqtt.publish(mqttTroubleTopic, "0", true);
+    }
+
+    // Publishes status per partition
+    for (byte partition = 0; partition < dscPartitions; partition++) {
+
+      // Skips processing if the partition is disabled or in installer programming
+      if (dsc.disabled[partition]) continue;
+
+      // Publishes the partition status message
+      publishMessage(mqttPartitionTopic, partition);
+
+      // Publishes armed/disarmed status
+      if (dsc.armedChanged[partition]) {
+        char publishTopic[strlen(mqttPartitionTopic) + 2];
+        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
+
+        if (dsc.armed[partition]) {
+          if (dsc.armedAway[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
+          else if (dsc.armedAway[partition]) mqtt.publish(publishTopic, "armed_away", true);
+          else if (dsc.armedStay[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
+          else if (dsc.armedStay[partition]) mqtt.publish(publishTopic, "armed_home", true);
+        }
+        else mqtt.publish(publishTopic, "disarmed", true);
+      }
+
+      // Publishes exit delay status
+      if (dsc.exitDelayChanged[partition]) {
+        dsc.exitDelayChanged[partition] = false;  // Resets the exit delay status flag
+        char publishTopic[strlen(mqttPartitionTopic) + 2];
+        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
+
+        if (dsc.exitDelay[partition]) mqtt.publish(publishTopic, "pending", true);  // Publish as a retained message
+        else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) mqtt.publish(publishTopic, "disarmed", true);
+        // Note: When exit delay ends and system is armed, the armedChanged[partition] flag handles publishing the armed state
+      }
+
+      // Publishes alarm status
+      if (dsc.alarmChanged[partition]) {
+        dsc.alarmChanged[partition] = false;  // Resets the partition alarm status flag
+        char publishTopic[strlen(mqttPartitionTopic) + 2];
+        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
+
+        if (dsc.alarm[partition]) mqtt.publish(publishTopic, "triggered", true);  // Alarm tripped
+        else if (!dsc.armedChanged[partition]) mqtt.publish(publishTopic, "disarmed", true);
+      }
+      if (dsc.armedChanged[partition]) dsc.armedChanged[partition] = false;  // Resets the partition armed status flag
+
+      // Publishes fire alarm status
+      if (dsc.fireChanged[partition]) {
+        dsc.fireChanged[partition] = false;  // Resets the fire status flag
+        char publishTopic[strlen(mqttFireTopic) + 2];
+        appendPartition(mqttFireTopic, partition, publishTopic);  // Appends the mqttFireTopic with the partition number
+
+        if (dsc.fire[partition]) mqtt.publish(publishTopic, "1");  // Fire alarm tripped
+        else mqtt.publish(publishTopic, "0");                      // Fire alarm restored
+      }
+    }
+
+    // Publishes zones 1-64 status in a separate topic per zone
+    // Zone status is stored in the openZones[] and openZonesChanged[] arrays using 1 bit per zone, up to 64 zones:
+    //   openZones[0] and openZonesChanged[0]: Bit 0 = Zone 1 ... Bit 7 = Zone 8
+    //   openZones[1] and openZonesChanged[1]: Bit 0 = Zone 9 ... Bit 7 = Zone 16
+    //   ...
+    //   openZones[7] and openZonesChanged[7]: Bit 0 = Zone 57 ... Bit 7 = Zone 64
+    if (dsc.openZonesStatusChanged) {
+      dsc.openZonesStatusChanged = false;                           // Resets the open zones status flag
+      for (byte zoneGroup = 0; zoneGroup < dscZones; zoneGroup++) {
+        for (byte zoneBit = 0; zoneBit < 8; zoneBit++) {
+          if (bitRead(dsc.openZonesChanged[zoneGroup], zoneBit)) {  // Checks an individual open zone status flag
+            bitWrite(dsc.openZonesChanged[zoneGroup], zoneBit, 0);  // Resets the individual open zone status flag
+
+            // Appends the mqttZoneTopic with the zone number
+            char zonePublishTopic[strlen(mqttZoneTopic) + 3];
+            char zone[3];
+            strcpy(zonePublishTopic, mqttZoneTopic);
+            itoa(zoneBit + 1 + (zoneGroup * 8), zone, 10);
+            strcat(zonePublishTopic, zone);
+
+            if (bitRead(dsc.openZones[zoneGroup], zoneBit)) {
+              mqtt.publish(zonePublishTopic, "1", true);            // Zone open
+            }
+            else mqtt.publish(zonePublishTopic, "0", true);         // Zone closed
+          }
+        }
+      }
+    }
+
+    // Publishes PGM outputs 1-14 status in a separate topic per zone
+    // PGM status is stored in the pgmOutputs[] and pgmOutputsChanged[] arrays using 1 bit per PGM output:
+    //   pgmOutputs[0] and pgmOutputsChanged[0]: Bit 0 = PGM 1 ... Bit 7 = PGM 8
+    //   pgmOutputs[1] and pgmOutputsChanged[1]: Bit 0 = PGM 9 ... Bit 5 = PGM 14
+    if (dsc.pgmOutputsStatusChanged) {
+      dsc.pgmOutputsStatusChanged = false;  // Resets the PGM outputs status flag
+      for (byte pgmGroup = 0; pgmGroup < 2; pgmGroup++) {
+        for (byte pgmBit = 0; pgmBit < 8; pgmBit++) {
+          if (bitRead(dsc.pgmOutputsChanged[pgmGroup], pgmBit)) {  // Checks an individual PGM output status flag
+            bitWrite(dsc.pgmOutputsChanged[pgmGroup], pgmBit, 0);  // Resets the individual PGM output status flag
+
+            // Appends the mqttPgmTopic with the PGM number
+            char pgmPublishTopic[strlen(mqttPgmTopic) + 3];
+            char pgm[3];
+            strcpy(pgmPublishTopic, mqttPgmTopic);
+            itoa(pgmBit + 1 + (pgmGroup * 8), pgm, 10);
+            strcat(pgmPublishTopic, pgm);
+
+            if (bitRead(dsc.pgmOutputs[pgmGroup], pgmBit)) {
+              mqtt.publish(pgmPublishTopic, "1", true);           // PGM enabled
+            }
+            else mqtt.publish(pgmPublishTopic, "0", true);        // PGM disabled
+          }
+        }
+      }
+    }
+
+    mqtt.subscribe(mqttSubscribeTopic);
+  }
 
   dsc.loop();
 
