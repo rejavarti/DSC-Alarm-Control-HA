@@ -335,6 +335,7 @@ void loop() {
 
         if (dsc.exitDelay[partition]) mqtt.publish(publishTopic, "pending", true);  // Publish as a retained message
         else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) mqtt.publish(publishTopic, "disarmed", true);
+        // Note: When exit delay ends and system is armed, the armedChanged[partition] flag handles publishing the armed state
       }
 
       // Publishes alarm status

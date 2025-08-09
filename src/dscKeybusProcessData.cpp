@@ -173,6 +173,32 @@ void dscKeybusInterface::processPanelStatus() {
     // Status lights
     lights[partitionIndex] = panelData[statusByte];
     if (lights[partitionIndex] != previousLights[partitionIndex]) {
+      // Check for ready light turning off during exit delay (arming completion)
+      bool previousReadyLight = bitRead(previousLights[partitionIndex], 0);
+      bool currentReadyLight = bitRead(lights[partitionIndex], 0);
+      if (previousReadyLight && !currentReadyLight && exitDelay[partitionIndex]) {
+        // Ready light turned off during exit delay - system is now armed
+        // Use bypass light to determine home vs away
+        if (bitRead(lights[partitionIndex], 3)) {
+          // Bypass light is on - armed home/stay
+          armedStay[partitionIndex] = true;
+          armedAway[partitionIndex] = false;
+        } else {
+          // Bypass light is off - armed away
+          armedStay[partitionIndex] = false;
+          armedAway[partitionIndex] = true;
+        }
+        armed[partitionIndex] = true;
+        if (armed[partitionIndex] != previousArmed[partitionIndex] || armedStay[partitionIndex] != previousArmedStay[partitionIndex]) {
+          previousArmed[partitionIndex] = armed[partitionIndex];
+          previousArmedStay[partitionIndex] = armedStay[partitionIndex];
+          armedChanged[partitionIndex] = true;
+        }
+        processExitDelayStatus(partitionIndex, false);
+        exitState[partitionIndex] = 0;
+        if (!pauseStatus) statusChanged = true;
+      }
+      
       previousLights[partitionIndex] = lights[partitionIndex];
       if (!pauseStatus) statusChanged = true;
     }
