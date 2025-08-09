@@ -69,43 +69,39 @@
 #include <PubSubClient.h>
 #include <dscKeybusInterface.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <time.h>
 #include "config.h"
 #include "webserver.h"
 
-// Pin definitions for ESP32-POE
-// Note: GPIO 18 and 23 are used by Ethernet PHY (MDIO/MDC), so avoiding those for DSC
-#define dscClockPin 4   // GPIO 4 (changed from 18 to avoid Ethernet MDIO conflict)
-#define dscReadPin  16  // GPIO 16 (changed from 19 for better separation)
-#define dscPC16Pin  17  // DSC Classic Series only, GPIO 17
-#define dscWritePin 21  // GPIO 21
-
-// Ethernet configuration for ESP32-POE (Olimex) with LAN8720 PHY
-// Pin assignments for ESP32-POE Ethernet PHY:
-// GPIO 18: MDIO, GPIO 23: MDC, GPIO 12: PHY Power, GPIO 0: PHY Clock
+// Pin definitions - now configured via web interface instead of hardcoded
+// Default values are set in config.h for ESP32-POE: 13, 16, 32, 33
+// These can be changed via the web configuration interface
 
 // Network clients
 WiFiClient wifiClient;
 WiFiClient ethClient;
 PubSubClient mqtt;
 
+// DNS server for captive portal in AP mode
+DNSServer dnsServer;
+const byte DNS_PORT = 53;
+
 // System variables
 unsigned long mqttPreviousTime = 0;
 unsigned long lastWebUpdate = 0;
 bool networkConnected = false;
 bool ethernetConnected = false;
+bool accessPointMode = false;
 
-// DSC Keybus Interface
-#ifndef dscClassicSeries
-dscKeybusInterface dsc(dscClockPin, dscReadPin, dscWritePin);
-#else
-dscClassicInterface dsc(dscClockPin, dscReadPin, dscPC16Pin, dscWritePin, config.accessCode);
-#endif
+// DSC Keybus Interface - will be initialized with configurable pins in setup()
+dscKeybusInterface* dsc;
 
 // Function prototypes
 void setupNetwork();
 void setupEthernet();
 void setupWiFi();
+void startAccessPointMode();
 void handleNetworkEvents();
 void mqttHandle();
 bool mqttConnect();
@@ -124,54 +120,83 @@ void setup() {
   // Load configuration from flash
   loadConfig();
   
-  // Setup network connectivity
-  setupNetwork();
+  // Initialize DSC Keybus Interface with configurable pins
+  Serial.printf("Initializing DSC interface with pins: Clock=%d, Read=%d, PC16=%d, Write=%d\n", 
+                config.dscClockPin, config.dscReadPin, config.dscPC16Pin, config.dscWritePin);
+                
+  #ifndef dscClassicSeries
+    dsc = new dscKeybusInterface(config.dscClockPin, config.dscReadPin, config.dscWritePin);
+  #else
+    dsc = new dscClassicInterface(config.dscClockPin, config.dscReadPin, config.dscPC16Pin, config.dscWritePin, config.accessCode);
+  #endif
   
-  // Wait for network connection
-  int timeout = 30000; // 30 seconds
-  unsigned long startTime = millis();
-  while (!networkConnected && (millis() - startTime) < timeout) {
-    handleNetworkEvents();
-    delay(100);
+  // Check if we have network configuration - if not, start AP mode
+  bool hasNetworkConfig = (config.useEthernet || (strlen(config.wifiSSID) > 0));
+  
+  if (!hasNetworkConfig) {
+    Serial.println("No network configuration found, starting Access Point mode...");
+    startAccessPointMode();
+  } else {
+    // Setup network connectivity
+    setupNetwork();
+    
+    // Wait for network connection
+    int timeout = 30000; // 30 seconds
+    unsigned long startTime = millis();
+    while (!networkConnected && (millis() - startTime) < timeout) {
+      handleNetworkEvents();
+      delay(100);
+    }
+    
+    if (!networkConnected) {
+      Serial.println("Failed to connect to configured network!");
+      Serial.println("Starting Access Point mode for reconfiguration...");
+      startAccessPointMode();
+    }
   }
   
+  // Setup web server and other services if connected (either normal network or AP mode)
   if (networkConnected) {
-    Serial.print("Network connected - IP: ");
-    if (config.useEthernet && ethernetConnected) {
-      Serial.println(ETH.localIP());
-    } else {
-      Serial.println(WiFi.localIP());
-    }
-    
-    // Setup web server
-    setupWebServer();
-    
-    // Setup time (for timestamps)
-    configTime(0, 0, "pool.ntp.org");
-    
-    // Setup MQTT
-    if (strlen(config.mqttServer) > 0) {
+    if (!accessPointMode) {
+      Serial.print("Network connected - IP: ");
       if (config.useEthernet && ethernetConnected) {
-        mqtt.setClient(ethClient);
+        Serial.println(ETH.localIP());
       } else {
-        mqtt.setClient(wifiClient);
+        Serial.println(WiFi.localIP());
       }
-      mqtt.setServer(config.mqttServer, config.mqttPort);
-      mqtt.setCallback(mqttCallback);
       
-      if (mqttConnect()) {
-        mqttPreviousTime = millis();
-        debugInfo.mqttConnected = true;
-        debugInfo.mqttLastConnectTime = millis();
+      // Setup time (for timestamps)
+      configTime(0, 0, "pool.ntp.org");
+      
+      // Setup MQTT
+      if (strlen(config.mqttServer) > 0) {
+        if (config.useEthernet && ethernetConnected) {
+          mqtt.setClient(ethClient);
+        } else {
+          mqtt.setClient(wifiClient);
+        }
+        mqtt.setServer(config.mqttServer, config.mqttPort);
+        mqtt.setCallback(mqttCallback);
+        
+        if (mqttConnect()) {
+          mqttPreviousTime = millis();
+          debugInfo.mqttConnected = true;
+          debugInfo.mqttLastConnectTime = millis();
+          
+          // Reset DSC status to get current state if DSC is initialized
+          if (dsc && dsc->keybusConnected) {
+            dsc->resetStatus();
+          }
+        }
       }
     }
-  } else {
-    Serial.println("Failed to connect to network!");
-    // Continue anyway - user can configure via AP mode if implemented
+    
+    // Setup web server (for both normal mode and AP mode)
+    setupWebServer();
   }
   
   // Initialize DSC Keybus Interface
-  dsc.begin();
+  dsc->begin();
   Serial.println("DSC Keybus Interface initialized");
   
   // Initialize debug info
@@ -181,6 +206,11 @@ void setup() {
 }
 
 void loop() {
+  // Handle DNS server for captive portal in AP mode
+  if (accessPointMode) {
+    dnsServer.processNextRequest();
+  }
+  
   // Handle network connectivity
   handleNetworkEvents();
   
@@ -188,13 +218,15 @@ void loop() {
   handleWebServer();
   
   // Handle MQTT
-  if (networkConnected) {
+  if (networkConnected && !accessPointMode) {
     mqttHandle();
   }
   
   // Process DSC Keybus
-  dsc.loop();
-  processDSCStatus();
+  if (dsc) {
+    dsc->loop();
+    processDSCStatus();
+  }
   
   // Update debug information periodically
   if (millis() - lastWebUpdate > 1000) {
@@ -294,6 +326,32 @@ void setupWiFi() {
   }
 }
 
+void startAccessPointMode() {
+  // Create AP with default name using MAC address
+  String apName = "DSC-Config-" + WiFi.macAddress().substring(9);
+  apName.replace(":", "");
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(apName.c_str(), "configure123");
+  
+  // Start DNS server for captive portal
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+  
+  Serial.println("Access Point started");
+  Serial.println("SSID: " + apName);
+  Serial.println("Password: configure123");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.softAPIP());
+  
+  networkConnected = true; // Consider AP mode as connected
+  accessPointMode = true;
+  
+  // Setup web server for configuration
+  setupWebServer();
+  
+  Serial.println("Connect to the AP and navigate to http://" + WiFi.softAPIP().toString() + " to configure");
+  Serial.println("Or navigate to any URL to be redirected to configuration page (captive portal)");
+}
+
 void handleNetworkEvents() {
   // Check network connectivity and handle reconnections
   if (config.useEthernet) {
@@ -328,7 +386,7 @@ void mqttHandle() {
         debugInfo.mqttLastConnectTime = millis();
         debugInfo.mqttReconnectCount++;
         
-        if (dsc.keybusConnected) {
+        if (dsc->keybusConnected) {
           mqtt.publish(config.mqttStatusTopic, "online", true);
         }
         Serial.println("MQTT reconnected");
@@ -358,7 +416,7 @@ bool mqttConnect() {
   
   if (connected) {
     Serial.println(" connected");
-    dsc.resetStatus(); // Get current status
+    if (dsc) dsc->resetStatus(); // Get current status
     mqtt.subscribe(config.mqttSubscribeTopic);
   } else {
     Serial.println(" failed");
@@ -371,6 +429,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   // Handle unused parameters
   (void)topic;
   (void)length;
+
+  if (!dsc) return; // Safety check
 
   byte partition = 0;
   byte payloadIndex = 0;
@@ -388,61 +448,63 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   // Panic alarm
   if (payload[payloadIndex] == 'P') {
-    dsc.write('p');
+    dsc->write('p');
     addAlarmEvent("Panic alarm triggered", partition + 1);
     return;
   }
 
   // Check if system is ready for arming commands
-  if (payload[payloadIndex] != 'D' && !dsc.ready[partition]) {
-    dsc.armedChanged[partition] = true;
-    dsc.statusChanged = true;
+  if (payload[payloadIndex] != 'D' && !dsc->ready[partition]) {
+    dsc->armedChanged[partition] = true;
+    dsc->statusChanged = true;
     return;
   }
 
   // Arm stay
-  if (payload[payloadIndex] == 'S' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;
-    dsc.write('s');
+  if (payload[payloadIndex] == 'S' && !dsc->armed[partition] && !dsc->exitDelay[partition]) {
+    dsc->writePartition = partition + 1;
+    dsc->write('s');
     addAlarmEvent("Armed stay", partition + 1);
   }
   // Arm away
-  else if (payload[payloadIndex] == 'A' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;
-    dsc.write('w');
+  else if (payload[payloadIndex] == 'A' && !dsc->armed[partition] && !dsc->exitDelay[partition]) {
+    dsc->writePartition = partition + 1;
+    dsc->write('w');
     addAlarmEvent("Armed away", partition + 1);
   }
   // Arm night
-  else if (payload[payloadIndex] == 'N' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;
-    dsc.write('n');
+  else if (payload[payloadIndex] == 'N' && !dsc->armed[partition] && !dsc->exitDelay[partition]) {
+    dsc->writePartition = partition + 1;
+    dsc->write('n');
     addAlarmEvent("Armed night", partition + 1);
   }
   // Disarm
-  else if (payload[payloadIndex] == 'D' && (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
-    dsc.writePartition = partition + 1;
-    dsc.write(config.accessCode);
+  else if (payload[payloadIndex] == 'D' && (dsc->armed[partition] || dsc->exitDelay[partition] || dsc->alarm[partition])) {
+    dsc->writePartition = partition + 1;
+    dsc->write(config.accessCode);
     addAlarmEvent("Disarmed", partition + 1);
   }
 }
 
 void processDSCStatus() {
-  if (dsc.statusChanged) {
-    dsc.statusChanged = false;
+  if (!dsc) return; // Safety check
+  
+  if (dsc->statusChanged) {
+    dsc->statusChanged = false;
 
     // Handle buffer overflow
-    if (dsc.bufferOverflow) {
+    if (dsc->bufferOverflow) {
       Serial.println("Keybus buffer overflow");
-      dsc.bufferOverflow = false;
+      dsc->bufferOverflow = false;
     }
 
     // Handle keybus connection changes
-    if (dsc.keybusChanged) {
-      dsc.keybusChanged = false;
-      debugInfo.alarmSystemConnected = dsc.keybusConnected;
+    if (dsc->keybusChanged) {
+      dsc->keybusChanged = false;
+      debugInfo.alarmSystemConnected = dsc->keybusConnected;
       
       if (mqtt.connected()) {
-        if (dsc.keybusConnected) {
+        if (dsc->keybusConnected) {
           mqtt.publish(config.mqttStatusTopic, "online", true);
         } else {
           mqtt.publish(config.mqttStatusTopic, "offline", true);
@@ -451,25 +513,25 @@ void processDSCStatus() {
     }
 
     // Send access code when prompted
-    if (dsc.accessCodePrompt) {
-      dsc.accessCodePrompt = false;
-      dsc.write(config.accessCode);
+    if (dsc->accessCodePrompt) {
+      dsc->accessCodePrompt = false;
+      dsc->write(config.accessCode);
     }
 
     // Handle trouble status
-    if (dsc.troubleChanged) {
-      dsc.troubleChanged = false;
+    if (dsc->troubleChanged) {
+      dsc->troubleChanged = false;
       if (mqtt.connected()) {
-        mqtt.publish(config.mqttTroubleTopic, dsc.trouble ? "1" : "0", true);
+        mqtt.publish(config.mqttTroubleTopic, dsc->trouble ? "1" : "0", true);
       }
-      if (dsc.trouble) {
+      if (dsc->trouble) {
         addAlarmEvent("System trouble detected");
       }
     }
 
     // Process each partition
     for (byte partition = 0; partition < dscPartitions; partition++) {
-      if (dsc.disabled[partition]) continue;
+      if (dsc->disabled[partition]) continue;
 
       // Publish partition status message
       if (mqtt.connected()) {
@@ -477,67 +539,67 @@ void processDSCStatus() {
       }
 
       // Handle armed status changes
-      if (dsc.armedChanged[partition]) {
+      if (dsc->armedChanged[partition]) {
         char publishTopic[strlen(config.mqttPartitionTopic) + 2];
         appendPartition(config.mqttPartitionTopic, partition, publishTopic);
 
         if (mqtt.connected()) {
-          if (dsc.armed[partition]) {
-            if (dsc.armedAway[partition] && dsc.noEntryDelay[partition]) {
+          if (dsc->armed[partition]) {
+            if (dsc->armedAway[partition] && dsc->noEntryDelay[partition]) {
               mqtt.publish(publishTopic, "armed_night", true);
-            } else if (dsc.armedAway[partition]) {
+            } else if (dsc->armedAway[partition]) {
               mqtt.publish(publishTopic, "armed_away", true);
-            } else if (dsc.armedStay[partition] && dsc.noEntryDelay[partition]) {
+            } else if (dsc->armedStay[partition] && dsc->noEntryDelay[partition]) {
               mqtt.publish(publishTopic, "armed_night", true);
-            } else if (dsc.armedStay[partition]) {
+            } else if (dsc->armedStay[partition]) {
               mqtt.publish(publishTopic, "armed_home", true);
             }
           } else {
             mqtt.publish(publishTopic, "disarmed", true);
           }
         }
-        dsc.armedChanged[partition] = false;
+        dsc->armedChanged[partition] = false;
       }
 
       // Handle exit delay
-      if (dsc.exitDelayChanged[partition]) {
-        dsc.exitDelayChanged[partition] = false;
+      if (dsc->exitDelayChanged[partition]) {
+        dsc->exitDelayChanged[partition] = false;
         char publishTopic[strlen(config.mqttPartitionTopic) + 2];
         appendPartition(config.mqttPartitionTopic, partition, publishTopic);
 
         if (mqtt.connected()) {
-          if (dsc.exitDelay[partition]) {
+          if (dsc->exitDelay[partition]) {
             mqtt.publish(publishTopic, "pending", true);
-          } else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) {
+          } else if (!dsc->exitDelay[partition] && !dsc->armed[partition]) {
             mqtt.publish(publishTopic, "disarmed", true);
           }
         }
       }
 
       // Handle alarm status
-      if (dsc.alarmChanged[partition]) {
-        dsc.alarmChanged[partition] = false;
+      if (dsc->alarmChanged[partition]) {
+        dsc->alarmChanged[partition] = false;
         char publishTopic[strlen(config.mqttPartitionTopic) + 2];
         appendPartition(config.mqttPartitionTopic, partition, publishTopic);
 
-        if (dsc.alarm[partition]) {
+        if (dsc->alarm[partition]) {
           if (mqtt.connected()) {
             mqtt.publish(publishTopic, "triggered", true);
           }
           addAlarmEvent("Alarm triggered", partition + 1);
-        } else if (!dsc.armedChanged[partition] && mqtt.connected()) {
+        } else if (!dsc->armedChanged[partition] && mqtt.connected()) {
           mqtt.publish(publishTopic, "disarmed", true);
         }
       }
 
       // Handle fire alarm status
-      if (dsc.fireChanged[partition]) {
-        dsc.fireChanged[partition] = false;
+      if (dsc->fireChanged[partition]) {
+        dsc->fireChanged[partition] = false;
         char publishTopic[strlen(config.mqttFireTopic) + 2];
         appendPartition(config.mqttFireTopic, partition, publishTopic);
 
         if (mqtt.connected()) {
-          if (dsc.fire[partition]) {
+          if (dsc->fire[partition]) {
             mqtt.publish(publishTopic, "1");
             addAlarmEvent("Fire alarm", partition + 1);
           } else {
@@ -548,16 +610,16 @@ void processDSCStatus() {
     }
 
     // Handle zone status changes
-    if (dsc.openZonesStatusChanged) {
-      dsc.openZonesStatusChanged = false;
+    if (dsc->openZonesStatusChanged) {
+      dsc->openZonesStatusChanged = false;
       
       for (byte zoneGroup = 0; zoneGroup < dscZones; zoneGroup++) {
         for (byte zoneBit = 0; zoneBit < 8; zoneBit++) {
-          if (bitRead(dsc.openZonesChanged[zoneGroup], zoneBit)) {
-            bitWrite(dsc.openZonesChanged[zoneGroup], zoneBit, 0);
+          if (bitRead(dsc->openZonesChanged[zoneGroup], zoneBit)) {
+            bitWrite(dsc->openZonesChanged[zoneGroup], zoneBit, 0);
 
             int zoneNumber = zoneBit + (zoneGroup * 8);
-            bool zoneOpen = bitRead(dsc.openZones[zoneGroup], zoneBit);
+            bool zoneOpen = bitRead(dsc->openZones[zoneGroup], zoneBit);
             
             // Update debug info
             if (zoneNumber < 8) {
@@ -580,16 +642,16 @@ void processDSCStatus() {
     }
 
     // Handle PGM output status changes
-    if (dsc.pgmOutputsStatusChanged) {
-      dsc.pgmOutputsStatusChanged = false;
+    if (dsc->pgmOutputsStatusChanged) {
+      dsc->pgmOutputsStatusChanged = false;
       
       for (byte pgmGroup = 0; pgmGroup < 2; pgmGroup++) {
         for (byte pgmBit = 0; pgmBit < 8; pgmBit++) {
-          if (bitRead(dsc.pgmOutputsChanged[pgmGroup], pgmBit)) {
-            bitWrite(dsc.pgmOutputsChanged[pgmGroup], pgmBit, 0);
+          if (bitRead(dsc->pgmOutputsChanged[pgmGroup], pgmBit)) {
+            bitWrite(dsc->pgmOutputsChanged[pgmGroup], pgmBit, 0);
 
             int pgmNumber = pgmBit + (pgmGroup * 8);
-            bool pgmActive = bitRead(dsc.pgmOutputs[pgmGroup], pgmBit);
+            bool pgmActive = bitRead(dsc->pgmOutputs[pgmGroup], pgmBit);
             
             // Update debug info for first 8 PGM outputs (matching zones)
             if (pgmNumber < 8) {
@@ -636,7 +698,7 @@ void publishMessage(const char* sourceTopic, byte partition) {
   strcat(publishTopic, "/Message");  // This creates topics like "dsc/Get/Partition1/Message"
 
   // Publish current partition message based on status (compatible with original implementation)
-  switch (dsc.status[partition]) {
+  switch (dsc->status[partition]) {
     case 0x01: mqtt.publish(publishTopic, "Partition ready", true); break;
     case 0x02: mqtt.publish(publishTopic, "Stay zones open", true); break;
     case 0x03: mqtt.publish(publishTopic, "Zones open", true); break;
@@ -729,5 +791,5 @@ void publishMessage(const char* sourceTopic, byte partition) {
 void updateDebugInfo() {
   debugInfo.systemUptime = millis();
   debugInfo.mqttConnected = mqtt.connected();
-  debugInfo.alarmSystemConnected = dsc.keybusConnected;
+  debugInfo.alarmSystemConnected = dsc ? dsc->keybusConnected : false;
 }

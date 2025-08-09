@@ -8,6 +8,7 @@
 extern DSCConfig config;
 extern bool ethernetConnected;
 extern bool networkConnected;
+extern bool accessPointMode;
 
 // Web server instance
 WebServer server(80);
@@ -23,6 +24,16 @@ void setupWebServer() {
   server.on("/scan", handleWiFiScan);
   server.on("/mqtt-test", handleMQTTTest);
   
+  // Captive portal - redirect all other requests to config page in AP mode
+  server.onNotFound([]() {
+    if (accessPointMode) {
+      server.sendHeader("Location", "/config", true);
+      server.send(302, "text/plain", "");
+    } else {
+      server.send(404, "text/plain", "Page not found");
+    }
+  });
+  
   server.begin();
   Serial.println("Web server started on port 80");
 }
@@ -34,6 +45,13 @@ void handleWebServer() {
 
 // Root page handler
 void handleRoot() {
+  if (accessPointMode) {
+    // In AP mode, redirect to configuration
+    server.sendHeader("Location", "/config", true);
+    server.send(302, "text/plain", "");
+    return;
+  }
+  
   String html = getHTMLHeader("DSC Alarm Interface");
   html += "<div class='container'>";
   html += "<h1>DSC Keybus Interface - ESP32 POE</h1>";
@@ -45,6 +63,10 @@ void handleRoot() {
   
   html += "<h2>System Information</h2>";
   html += "<table>";
+  html += "<tr><td>Module Type:</td><td>" + String(getModuleName(config.moduleType)) + "</td></tr>";
+  html += "<tr><td>DSC Clock Pin:</td><td>GPIO " + String(config.dscClockPin) + "</td></tr>";
+  html += "<tr><td>DSC Read Pin:</td><td>GPIO " + String(config.dscReadPin) + "</td></tr>";
+  html += "<tr><td>DSC Write Pin:</td><td>GPIO " + String(config.dscWritePin) + "</td></tr>";
   html += "<tr><td>Network Mode:</td><td>" + String(config.useEthernet ? "Ethernet" : "WiFi") + "</td></tr>";
   html += "<tr><td>IP Address:</td><td>" + (config.useEthernet ? (ethernetConnected ? ETH.localIP().toString() : "Not connected") : WiFi.localIP().toString()) + "</td></tr>";
   html += "<tr><td>MQTT Server:</td><td>" + String(config.mqttServer) + ":" + String(config.mqttPort) + "</td></tr>";
@@ -65,6 +87,33 @@ void handleConfig() {
 
 // Configuration save handler
 void handleConfigSave() {
+  // Module and pin configuration
+  if (server.hasArg("module_type")) {
+    int moduleType = server.arg("module_type").toInt();
+    if (moduleType >= MODULE_ESP32_GENERIC && moduleType <= MODULE_CUSTOM) {
+      config.moduleType = (ModuleType)moduleType;
+      
+      // Set default pins if not custom module
+      if (config.moduleType != MODULE_CUSTOM) {
+        setDefaultPinsForModule(config.moduleType);
+      }
+    }
+  }
+  
+  // Custom pin configuration (only applied if custom module or explicitly set)
+  if (server.hasArg("dsc_clock_pin")) {
+    config.dscClockPin = server.arg("dsc_clock_pin").toInt();
+  }
+  if (server.hasArg("dsc_read_pin")) {
+    config.dscReadPin = server.arg("dsc_read_pin").toInt();
+  }
+  if (server.hasArg("dsc_pc16_pin")) {
+    config.dscPC16Pin = server.arg("dsc_pc16_pin").toInt();
+  }
+  if (server.hasArg("dsc_write_pin")) {
+    config.dscWritePin = server.arg("dsc_write_pin").toInt();
+  }
+  
   // Network configuration
   if (server.hasArg("network_mode")) {
     config.useEthernet = (server.arg("network_mode") == "ethernet");
@@ -137,7 +186,15 @@ void handleConfigSave() {
   String html = getHTMLHeader("Configuration Saved");
   html += "<div class='container'>";
   html += "<h1>Configuration Saved</h1>";
-  html += "<p>Configuration has been saved successfully. The system will need to be restarted for network changes to take effect.</p>";
+  html += "<p>Configuration has been saved successfully.</p>";
+  
+  if (accessPointMode) {
+    html += "<p><strong>Access Point Mode:</strong> The system will restart and try to connect using the new network settings.</p>";
+    html += "<p>If the connection fails, the system will return to Access Point mode for reconfiguration.</p>";
+  } else {
+    html += "<p>The system will need to be restarted for network changes to take effect.</p>";
+  }
+  
   html += "<a href='/config' class='button'>Back to Configuration</a>";
   html += "<a href='/restart' class='button danger'>Restart System</a>";
   html += "</div>";
@@ -275,8 +332,51 @@ String getHTMLFooter() {
 String getConfigPage() {
   String html = getHTMLHeader("Configuration");
   html += "<div class='container'>";
+  
+  // Show banner if in AP mode
+  if (accessPointMode) {
+    html += "<div style='background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>";
+    html += "<h3 style='margin-top: 0; color: #856404;'>📶 Initial Configuration Mode</h3>";
+    html += "<p style='margin-bottom: 0; color: #856404;'>You are connected to the temporary access point. Configure your network settings below and restart to connect to your network.</p>";
+    html += "</div>";
+  }
+  
   html += "<h1>DSC Interface Configuration</h1>";
   html += "<form action='/config/save' method='post'>";
+  
+  // Module and Pin Configuration
+  html += "<h2>Hardware Configuration</h2>";
+  html += "<div class='form-group'>";
+  html += "<label>Module Type:</label>";
+  html += "<select name='module_type' onchange='updatePinDefaults()'>";
+  html += "<option value='" + String(MODULE_ESP32_GENERIC) + "'" + String(config.moduleType == MODULE_ESP32_GENERIC ? " selected" : "") + ">ESP32 Generic</option>";
+  html += "<option value='" + String(MODULE_ESP32_POE) + "'" + String(config.moduleType == MODULE_ESP32_POE ? " selected" : "") + ">ESP32-POE (Olimex)</option>";
+  html += "<option value='" + String(MODULE_ESP32_S2) + "'" + String(config.moduleType == MODULE_ESP32_S2 ? " selected" : "") + ">ESP32-S2</option>";
+  html += "<option value='" + String(MODULE_ESP32_C3) + "'" + String(config.moduleType == MODULE_ESP32_C3 ? " selected" : "") + ">ESP32-C3</option>";
+  html += "<option value='" + String(MODULE_CUSTOM) + "'" + String(config.moduleType == MODULE_CUSTOM ? " selected" : "") + ">Custom</option>";
+  html += "</select>";
+  html += "</div>";
+  
+  html += "<h3>DSC Keybus Pin Configuration</h3>";
+  html += "<div class='form-group'>";
+  html += "<label>Clock Pin (Yellow):</label>";
+  html += "<input type='number' name='dsc_clock_pin' value='" + String(config.dscClockPin) + "' min='0' max='39'>";
+  html += "</div>";
+  
+  html += "<div class='form-group'>";
+  html += "<label>Data Pin (Green):</label>";
+  html += "<input type='number' name='dsc_read_pin' value='" + String(config.dscReadPin) + "' min='0' max='39'>";
+  html += "</div>";
+  
+  html += "<div class='form-group'>";
+  html += "<label>PC16 Pin (Classic only):</label>";
+  html += "<input type='number' name='dsc_pc16_pin' value='" + String(config.dscPC16Pin) + "' min='0' max='39'>";
+  html += "</div>";
+  
+  html += "<div class='form-group'>";
+  html += "<label>Write Pin (Keypad out):</label>";
+  html += "<input type='number' name='dsc_write_pin' value='" + String(config.dscWritePin) + "' min='0' max='39'>";
+  html += "</div>";
   
   // Network Configuration
   html += "<h2>Network Configuration</h2>";
@@ -402,6 +502,27 @@ String getConfigPage() {
   
   // JavaScript for additional functionality
   html += "<script>";
+  
+  // Pin defaults for different modules
+  html += "const pinDefaults = {";
+  html += "  " + String(MODULE_ESP32_GENERIC) + ": {clock: 4, read: 16, pc16: 17, write: 21},";
+  html += "  " + String(MODULE_ESP32_POE) + ": {clock: 13, read: 16, pc16: 32, write: 33},";
+  html += "  " + String(MODULE_ESP32_S2) + ": {clock: 1, read: 3, pc16: 5, write: 7},";
+  html += "  " + String(MODULE_ESP32_C3) + ": {clock: 0, read: 1, pc16: 2, write: 3}";
+  html += "};";
+  
+  html += "function updatePinDefaults() {";
+  html += "  const moduleSelect = document.querySelector('select[name=module_type]');";
+  html += "  const moduleType = moduleSelect.value;";
+  html += "  if (moduleType != " + String(MODULE_CUSTOM) + " && pinDefaults[moduleType]) {";
+  html += "    const pins = pinDefaults[moduleType];";
+  html += "    document.querySelector('input[name=dsc_clock_pin]').value = pins.clock;";
+  html += "    document.querySelector('input[name=dsc_read_pin]').value = pins.read;";
+  html += "    document.querySelector('input[name=dsc_pc16_pin]').value = pins.pc16;";
+  html += "    document.querySelector('input[name=dsc_write_pin]').value = pins.write;";
+  html += "  }";
+  html += "}";
+  
   html += "function scanWiFi() {";
   html += "  fetch('/scan').then(response => response.json()).then(data => {";
   html += "    let ssidSelect = document.querySelector('input[name=wifi_ssid]');";
