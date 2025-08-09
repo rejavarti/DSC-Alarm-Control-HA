@@ -29,14 +29,14 @@ struct DSCConfig {
   // DSC System Configuration
   char accessCode[8] = "";
   
-  // MQTT Topics
-  char mqttPartitionTopic[64] = "dsc/Get/Partition";
-  char mqttZoneTopic[64] = "dsc/Get/Zone";
-  char mqttFireTopic[64] = "dsc/Get/Fire";
-  char mqttPgmTopic[64] = "dsc/Get/PGM";
-  char mqttTroubleTopic[64] = "dsc/Get/Trouble";
-  char mqttStatusTopic[64] = "dsc/Status";
-  char mqttSubscribeTopic[64] = "dsc/Set";
+  // MQTT Topics (default values match original HomeAssistant-MQTT implementation)
+  char mqttPartitionTopic[64] = "dsc/Get/Partition";     // Compatible with dsc/Get/Partition1, etc.
+  char mqttZoneTopic[64] = "dsc/Get/Zone";               // Compatible with dsc/Get/Zone1, etc.
+  char mqttFireTopic[64] = "dsc/Get/Fire";               // Compatible with dsc/Get/Fire1, etc.
+  char mqttPgmTopic[64] = "dsc/Get/PGM";                 // Compatible with dsc/Get/PGM1, etc.
+  char mqttTroubleTopic[64] = "dsc/Get/Trouble";         // System trouble status
+  char mqttStatusTopic[64] = "dsc/Status";               // Online/offline status
+  char mqttSubscribeTopic[64] = "dsc/Set";               // Command topic
   
   // Zone Configuration
   struct {

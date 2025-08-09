@@ -6,6 +6,8 @@
 
 // External references to global objects
 extern DSCConfig config;
+extern bool ethernetConnected;
+extern bool networkConnected;
 
 // Web server instance
 WebServer server(80);
@@ -44,7 +46,7 @@ void handleRoot() {
   html += "<h2>System Information</h2>";
   html += "<table>";
   html += "<tr><td>Network Mode:</td><td>" + String(config.useEthernet ? "Ethernet" : "WiFi") + "</td></tr>";
-  html += "<tr><td>IP Address:</td><td>" + (config.useEthernet ? (ETH.localIP().isSet() ? ETH.localIP().toString() : "Not connected") : WiFi.localIP().toString()) + "</td></tr>";
+  html += "<tr><td>IP Address:</td><td>" + (config.useEthernet ? (ethernetConnected ? ETH.localIP().toString() : "Not connected") : WiFi.localIP().toString()) + "</td></tr>";
   html += "<tr><td>MQTT Server:</td><td>" + String(config.mqttServer) + ":" + String(config.mqttPort) + "</td></tr>";
   html += "<tr><td>MQTT Status:</td><td>" + String(debugInfo.mqttConnected ? "Connected" : "Disconnected") + "</td></tr>";
   html += "<tr><td>Uptime:</td><td>" + String(millis() / 1000) + " seconds</td></tr>";
@@ -435,8 +437,8 @@ String getDebugPage() {
   html += "<tr><td>System Uptime</td><td>" + String(millis() / 1000) + " seconds</td></tr>";
   html += "<tr><td>Free Heap</td><td>" + String(ESP.getFreeHeap()) + " bytes</td></tr>";
   html += "<tr><td>Network Mode</td><td>" + String(config.useEthernet ? "Ethernet" : "WiFi") + "</td></tr>";
-  html += "<tr><td>IP Address</td><td>" + (config.useEthernet ? (ETH.localIP().isSet() ? ETH.localIP().toString() : "Not connected") : WiFi.localIP().toString()) + "</td></tr>";
-  html += "<tr><td>MAC Address</td><td>" + (config.useEthernet ? (ETH.macAddress().length() > 0 ? ETH.macAddress() : "Unknown") : WiFi.macAddress()) + "</td></tr>";
+  html += "<tr><td>IP Address</td><td>" + (config.useEthernet ? (ethernetConnected ? ETH.localIP().toString() : "Not connected") : WiFi.localIP().toString()) + "</td></tr>";
+  html += "<tr><td>MAC Address</td><td>" + (config.useEthernet ? ETH.macAddress() : WiFi.macAddress()) + "</td></tr>";
   html += "</table>";
   
   html += "<h2>MQTT Status</h2>";
