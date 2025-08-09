@@ -72,6 +72,61 @@ void saveConfig() {
 void resetConfig() {
   // Configuration is initialized with defaults in the struct definition
   config = DSCConfig();
+  // Set default pins based on module type
+  setDefaultPinsForModule(config.moduleType);
   config.checksum = calculateChecksum(config);
   Serial.println("Configuration reset to defaults");
+}
+
+// Set default pins based on module type
+void setDefaultPinsForModule(ModuleType moduleType) {
+  switch (moduleType) {
+    case MODULE_ESP32_POE:
+      // ESP32-POE specific pins (as requested: 13, 16, 32, 33)
+      config.dscClockPin = 13;
+      config.dscReadPin = 16;
+      config.dscPC16Pin = 32;
+      config.dscWritePin = 33;
+      break;
+      
+    case MODULE_ESP32_GENERIC:
+      // Standard ESP32 pins (avoiding Ethernet conflicts)
+      config.dscClockPin = 4;
+      config.dscReadPin = 16;
+      config.dscPC16Pin = 17;
+      config.dscWritePin = 21;
+      break;
+      
+    case MODULE_ESP32_S2:
+      // ESP32-S2 specific pins
+      config.dscClockPin = 1;
+      config.dscReadPin = 3;
+      config.dscPC16Pin = 5;
+      config.dscWritePin = 7;
+      break;
+      
+    case MODULE_ESP32_C3:
+      // ESP32-C3 specific pins  
+      config.dscClockPin = 0;
+      config.dscReadPin = 1;
+      config.dscPC16Pin = 2;
+      config.dscWritePin = 3;
+      break;
+      
+    case MODULE_CUSTOM:
+      // Keep current pins when set to custom
+      break;
+  }
+}
+
+// Get module name string for display
+const char* getModuleName(ModuleType moduleType) {
+  switch (moduleType) {
+    case MODULE_ESP32_GENERIC: return "ESP32 Generic";
+    case MODULE_ESP32_POE: return "ESP32-POE";
+    case MODULE_ESP32_S2: return "ESP32-S2";
+    case MODULE_ESP32_C3: return "ESP32-C3";
+    case MODULE_CUSTOM: return "Custom";
+    default: return "Unknown";
+  }
 }

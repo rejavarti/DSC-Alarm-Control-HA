@@ -3,8 +3,24 @@
 
 #include <Arduino.h>
 
+// Module types for pin configuration
+enum ModuleType {
+  MODULE_ESP32_GENERIC = 0,
+  MODULE_ESP32_POE = 1,
+  MODULE_ESP32_S2 = 2,
+  MODULE_ESP32_C3 = 3,
+  MODULE_CUSTOM = 99
+};
+
 // Configuration structure
 struct DSCConfig {
+  // Hardware/Module Configuration
+  ModuleType moduleType = MODULE_ESP32_POE;  // Default to ESP32-POE as specified
+  uint8_t dscClockPin = 13;                 // Default ESP32-POE pins as requested
+  uint8_t dscReadPin = 16;
+  uint8_t dscPC16Pin = 32;                  // DSC Classic Series only
+  uint8_t dscWritePin = 33;                 // Virtual keypad
+  
   // Network Configuration
   bool useEthernet = true;              // true for Ethernet, false for WiFi
   bool useDHCP = true;                  // true for DHCP, false for static IP
@@ -66,6 +82,8 @@ extern DSCConfig config;
 void loadConfig();
 void saveConfig();
 void resetConfig();
+void setDefaultPinsForModule(ModuleType moduleType);
+const char* getModuleName(ModuleType moduleType);
 uint32_t calculateChecksum(const DSCConfig& cfg);
 bool validateConfig(const DSCConfig& cfg);
 
