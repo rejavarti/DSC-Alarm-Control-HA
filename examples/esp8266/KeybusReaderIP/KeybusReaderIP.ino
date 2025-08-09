@@ -128,10 +128,11 @@ void setup() {
   }
 
   if (!MDNS.begin(dnsHostname)) {
-    Serial.println("Error setting up MDNS responder.");
-    while (1) {
-      delay(1000);
-    }
+    Serial.println("Warning: Failed to setup MDNS responder. Continuing without mDNS.");
+  } else {
+    Serial.print("mDNS started: http://");
+    Serial.print(dnsHostname);
+    Serial.println(".local");
   }
 
   ipServer.begin();
