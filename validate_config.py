@@ -8,11 +8,21 @@ import yaml
 import re
 import sys
 
+class SecretLoader(yaml.SafeLoader):
+    """Custom YAML loader that handles Home Assistant !secret tags"""
+    pass
+
+def secret_constructor(loader, node):
+    """Constructor for !secret tag - returns placeholder for validation"""
+    return f"SECRET_{loader.construct_scalar(node)}"
+
+SecretLoader.add_constructor('!secret', secret_constructor)
+
 def validate_yaml_syntax(yaml_file):
     """Validate YAML syntax and structure"""
     try:
         with open(yaml_file, 'r') as f:
-            config = yaml.safe_load(f)
+            config = yaml.load(f, Loader=SecretLoader)
         print(f"✅ YAML syntax is valid in {yaml_file}")
         return config
     except yaml.YAMLError as e:
@@ -121,13 +131,17 @@ def validate_security_practices(config):
     
     # Check for hard-coded credentials
     yaml_str = yaml.dump(config)
-    if 'password' in yaml_str.lower() and 'secret' not in yaml_str.lower():
-        security_issues.append("Potential hard-coded password detected")
     
     # Check for secret usage
-    secret_references = re.findall(r'!secret\s+\w+', yaml_str)
+    secret_references = re.findall(r'SECRET_\w+', yaml_str)
     if secret_references:
-        print(f"✅ Found {len(secret_references)} secret references (good practice)")
+        print(f"✅ Found {len(secret_references)} secret references:")
+        for secret in secret_references:
+            print(f"   - {secret.replace('SECRET_', '!secret ')}")
+    else:
+        # Check for hard-coded values that should be secrets
+        if 'password' in yaml_str.lower() and 'SECRET_' not in yaml_str:
+            security_issues.append("Potential hard-coded password detected")
     
     # Check alarm control panel security
     if 'alarm_control_panel' in config:
@@ -135,8 +149,10 @@ def validate_security_practices(config):
             if 'code_disarm_required' in panel and not panel['code_disarm_required']:
                 security_issues.append("Disarm code not required - security risk")
             
-            if 'code' in panel and not str(panel['code']).startswith('!secret'):
-                security_issues.append("Hard-coded alarm code detected - use !secret instead")
+            if 'code' in panel:
+                code_value = str(panel['code'])
+                if not code_value.startswith('SECRET_') and code_value.upper() != 'NONE':
+                    security_issues.append("Hard-coded alarm code detected - use !secret instead")
     
     if security_issues:
         for issue in security_issues:

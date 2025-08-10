@@ -4,10 +4,10 @@
 
 # Main MQTT Configuration
 mqtt:
-  broker: YOUR_MQTT_BROKER_IP
+  broker: !secret mqtt_broker_ip
   port: 1883
-  username: YOUR_MQTT_USERNAME
-  password: YOUR_MQTT_PASSWORD
+  username: !secret mqtt_username
+  password: !secret mqtt_password
   client_id: homeassistant_dsc
   keepalive: 60
   discovery: true
@@ -25,7 +25,7 @@ alarm_control_panel:
     state_topic: "dsc/Get/Partition1"
     availability_topic: "dsc/Status"
     command_topic: "dsc/Set"
-    code: "REPLACE_WITH_SECRET"  # Use !secret dsc_alarm_code in production
+    code: !secret dsc_alarm_code
     
     # Enhanced command template with better error handling
     command_template: >
@@ -70,7 +70,7 @@ alarm_control_panel:
       model: "PC1500/PC1550 Series"
       manufacturer: "DSC"
       sw_version: "Enhanced v1.5"
-      configuration_url: "http://YOUR_ESP32_IP"
+      configuration_url: !secret esp32_ip
 
 # Enhanced Partition Status Sensor with Attributes  
 sensor:
@@ -339,8 +339,9 @@ automation:
 #   - binary_sensor.dsc_keybus_connected
 
 # Security Considerations:
-# 1. Store access codes in secrets.yaml, not in plain text
-# 2. Use MQTT authentication and TLS encryption in production
-# 3. Consider removing emergency buttons or securing them with confirmation
-# 4. Regularly monitor system health sensors
-# 5. Set up notifications for system troubles and connectivity issues
+# 1. Create secrets.yaml from secrets.yaml.example with your actual values
+# 2. Access codes are now properly stored using !secret references
+# 3. Use MQTT authentication and TLS encryption in production
+# 4. Consider removing emergency buttons or securing them with confirmation
+# 5. Regularly monitor system health sensors
+# 6. Set up notifications for system troubles and connectivity issues

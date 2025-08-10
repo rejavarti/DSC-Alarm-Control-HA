@@ -3,7 +3,7 @@
     - name: "DSC 1500 Alarm Panel"
       unique_id: dscPartition1
       state_topic: "dsc/Get/Partition1"
-      code: REMOTE_CODE
+      code: !secret dsc_alarm_code
       command_template: >
         {% if action == "1D" %}
           1!{{ code }}
