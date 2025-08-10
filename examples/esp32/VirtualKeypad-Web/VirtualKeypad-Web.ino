@@ -87,6 +87,7 @@
 // Removed SPIFFSEditor.h as it's not available/used in this example
 #include <ArduinoJson.h>
 #include <Chrono.h>
+#include <Preferences.h>
 
 // Settings
 const char* wifiSSID = "";
@@ -115,6 +116,12 @@ byte systemZones[dscZones], programZones[dscZones];
 byte partition = dscPartition - 1;
 bool forceUpdate = false;
 
+// WiFi Manager variables
+Preferences preferences;
+bool configMode = false;
+String storedSSID = "";
+String storedPassword = "";
+
 // Forward declarations
 void setStatus(byte partition);
 void setLights(byte partition);
@@ -139,6 +146,111 @@ void pauseZones();
 void resetZones();
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len);
 
+// WiFi Manager functions
+bool loadWiFiCredentials() {
+  preferences.begin("wifi", true);
+  storedSSID = preferences.getString("ssid", "");
+  storedPassword = preferences.getString("password", "");
+  preferences.end();
+  
+  return (storedSSID.length() > 0);
+}
+
+bool connectToWiFi(const char* ssid, const char* password) {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  
+  Serial.print("Connecting to WiFi");
+  int attempts = 0;
+  const int maxAttempts = 60; // 30 seconds with 500ms delay
+  
+  while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print(" connected! IP: ");
+    Serial.println(WiFi.localIP());
+    return true;
+  } else {
+    Serial.println(" failed!");
+    return false;
+  }
+}
+
+void startConfigMode() {
+  configMode = true;
+  Serial.println("Starting WiFi configuration mode...");
+  
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("DSC-Config", "12345678");
+  
+  Serial.println("Access Point started");
+  Serial.println("Connect to: DSC-Config (password: 12345678)");
+  Serial.print("Configuration portal: http://");
+  Serial.println(WiFi.softAPIP());
+  
+  // Serve WiFi configuration page at root
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    String html = "<!DOCTYPE html><html><head><title>DSC Virtual Keypad - WiFi Configuration</title>";
+    html += "<style>body{font-family:Arial,sans-serif;max-width:500px;margin:50px auto;padding:20px}";
+    html += "input[type=text],input[type=password]{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:4px}";
+    html += "input[type=submit]{background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%}";
+    html += "input[type=submit]:hover{background-color:#45a049}";
+    html += ".info{background-color:#e7f3ff;border:1px solid #b3d9ff;padding:10px;border-radius:4px;margin:10px 0}</style></head><body>";
+    html += "<h2>DSC Virtual Keypad</h2>";
+    html += "<h3>WiFi Configuration</h3>";
+    html += "<div class='info'>Configure your WiFi credentials to connect the DSC interface to your network. ";
+    html += "Once connected, you can access the virtual keypad interface.</div>";
+    html += "<form method='POST' action='/save'>";
+    html += "<p>WiFi Network Name (SSID):</p>";
+    html += "<input type='text' name='ssid' placeholder='Enter WiFi SSID' required>";
+    html += "<p>WiFi Password:</p>";
+    html += "<input type='password' name='password' placeholder='Enter WiFi Password' required>";
+    html += "<br><br><input type='submit' value='Save and Connect'>";
+    html += "</form></body></html>";
+    request->send(200, "text/html", html);
+  });
+  
+  server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request){
+    String ssid = "";
+    String password = "";
+    
+    if (request->hasParam("ssid", true)) {
+      ssid = request->getParam("ssid", true)->value();
+    }
+    if (request->hasParam("password", true)) {
+      password = request->getParam("password", true)->value();
+    }
+    
+    if (ssid.length() > 0) {
+      preferences.begin("wifi", false);
+      preferences.putString("ssid", ssid);
+      preferences.putString("password", password);
+      preferences.end();
+      
+      String html = "<!DOCTYPE html><html><head><title>DSC Virtual Keypad - Configuration Saved</title>";
+      html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
+      html += "<h2>Configuration Saved!</h2>";
+      html += "<p>WiFi credentials have been saved. The device will now restart and attempt to connect.</p>";
+      html += "<p>If successful, you can access the virtual keypad at the device's IP address.</p>";
+      html += "<p>If connection fails, the configuration portal will restart automatically.</p>";
+      html += "</body></html>";
+      request->send(200, "text/html", html);
+      
+      // Restart after a short delay
+      delay(2000);
+      ESP.restart();
+    } else {
+      request->send(400, "text/plain", "Invalid SSID");
+    }
+  });
+  
+  server.begin();
+}
+
 
 void setup() {
   Serial.begin(115200);
@@ -146,41 +258,38 @@ void setup() {
   Serial.println();
   Serial.println();
 
-  Serial.print(F("WiFi...."));
+  Serial.println("DSC Virtual Keypad - WiFi Manager Enabled");
   
-  // Check if we have WiFi credentials - if empty, provide helpful message
-  if (strlen(wifiSSID) == 0) {
-    Serial.println("ERROR: No WiFi credentials configured!");
-    Serial.println("Please set wifiSSID and wifiPassword in the sketch and recompile.");
-    Serial.println("Device will halt until configuration is provided.");
-    while (1) {
-      delay(1000);
+  // Try to load saved WiFi credentials
+  bool hasStoredCredentials = loadWiFiCredentials();
+  bool wifiConnected = false;
+  
+  // If we have hardcoded credentials, try them first
+  if (strlen(wifiSSID) > 0 && strlen(wifiPassword) > 0) {
+    Serial.println("Trying hardcoded WiFi credentials...");
+    wifiConnected = connectToWiFi(wifiSSID, wifiPassword);
+    
+    // If successful, save these credentials for future use
+    if (wifiConnected) {
+      preferences.begin("wifi", false);
+      preferences.putString("ssid", wifiSSID);
+      preferences.putString("password", wifiPassword);
+      preferences.end();
+      Serial.println("Hardcoded credentials saved for future use");
     }
   }
   
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(wifiSSID, wifiPassword);
-  
-  // Wait up to 30 seconds for connection instead of infinite loop
-  int connectAttempts = 0;
-  const int maxAttempts = 60; // 30 seconds with 500ms delay
-  while (WiFi.status() != WL_CONNECTED && connectAttempts < maxAttempts) {
-    Serial.print(".");
-    delay(500);
-    connectAttempts++;
+  // If hardcoded credentials failed or don't exist, try stored credentials
+  if (!wifiConnected && hasStoredCredentials) {
+    Serial.println("Trying stored WiFi credentials...");
+    wifiConnected = connectToWiFi(storedSSID.c_str(), storedPassword.c_str());
   }
   
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print(F("connected: "));
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("TIMEOUT: Failed to connect to WiFi after 30 seconds!");
-    Serial.print("Configured SSID: '"); Serial.print(wifiSSID); Serial.println("'");
-    Serial.println("Please check your WiFi credentials and network availability.");
-    Serial.println("Device will halt - please reconfigure and restart.");
-    while (1) {
-      delay(1000);
-    }
+  // If still no connection, start configuration mode
+  if (!wifiConnected) {
+    Serial.println("WiFi connection failed. Starting configuration portal...");
+    startConfigMode();
+    return; // Exit setup, configuration mode doesn't need the rest
   }
 
   if (!MDNS.begin(dnsHostname)) {
@@ -210,6 +319,11 @@ void setup() {
 
 
 void loop() {
+  // If in configuration mode, just delay and return (AsyncWebServer handles requests automatically)
+  if (configMode) {
+    delay(100);
+    return;
+  }
 
   //ping-pong WebSocket to keep connection open
   if (ws_ping_pong.isRunning() && ws_ping_pong.elapsed() > 5 * 60) {
