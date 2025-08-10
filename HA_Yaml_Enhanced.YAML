@@ -25,7 +25,7 @@ alarm_control_panel:
     state_topic: "dsc/Get/Partition1"
     availability_topic: "dsc/Status"
     command_topic: "dsc/Set"
-    code: !secret dsc_alarm_code  # Store in secrets.yaml for security
+    code: "REPLACE_WITH_SECRET"  # Use !secret dsc_alarm_code in production
     
     # Enhanced command template with better error handling
     command_template: >
