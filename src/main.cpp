@@ -227,6 +227,11 @@ String staticGateway = "";
 String staticSubnet = "";
 String staticDNS = "";
 
+// System stability tracking
+unsigned long lastSuccessfulMqtt = 0;
+unsigned long lastSuccessfulWebRequest = 0;
+const unsigned long systemHealthTimeout = 600000;  // 10 minutes
+
 // Pin configuration - Default values, will be overridden by stored configuration
 int clockPin = 18;  // dscClockPin
 int readPin = 19;   // dscReadPin  
@@ -261,6 +266,10 @@ dscClassicInterface* dsc = nullptr;
 WiFiClient ipClient;
 PubSubClient* mqtt = nullptr;
 unsigned long mqttPreviousTime;
+unsigned long mqttRetryInterval = 5000;  // Start with 5 seconds
+const unsigned long mqttMaxRetryInterval = 300000;  // Max 5 minutes
+unsigned long lastNetworkCheck = 0;
+const unsigned long networkCheckInterval = 30000;  // Check network every 30 seconds
 
 // WiFi Manager variables
 WebServer configServer(80);
@@ -280,6 +289,8 @@ bool connectToNetwork();
 bool connectToWiFi(String ssid, String password);
 bool connectToEthernet();
 void configureStaticIP();
+void checkNetworkConnectivity();
+void restartNetworkServices();
 
 
 // Configuration management functions
@@ -368,6 +379,7 @@ void startConfigMode() {
   WiFi.mode(WIFI_AP);
   WiFi.softAP("DSC-Config", "12345678");
   
+  configServer.begin();
   Serial.println("Access Point started");
   Serial.println("Connect to: DSC-Config (password: 12345678)");
   Serial.print("Configuration portal: http://");
@@ -619,6 +631,8 @@ void startConfigMode() {
     ESP.restart();
   });
   
+  // Configure web server with timeout settings for better stability
+  configServer.collectHeaders("Accept", "Content-Length", "Content-Type");
   configServer.begin();
 }
 
@@ -763,6 +777,51 @@ bool connectToNetwork() {
   return connected;
 }
 
+// Network connectivity monitoring
+void checkNetworkConnectivity() {
+  unsigned long currentTime = millis();
+  if (currentTime - lastNetworkCheck < networkCheckInterval) {
+    return;  // Not time to check yet
+  }
+  
+  lastNetworkCheck = currentTime;
+  
+  bool networkOk = false;
+  
+  // Check network connectivity based on type
+  if (networkType == "ethernet") {
+    networkOk = ETH.linkUp() && (ETH.localIP() != IPAddress(0, 0, 0, 0));
+  } else {
+    networkOk = (WiFi.status() == WL_CONNECTED);
+  }
+  
+  if (!networkOk) {
+    Serial.println("Network connectivity lost, attempting to reconnect...");
+    
+    // Try to reconnect
+    if (connectToNetwork()) {
+      Serial.println("Network connectivity restored");
+      restartNetworkServices();
+    } else {
+      Serial.println("Failed to restore network connectivity");
+    }
+  }
+}
+
+void restartNetworkServices() {
+  // Restart MQTT connection after network recovery
+  if (mqtt != nullptr) {
+    Serial.println("Restarting MQTT service after network recovery");
+    mqtt->disconnect();
+    mqttPreviousTime = 0;  // Reset to trigger immediate reconnection attempt
+    mqttRetryInterval = 5000;  // Reset retry interval
+  }
+  
+  // Restart web server
+  configServer.begin();
+  Serial.println("Web services restarted");
+}
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -815,8 +874,16 @@ void setup() {
   mqtt->setServer(mqttServer.c_str(), mqttPort);
   mqtt->setCallback(mqttCallback);
   
-  if (mqttConnect()) mqttPreviousTime = millis();
-  else mqttPreviousTime = 0;
+  // Set MQTT keepalive and timeout settings for better stability
+  mqtt->setKeepAlive(15);  // Send keepalive every 15 seconds
+  mqtt->setSocketTimeout(5);  // Socket timeout of 5 seconds
+  
+  if (mqttConnect()) {
+    mqttPreviousTime = millis();
+    mqttRetryInterval = 5000;  // Reset retry interval on successful connection
+  } else {
+    mqttPreviousTime = 0;
+  }
 
   // Start the DSC Keybus interface
   dsc->begin();
@@ -1056,6 +1123,8 @@ void setup() {
     ESP.restart();
   });
   
+  // Configure web server with timeout settings for better stability
+  configServer.collectHeaders("Accept", "Content-Length", "Content-Type");
   configServer.begin();
   String currentIP = (networkType == "ethernet" && ETH.linkUp()) ? ETH.localIP().toString() : WiFi.localIP().toString();
   Serial.println("Configuration endpoint available at: http://" + currentIP + "/config");
@@ -1065,12 +1134,19 @@ void setup() {
 void loop() {
   // If in configuration mode, handle the web server
   if (configMode) {
-    configServer.handleClient();
+    if (configServer.handleClient()) {
+      lastSuccessfulWebRequest = millis();  // Track successful web request handling
+    }
     return;
   }
 
   // Handle normal web server for config endpoint
-  configServer.handleClient();
+  if (configServer.handleClient()) {
+    lastSuccessfulWebRequest = millis();  // Track successful web request handling
+  }
+
+  // Check network connectivity periodically
+  checkNetworkConnectivity();
 
   mqttHandle();
 
@@ -1282,38 +1358,109 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 
 void mqttHandle() {
-  if (mqtt == nullptr || !mqtt->connected()) {
-    if (mqtt != nullptr) {
-      unsigned long mqttCurrentTime = millis();
-      if (mqttCurrentTime - mqttPreviousTime > 5000) {
-        mqttPreviousTime = mqttCurrentTime;
-        if (mqttConnect()) {
-          if (dsc != nullptr && dsc->keybusConnected) mqtt->publish(mqttStatusTopic, mqttBirthMessage, true);
-          Serial.println(F("MQTT disconnected, successfully reconnected."));
-          mqttPreviousTime = 0;
+  if (mqtt == nullptr) return;
+  
+  if (!mqtt->connected()) {
+    unsigned long mqttCurrentTime = millis();
+    
+    // Use exponential backoff for reconnection attempts
+    if (mqttCurrentTime - mqttPreviousTime > mqttRetryInterval) {
+      mqttPreviousTime = mqttCurrentTime;
+      
+      Serial.print("MQTT disconnected, attempting reconnection (retry interval: ");
+      Serial.print(mqttRetryInterval / 1000);
+      Serial.println(" seconds)...");
+      
+      if (mqttConnect()) {
+        if (dsc != nullptr && dsc->keybusConnected) {
+          mqtt->publish(mqttStatusTopic, mqttBirthMessage, true);
         }
-        else Serial.println(F("MQTT disconnected, failed to reconnect."));
+        Serial.println(F("MQTT disconnected, successfully reconnected."));
+        mqttRetryInterval = 5000;  // Reset retry interval on successful connection
+      } else {
+        Serial.println(F("MQTT disconnected, failed to reconnect."));
+        
+        // Implement exponential backoff
+        mqttRetryInterval = min(mqttRetryInterval * 2, mqttMaxRetryInterval);
       }
     }
+  } else {
+    // Connection is good, process MQTT loop
+    mqtt->loop();
+    
+    // Update health tracking on successful MQTT operation
+    if (mqtt->connected()) {
+      lastSuccessfulMqtt = millis();
+    }
   }
-  else mqtt->loop();
 }
 
 
 bool mqttConnect() {
   if (mqtt == nullptr) return false;
   
+  // Ensure we have network connectivity first
+  bool networkOk = false;
+  if (networkType == "ethernet") {
+    networkOk = ETH.linkUp() && (ETH.localIP() != IPAddress(0, 0, 0, 0));
+  } else {
+    networkOk = (WiFi.status() == WL_CONNECTED);
+  }
+  
+  if (!networkOk) {
+    Serial.println("MQTT: No network connectivity");
+    return false;
+  }
+  
   Serial.print(F("MQTT...."));
-  if (mqtt->connect(mqttClientName, mqttUsername.c_str(), mqttPassword.c_str(), mqttStatusTopic, 0, true, mqttLwtMessage)) {
+  
+  // Try to resolve hostname if it's not already an IP
+  IPAddress mqttIP;
+  bool isIPAddress = mqttIP.fromString(mqttServer);
+  
+  if (!isIPAddress) {
+    // Try DNS resolution with timeout
+    Serial.print("resolving hostname: ");
+    Serial.print(mqttServer);
+    Serial.print(" -> ");
+    
+    if (WiFi.hostByName(mqttServer.c_str(), mqttIP)) {
+      Serial.println(mqttIP);
+      // Update MQTT client with resolved IP for better connection stability
+      mqtt->setServer(mqttIP, mqttPort);
+    } else {
+      Serial.println("DNS resolution failed, trying with hostname");
+      mqtt->setServer(mqttServer.c_str(), mqttPort);
+    }
+  } else {
+    // Already an IP address
+    mqtt->setServer(mqttServer.c_str(), mqttPort);
+  }
+  
+  // Attempt MQTT connection with timeout
+  bool connected = false;
+  if (mqttUsername.length() > 0) {
+    connected = mqtt->connect(mqttClientName, mqttUsername.c_str(), mqttPassword.c_str(), mqttStatusTopic, 0, true, mqttLwtMessage);
+  } else {
+    connected = mqtt->connect(mqttClientName, "", "", mqttStatusTopic, 0, true, mqttLwtMessage);
+  }
+  
+  if (connected) {
     Serial.print(F("connected: "));
     Serial.println(mqttServer);
-    if (dsc != nullptr) dsc->resetStatus();  // Resets the state of all status components as changed to get the current status
-  }
-  else {
+    if (dsc != nullptr) {
+      dsc->resetStatus();  // Resets the state of all status components as changed to get the current status
+    }
+    lastSuccessfulMqtt = millis();  // Track successful connection
+    return true;
+  } else {
     Serial.print(F("connection error: "));
-    Serial.println(mqttServer);
+    Serial.print(mqttServer);
+    Serial.print(" (state: ");
+    Serial.print(mqtt->state());
+    Serial.println(")");
+    return false;
   }
-  return mqtt->connected();
 }
 
 
