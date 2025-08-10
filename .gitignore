@@ -42,3 +42,11 @@
 
 # PlatformIO build artifacts
 .pio/
+
+# Home Assistant secrets - never commit actual secrets!
+secrets.yaml
+
+# Python cache files  
+__pycache__/
+*.pyc
+*.pyo
