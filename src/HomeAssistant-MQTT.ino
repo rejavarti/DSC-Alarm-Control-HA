@@ -201,7 +201,7 @@ entity: alarm_control_panel.security_partition_1
  */
 
 // DSC Classic series: uncomment for PC1500/PC1550 support (requires PC16-OUT configuration per README.md)
-//#define dscClassicSeries
+#define dscClassicSeries
 
 #include <WiFi.h>
 #include <PubSubClient.h>
