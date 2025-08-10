@@ -1,5 +1,5 @@
 # https://www.home-assistant.io/integrations/alarm_control_panel.mqtt/
-  alarm_control_panel:
+alarm_control_panel:
     - name: "DSC 1500 Alarm Panel"
       unique_id: dscPartition1
       state_topic: "dsc/Get/Partition1"
@@ -25,16 +25,16 @@
       code_trigger_required: true
 
 
-  # https://www.home-assistant.io/integrations/sensor.mqtt/
-  sensor:
+# https://www.home-assistant.io/integrations/sensor.mqtt/
+sensor:
     - name: "Security Partition 1"
       unique_id: dscPartitionMessage1
       state_topic: "dsc/Get/Partition1/Message"
       icon: "mdi:shield"
       availability_topic: "dsc/Status"
 
-  # https://www.home-assistant.io/integrations/binary_sensor.mqtt/
-  binary_sensor:
+# https://www.home-assistant.io/integrations/binary_sensor.mqtt/
+binary_sensor:
     - name: "Security Trouble"
       unique_id: dscTrouble
       state_topic: "dsc/Get/Trouble"
@@ -105,8 +105,8 @@
       payload_off: "0"
       availability_topic: "dsc/Status"
 
-  # https://www.home-assistant.io/integrations/button.mqtt/
-  button:
+# https://www.home-assistant.io/integrations/button.mqtt/
+button:
     - name: "Fire Alarm"
       unique_id: dscFire
       command_topic: "dsc/Set"
