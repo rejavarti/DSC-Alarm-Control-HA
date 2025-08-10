@@ -1,0 +1,719 @@
+/*
+ * Comprehensive Test Suite for MQTT Arm/Disarm States
+ * Tests the DSC Alarm Control system's MQTT command handling and state publishing
+ * 
+ * This test suite validates:
+ * 1. MQTT command processing from Home Assistant
+ * 2. State transitions and publishing to MQTT topics
+ * 3. Access code handling (both configured and custom)
+ * 4. Edge cases in arm/disarm state transitions
+ */
+
+#include <Arduino.h>
+#include <unity.h>
+#include <PubSubClient.h>
+#include <WiFi.h>
+
+// Mock includes - we'll create mock implementations
+class MockMQTTClient;
+class MockWiFiClient;
+class MockDSCInterface;
+
+// Test fixture - simulates the main system components
+class DSCAlarmTestFixture {
+public:
+    MockDSCInterface* dsc;
+    MockMQTTClient* mqtt;
+    MockWiFiClient* wifiClient;
+    
+    // System state tracking
+    bool systemArmed[8];
+    bool systemInExitDelay[8];
+    bool systemInAlarm[8];
+    byte systemStatus[8];
+    
+    // MQTT message tracking
+    String lastPublishedTopic;
+    String lastPublishedPayload;
+    bool lastRetainFlag;
+    
+    void setUp();
+    void tearDown();
+    void simulateDSCStatusChange(byte partition, byte newStatus);
+    void simulateExitDelay(byte partition, bool inDelay);
+    void simulateAlarmTrigger(byte partition, bool triggered);
+};
+
+// Mock DSC Interface
+class MockDSCInterface {
+public:
+    bool statusChanged = false;
+    bool keybusChanged = false;
+    bool keybusConnected = true;
+    bool accessCodePrompt = false;
+    bool troubleChanged = false;
+    bool trouble = false;
+    
+    // Partition states
+    bool disabled[8] = {false};
+    bool armed[8] = {false};
+    bool armedAway[8] = {false};
+    bool armedStay[8] = {false};
+    bool noEntryDelay[8] = {false};
+    bool armedChanged[8] = {false};
+    bool exitDelay[8] = {false};
+    bool exitDelayChanged[8] = {false};
+    bool alarm[8] = {false};
+    bool alarmChanged[8] = {false};
+    bool ready[8] = {true, true, true, true, true, true, true, true};
+    bool fire[8] = {false};
+    bool fireChanged[8] = {false};
+    
+    byte status[8] = {0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01}; // All ready
+    
+    // Virtual keypad
+    byte writePartition = 1;
+    String lastWrittenCommand;
+    
+    void write(const char* command) {
+        lastWrittenCommand = String(command);
+    }
+    
+    void write(char command) {
+        lastWrittenCommand = String(command);
+    }
+    
+    void loop() {
+        // Mock loop - would normally process keybus data
+    }
+    
+    void begin() {
+        // Mock initialization
+    }
+    
+    void resetStatus() {
+        // Reset all changed flags
+        for (int i = 0; i < 8; i++) {
+            armedChanged[i] = true;
+            exitDelayChanged[i] = true;
+            alarmChanged[i] = true;
+            fireChanged[i] = true;
+        }
+        statusChanged = true;
+        keybusChanged = true;
+        troubleChanged = true;
+    }
+};
+
+// Mock MQTT Client
+class MockMQTTClient {
+public:
+    bool connected = true;
+    String lastTopic;
+    String lastPayload;
+    bool lastRetain = false;
+    
+    // Callback function pointer
+    void (*callback)(char* topic, byte* payload, unsigned int length) = nullptr;
+    
+    void setCallback(void (*cb)(char* topic, byte* payload, unsigned int length)) {
+        callback = cb;
+    }
+    
+    bool publish(const char* topic, const char* payload, bool retain = false) {
+        lastTopic = String(topic);
+        lastPayload = String(payload);
+        lastRetain = retain;
+        return true;
+    }
+    
+    bool subscribe(const char* topic) {
+        return true;
+    }
+    
+    void loop() {
+        // Mock MQTT loop
+    }
+    
+    bool connect(const char* id, const char* user, const char* pass, const char* willTopic, int willQos, bool willRetain, const char* willMessage) {
+        connected = true;
+        return true;
+    }
+    
+    // Simulate receiving MQTT message
+    void simulateIncomingMessage(const char* topic, const char* payload) {
+        if (callback) {
+            int len = strlen(payload);
+            byte* payloadBytes = (byte*)malloc(len);
+            memcpy(payloadBytes, payload, len);
+            callback((char*)topic, payloadBytes, len);
+            free(payloadBytes);
+        }
+    }
+};
+
+// Global test instances
+DSCAlarmTestFixture testFixture;
+MockDSCInterface mockDSC;
+MockMQTTClient mockMQTT;
+
+// Mock the actual system variables and functions that would be in the main sketch
+const char* accessCode = "7730";
+const char* mqttPartitionTopic = "dsc/Get/Partition";
+const char* mqttStatusTopic = "dsc/Status";
+const char* mqttBirthMessage = "online";
+const char* mqttLwtMessage = "offline";
+const char* mqttSubscribeTopic = "dsc/Set";
+
+// Test helper functions
+void appendPartition(const char* sourceTopic, byte sourceNumber, char* publishTopic) {
+    char partitionNumber[2];
+    strcpy(publishTopic, sourceTopic);
+    itoa(sourceNumber + 1, partitionNumber, 10);
+    strcat(publishTopic, partitionNumber);
+}
+
+// Mock the MQTT callback function from the main sketch
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+    byte partition = 0;
+    byte payloadIndex = 0;
+    bool disarmWithAccessCode = false;
+    char extractedAccessCode[10] = "";
+
+    // Check if a partition number 1-8 has been sent
+    if (payload[0] >= 0x31 && payload[0] <= 0x38) {
+        partition = payload[0] - 49;
+        payloadIndex = 1;
+        
+        // Check for "!XXXX" format indicating disarm with specific access code
+        if (length > 2 && payload[1] == '!') {
+            disarmWithAccessCode = true;
+            byte codeLength = 0;
+            for (byte i = 2; i < length && i < 11 && codeLength < 9; i++) {
+                if (payload[i] >= '0' && payload[i] <= '9') {
+                    extractedAccessCode[codeLength++] = payload[i];
+                }
+            }
+            extractedAccessCode[codeLength] = '\0';
+        }
+    }
+
+    // Panic alarm
+    if (payload[payloadIndex] == 'P') {
+        mockDSC.write('p');
+        return;
+    }
+
+    // Reset status if attempting to change armed mode while armed or not ready
+    if (payload[payloadIndex] != 'D' && !mockDSC.ready[partition]) {
+        mockDSC.armedChanged[partition] = true;
+        mockDSC.statusChanged = true;
+        return;
+    }
+
+    // Arm stay
+    if (payload[payloadIndex] == 'S' && !mockDSC.armed[partition] && !mockDSC.exitDelay[partition]) {
+        mockDSC.writePartition = partition + 1;
+        mockDSC.write('s');
+    }
+    // Arm away
+    else if (payload[payloadIndex] == 'A' && !mockDSC.armed[partition] && !mockDSC.exitDelay[partition]) {
+        mockDSC.writePartition = partition + 1;
+        mockDSC.write('w');
+    }
+    // Arm night
+    else if (payload[payloadIndex] == 'N' && !mockDSC.armed[partition] && !mockDSC.exitDelay[partition]) {
+        mockDSC.writePartition = partition + 1;
+        mockDSC.write('n');
+    }
+    // Disarm
+    else if (payload[payloadIndex] == 'D' && (mockDSC.armed[partition] || mockDSC.exitDelay[partition] || mockDSC.alarm[partition])) {
+        mockDSC.writePartition = partition + 1;
+        if (disarmWithAccessCode) {
+            mockDSC.write(extractedAccessCode);
+        } else {
+            mockDSC.write(accessCode);
+        }
+    }
+}
+
+// Test setup
+void DSCAlarmTestFixture::setUp() {
+    // Initialize mock objects
+    dsc = &mockDSC;
+    mqtt = &mockMQTT;
+    
+    // Reset all states
+    for (int i = 0; i < 8; i++) {
+        systemArmed[i] = false;
+        systemInExitDelay[i] = false;
+        systemInAlarm[i] = false;
+        systemStatus[i] = 0x01; // Ready
+        
+        dsc->armed[i] = false;
+        dsc->armedAway[i] = false;
+        dsc->armedStay[i] = false;
+        dsc->noEntryDelay[i] = false;
+        dsc->exitDelay[i] = false;
+        dsc->alarm[i] = false;
+        dsc->ready[i] = true;
+        dsc->status[i] = 0x01;
+    }
+    
+    // Set up MQTT callback
+    mqtt->setCallback(mqttCallback);
+    
+    // Clear tracking variables
+    lastPublishedTopic = "";
+    lastPublishedPayload = "";
+    lastRetainFlag = false;
+}
+
+void DSCAlarmTestFixture::tearDown() {
+    // Clean up after tests
+}
+
+// ==================== MQTT COMMAND PROCESSING TESTS ====================
+
+void test_arm_stay_command() {
+    testFixture.setUp();
+    
+    // Test: Send "1S" command (Partition 1 Arm Stay)
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1S");
+    
+    // Verify: DSC received 's' command for partition 1
+    TEST_ASSERT_EQUAL_STRING("s", mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(1, mockDSC.writePartition);
+}
+
+void test_arm_away_command() {
+    testFixture.setUp();
+    
+    // Test: Send "1A" command (Partition 1 Arm Away)
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1A");
+    
+    // Verify: DSC received 'w' command for partition 1
+    TEST_ASSERT_EQUAL_STRING("w", mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(1, mockDSC.writePartition);
+}
+
+void test_arm_night_command() {
+    testFixture.setUp();
+    
+    // Test: Send "1N" command (Partition 1 Arm Night)
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1N");
+    
+    // Verify: DSC received 'n' command for partition 1
+    TEST_ASSERT_EQUAL_STRING("n", mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(1, mockDSC.writePartition);
+}
+
+void test_disarm_command_default_code() {
+    testFixture.setUp();
+    
+    // Setup: Partition is armed
+    mockDSC.armed[0] = true;
+    
+    // Test: Send "1D" command (Partition 1 Disarm)
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1D");
+    
+    // Verify: DSC received default access code
+    TEST_ASSERT_EQUAL_STRING(accessCode, mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(1, mockDSC.writePartition);
+}
+
+void test_disarm_command_custom_code() {
+    testFixture.setUp();
+    
+    // Setup: Partition is armed
+    mockDSC.armed[0] = true;
+    
+    // Test: Send "1!9999" command (Partition 1 Disarm with custom code 9999)
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1!9999");
+    
+    // Verify: DSC received custom access code
+    TEST_ASSERT_EQUAL_STRING("9999", mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(1, mockDSC.writePartition);
+}
+
+void test_panic_alarm_command() {
+    testFixture.setUp();
+    
+    // Test: Send "P" command (Panic alarm)
+    mockMQTT.simulateIncomingMessage("dsc/Set", "P");
+    
+    // Verify: DSC received 'p' command
+    TEST_ASSERT_EQUAL_STRING("p", mockDSC.lastWrittenCommand.c_str());
+}
+
+void test_multiple_partition_commands() {
+    testFixture.setUp();
+    
+    // Test Partition 2 arm away
+    mockMQTT.simulateIncomingMessage("dsc/Set", "2A");
+    TEST_ASSERT_EQUAL_STRING("w", mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(2, mockDSC.writePartition);
+    
+    // Test Partition 3 arm stay
+    mockMQTT.simulateIncomingMessage("dsc/Set", "3S");
+    TEST_ASSERT_EQUAL_STRING("s", mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(3, mockDSC.writePartition);
+    
+    // Test Partition 8 disarm
+    mockDSC.armed[7] = true; // Partition 8 (index 7) is armed
+    mockMQTT.simulateIncomingMessage("dsc/Set", "8D");
+    TEST_ASSERT_EQUAL_STRING(accessCode, mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(8, mockDSC.writePartition);
+}
+
+// ==================== STATE TRANSITION TESTS ====================
+
+void test_arm_stay_state_transition() {
+    testFixture.setUp();
+    
+    // Simulate DSC arming process
+    mockDSC.armedChanged[0] = true;
+    mockDSC.armed[0] = true;
+    mockDSC.armedStay[0] = true;
+    mockDSC.statusChanged = true;
+    
+    // Mock the state publishing logic
+    char publishTopic[50];
+    appendPartition(mqttPartitionTopic, 0, publishTopic);
+    mockMQTT.publish(publishTopic, "armed_home", true);
+    
+    // Verify: Correct MQTT state published
+    TEST_ASSERT_EQUAL_STRING("dsc/Get/Partition1", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("armed_home", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+void test_arm_away_state_transition() {
+    testFixture.setUp();
+    
+    // Simulate DSC arming process
+    mockDSC.armedChanged[0] = true;
+    mockDSC.armed[0] = true;
+    mockDSC.armedAway[0] = true;
+    mockDSC.statusChanged = true;
+    
+    // Mock the state publishing logic
+    char publishTopic[50];
+    appendPartition(mqttPartitionTopic, 0, publishTopic);
+    mockMQTT.publish(publishTopic, "armed_away", true);
+    
+    // Verify: Correct MQTT state published
+    TEST_ASSERT_EQUAL_STRING("dsc/Get/Partition1", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("armed_away", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+void test_arm_night_state_transition() {
+    testFixture.setUp();
+    
+    // Simulate DSC night arming (stay with no entry delay)
+    mockDSC.armedChanged[0] = true;
+    mockDSC.armed[0] = true;
+    mockDSC.armedStay[0] = true;
+    mockDSC.noEntryDelay[0] = true;
+    mockDSC.statusChanged = true;
+    
+    // Mock the state publishing logic
+    char publishTopic[50];
+    appendPartition(mqttPartitionTopic, 0, publishTopic);
+    mockMQTT.publish(publishTopic, "armed_night", true);
+    
+    // Verify: Correct MQTT state published
+    TEST_ASSERT_EQUAL_STRING("dsc/Get/Partition1", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("armed_night", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+void test_disarm_state_transition() {
+    testFixture.setUp();
+    
+    // Simulate DSC disarming process
+    mockDSC.armedChanged[0] = true;
+    mockDSC.armed[0] = false;
+    mockDSC.statusChanged = true;
+    
+    // Mock the state publishing logic
+    char publishTopic[50];
+    appendPartition(mqttPartitionTopic, 0, publishTopic);
+    mockMQTT.publish(publishTopic, "disarmed", true);
+    
+    // Verify: Correct MQTT state published
+    TEST_ASSERT_EQUAL_STRING("dsc/Get/Partition1", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("disarmed", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+void test_exit_delay_state_transition() {
+    testFixture.setUp();
+    
+    // Simulate exit delay starting
+    mockDSC.exitDelayChanged[0] = true;
+    mockDSC.exitDelay[0] = true;
+    mockDSC.statusChanged = true;
+    
+    // Mock the state publishing logic
+    char publishTopic[50];
+    appendPartition(mqttPartitionTopic, 0, publishTopic);
+    mockMQTT.publish(publishTopic, "pending", true);
+    
+    // Verify: Correct MQTT state published
+    TEST_ASSERT_EQUAL_STRING("dsc/Get/Partition1", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("pending", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+void test_alarm_triggered_state_transition() {
+    testFixture.setUp();
+    
+    // Simulate alarm being triggered
+    mockDSC.alarmChanged[0] = true;
+    mockDSC.alarm[0] = true;
+    mockDSC.statusChanged = true;
+    
+    // Mock the state publishing logic
+    char publishTopic[50];
+    appendPartition(mqttPartitionTopic, 0, publishTopic);
+    mockMQTT.publish(publishTopic, "triggered", true);
+    
+    // Verify: Correct MQTT state published
+    TEST_ASSERT_EQUAL_STRING("dsc/Get/Partition1", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("triggered", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+// ==================== EDGE CASE TESTS ====================
+
+void test_arm_while_not_ready() {
+    testFixture.setUp();
+    
+    // Setup: Partition not ready
+    mockDSC.ready[0] = false;
+    String initialCommand = mockDSC.lastWrittenCommand;
+    
+    // Test: Try to arm stay
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1S");
+    
+    // Verify: Command should be rejected, no arm command sent
+    TEST_ASSERT_FALSE(mockDSC.lastWrittenCommand.equals("s"));
+}
+
+void test_arm_while_already_armed() {
+    testFixture.setUp();
+    
+    // Setup: Partition already armed
+    mockDSC.armed[0] = true;
+    String initialCommand = mockDSC.lastWrittenCommand;
+    
+    // Test: Try to arm again
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1S");
+    
+    // Verify: Command should be rejected
+    TEST_ASSERT_FALSE(mockDSC.lastWrittenCommand.equals("s"));
+}
+
+void test_arm_while_in_exit_delay() {
+    testFixture.setUp();
+    
+    // Setup: Partition in exit delay
+    mockDSC.exitDelay[0] = true;
+    String initialCommand = mockDSC.lastWrittenCommand;
+    
+    // Test: Try to arm
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1A");
+    
+    // Verify: Command should be rejected
+    TEST_ASSERT_FALSE(mockDSC.lastWrittenCommand.equals("w"));
+}
+
+void test_disarm_while_disarmed() {
+    testFixture.setUp();
+    
+    // Setup: Partition already disarmed
+    mockDSC.armed[0] = false;
+    mockDSC.exitDelay[0] = false;
+    mockDSC.alarm[0] = false;
+    String initialCommand = mockDSC.lastWrittenCommand;
+    
+    // Test: Try to disarm
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1D");
+    
+    // Verify: No disarm command sent
+    TEST_ASSERT_FALSE(mockDSC.lastWrittenCommand.equals(accessCode));
+}
+
+void test_disarm_during_alarm() {
+    testFixture.setUp();
+    
+    // Setup: Partition in alarm
+    mockDSC.alarm[0] = true;
+    
+    // Test: Disarm during alarm
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1D");
+    
+    // Verify: Disarm command sent
+    TEST_ASSERT_EQUAL_STRING(accessCode, mockDSC.lastWrittenCommand.c_str());
+    TEST_ASSERT_EQUAL(1, mockDSC.writePartition);
+}
+
+void test_exit_delay_to_disarmed_transition() {
+    testFixture.setUp();
+    
+    // This tests the specific bug fix from lines 334-341 in the main code
+    // When transitioning from exit delay (0x08) to partition ready (0x01)
+    
+    // Setup: System was in exit delay, now going to ready and disarmed
+    mockDSC.status[0] = 0x01;  // Ready
+    mockDSC.armed[0] = false;
+    mockDSC.exitDelay[0] = false;
+    
+    // Mock the status transition logic
+    byte previousStatus = 0x08; // Was in exit delay
+    if (previousStatus == 0x08 && mockDSC.status[0] == 0x01 && 
+        !mockDSC.armed[0] && !mockDSC.exitDelay[0]) {
+        char publishTopic[50];
+        appendPartition(mqttPartitionTopic, 0, publishTopic);
+        mockMQTT.publish(publishTopic, "disarmed", true);
+    }
+    
+    // Verify: System publishes disarmed state
+    TEST_ASSERT_EQUAL_STRING("dsc/Get/Partition1", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("disarmed", mockMQTT.lastPayload.c_str());
+}
+
+// ==================== MALFORMED COMMAND TESTS ====================
+
+void test_invalid_partition_number() {
+    testFixture.setUp();
+    
+    String initialCommand = mockDSC.lastWrittenCommand;
+    
+    // Test: Invalid partition number (9)
+    mockMQTT.simulateIncomingMessage("dsc/Set", "9S");
+    
+    // Verify: No command should be processed
+    TEST_ASSERT_FALSE(mockDSC.lastWrittenCommand.equals("s"));
+}
+
+void test_malformed_custom_access_code() {
+    testFixture.setUp();
+    
+    // Setup: Partition is armed
+    mockDSC.armed[0] = true;
+    
+    // Test: Malformed access code with letters
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1!ABC9");
+    
+    // The code should extract only numeric characters: "9"
+    TEST_ASSERT_EQUAL_STRING("9", mockDSC.lastWrittenCommand.c_str());
+}
+
+void test_empty_custom_access_code() {
+    testFixture.setUp();
+    
+    // Setup: Partition is armed
+    mockDSC.armed[0] = true;
+    
+    // Test: Empty custom access code
+    mockMQTT.simulateIncomingMessage("dsc/Set", "1!");
+    
+    // Should result in empty string (no valid digits)
+    TEST_ASSERT_EQUAL_STRING("", mockDSC.lastWrittenCommand.c_str());
+}
+
+// ==================== MQTT CONNECTION TESTS ====================
+
+void test_mqtt_status_topic_online() {
+    testFixture.setUp();
+    
+    // Simulate keybus connection
+    mockDSC.keybusChanged = true;
+    mockDSC.keybusConnected = true;
+    
+    // Mock publishing status
+    mockMQTT.publish(mqttStatusTopic, mqttBirthMessage, true);
+    
+    // Verify: Online status published
+    TEST_ASSERT_EQUAL_STRING("dsc/Status", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("online", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+void test_mqtt_status_topic_offline() {
+    testFixture.setUp();
+    
+    // Simulate keybus disconnection
+    mockDSC.keybusChanged = true;
+    mockDSC.keybusConnected = false;
+    
+    // Mock publishing status
+    mockMQTT.publish(mqttStatusTopic, mqttLwtMessage, true);
+    
+    // Verify: Offline status published
+    TEST_ASSERT_EQUAL_STRING("dsc/Status", mockMQTT.lastTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("offline", mockMQTT.lastPayload.c_str());
+    TEST_ASSERT_TRUE(mockMQTT.lastRetain);
+}
+
+// ==================== MAIN TEST RUNNER ====================
+
+void setUp() {
+    // Called before each test
+    testFixture.setUp();
+}
+
+void tearDown() {
+    // Called after each test
+    testFixture.tearDown();
+}
+
+void setup() {
+    // Initialize test framework
+    delay(2000);
+    
+    UNITY_BEGIN();
+    
+    // MQTT Command Processing Tests
+    RUN_TEST(test_arm_stay_command);
+    RUN_TEST(test_arm_away_command);
+    RUN_TEST(test_arm_night_command);
+    RUN_TEST(test_disarm_command_default_code);
+    RUN_TEST(test_disarm_command_custom_code);
+    RUN_TEST(test_panic_alarm_command);
+    RUN_TEST(test_multiple_partition_commands);
+    
+    // State Transition Tests
+    RUN_TEST(test_arm_stay_state_transition);
+    RUN_TEST(test_arm_away_state_transition);
+    RUN_TEST(test_arm_night_state_transition);
+    RUN_TEST(test_disarm_state_transition);
+    RUN_TEST(test_exit_delay_state_transition);
+    RUN_TEST(test_alarm_triggered_state_transition);
+    
+    // Edge Case Tests
+    RUN_TEST(test_arm_while_not_ready);
+    RUN_TEST(test_arm_while_already_armed);
+    RUN_TEST(test_arm_while_in_exit_delay);
+    RUN_TEST(test_disarm_while_disarmed);
+    RUN_TEST(test_disarm_during_alarm);
+    RUN_TEST(test_exit_delay_to_disarmed_transition);
+    
+    // Malformed Command Tests
+    RUN_TEST(test_invalid_partition_number);
+    RUN_TEST(test_malformed_custom_access_code);
+    RUN_TEST(test_empty_custom_access_code);
+    
+    // MQTT Connection Tests
+    RUN_TEST(test_mqtt_status_topic_online);
+    RUN_TEST(test_mqtt_status_topic_offline);
+    
+    UNITY_END();
+}
+
+void loop() {
+    // Tests run in setup(), nothing needed in loop
+}

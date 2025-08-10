@@ -522,9 +522,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 
 
-  else if (payload[payloadIndex] == 'D' && (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
+  // Disarm - either standard "1D" format or custom access code "1!XXXX" format  
+  else if ((payload[payloadIndex] == 'D' || disarmWithAccessCode) && 
+           (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
     dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write(accessCode);
+    if (disarmWithAccessCode) {
+      dsc.write(extractedAccessCode);
+    } else {
+      dsc.write(accessCode);
+    }
   }
 }
 
