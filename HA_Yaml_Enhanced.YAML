@@ -1,0 +1,346 @@
+# Enhanced Home Assistant Configuration for DSC Alarm System
+# This configuration provides improved robustness, diagnostics, and device integration
+# Copy the relevant sections to your Home Assistant configuration.yaml
+
+# Main MQTT Configuration
+mqtt:
+  broker: YOUR_MQTT_BROKER_IP
+  port: 1883
+  username: YOUR_MQTT_USERNAME
+  password: YOUR_MQTT_PASSWORD
+  client_id: homeassistant_dsc
+  keepalive: 60
+  discovery: true
+  birth_message:
+    topic: "homeassistant/status"
+    payload: "online"
+  will_message:
+    topic: "homeassistant/status" 
+    payload: "offline"
+
+# Enhanced Alarm Control Panel with Robust Features
+alarm_control_panel:
+  - name: "DSC 1500 Alarm Panel"
+    unique_id: dsc_partition_1
+    state_topic: "dsc/Get/Partition1"
+    availability_topic: "dsc/Status"
+    command_topic: "dsc/Set"
+    code: !secret dsc_alarm_code  # Store in secrets.yaml for security
+    
+    # Enhanced command template with better error handling
+    command_template: >
+      {% if action == "disarm" %}
+        {% if code is defined and code != "" %}
+          1!{{ code }}
+        {% else %}
+          1D
+        {% endif %}
+      {% elif action == "arm_home" %}
+        1S
+      {% elif action == "arm_away" %}  
+        1A
+      {% elif action == "arm_night" %}
+        1N
+      {% else %}
+        {{ action }}
+      {% endif %}
+    
+    # Payload mappings
+    payload_disarm: "disarm"
+    payload_arm_home: "arm_home"
+    payload_arm_away: "arm_away"
+    payload_arm_night: "arm_night"
+    
+    # Enhanced supported features
+    supported_features:
+      - arm_home
+      - arm_away
+      - arm_night
+      - trigger
+    
+    # Security settings
+    code_arm_required: false  # Set to true if panel requires code for arming
+    code_disarm_required: true
+    code_trigger_required: true
+    
+    # Device information for better HA integration
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      name: "DSC Security System"
+      model: "PC1500/PC1550 Series"
+      manufacturer: "DSC"
+      sw_version: "Enhanced v1.5"
+      configuration_url: "http://YOUR_ESP32_IP"
+
+# Enhanced Partition Status Sensor with Attributes  
+sensor:
+  - name: "Security Partition 1 Status"
+    unique_id: dsc_partition_1_status
+    state_topic: "dsc/Get/Partition1/Message"
+    availability_topic: "dsc/Status"
+    icon: "mdi:shield-check"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+    json_attributes_topic: "dsc/Get/Partition1/Attributes"
+    
+  # System Health and Diagnostics
+  - name: "DSC System Uptime"
+    unique_id: dsc_system_uptime
+    state_topic: "dsc/Diagnostics/Uptime"
+    availability_topic: "dsc/Status"
+    unit_of_measurement: "s"
+    device_class: "duration"
+    icon: "mdi:timer-outline"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC Free Memory"
+    unique_id: dsc_free_memory
+    state_topic: "dsc/Diagnostics/FreeHeap"
+    availability_topic: "dsc/Status"
+    unit_of_measurement: "bytes"
+    icon: "mdi:memory"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC WiFi Signal Strength"
+    unique_id: dsc_wifi_rssi
+    state_topic: "dsc/Diagnostics/WiFiRSSI"
+    availability_topic: "dsc/Status"
+    unit_of_measurement: "dBm"
+    device_class: "signal_strength"
+    icon: "mdi:wifi-strength-2"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+# Enhanced Binary Sensors with Better Device Classes
+binary_sensor:
+  # System Health Monitoring
+  - name: "DSC System Health"
+    unique_id: dsc_system_health
+    state_topic: "dsc/Diagnostics/SystemHealthy"
+    availability_topic: "dsc/Status"
+    device_class: "problem"
+    payload_on: "false"  # Inverted - problem when not healthy
+    payload_off: "true"
+    icon: "mdi:heart-pulse"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC Keybus Connected"
+    unique_id: dsc_keybus_connected
+    state_topic: "dsc/Diagnostics/KeybusConnected"
+    availability_topic: "dsc/Status"
+    device_class: "connectivity"
+    payload_on: "true"
+    payload_off: "false"
+    icon: "mdi:connection"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC Buffer Overflow"
+    unique_id: dsc_buffer_overflow
+    state_topic: "dsc/Diagnostics/BufferOverflow"
+    availability_topic: "dsc/Status"
+    device_class: "problem"
+    payload_on: "true"
+    payload_off: "false"
+    icon: "mdi:buffer"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # Security System Status
+  - name: "Security System Trouble"
+    unique_id: dsc_trouble
+    state_topic: "dsc/Get/Trouble"
+    availability_topic: "dsc/Status"
+    device_class: "problem"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:alert-circle"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # Fire Alarms
+  - name: "Downstairs Smoke Alarm"
+    unique_id: dsc_fire_1
+    state_topic: "dsc/Get/Fire1"
+    availability_topic: "dsc/Status"
+    device_class: "smoke"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:smoke-detector"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # Zone Sensors with Enhanced Device Classes
+  - name: "Back Door"
+    unique_id: dsc_zone_1
+    state_topic: "dsc/Get/Zone1"
+    availability_topic: "dsc/Status"
+    device_class: "door"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:door"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Front Door"
+    unique_id: dsc_zone_2
+    state_topic: "dsc/Get/Zone2"
+    availability_topic: "dsc/Status"
+    device_class: "door"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:door-open"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Upper Patio Door"
+    unique_id: dsc_zone_3
+    state_topic: "dsc/Get/Zone3"
+    availability_topic: "dsc/Status"
+    device_class: "door"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:door-sliding"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Downstairs Motion"
+    unique_id: dsc_zone_4
+    state_topic: "dsc/Get/Zone4"
+    availability_topic: "dsc/Status"
+    device_class: "motion"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:motion-sensor"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Kitchen Glass Break"
+    unique_id: dsc_zone_5
+    state_topic: "dsc/Get/Zone5"
+    availability_topic: "dsc/Status"
+    device_class: "vibration"  # More appropriate than "tamper"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:glass-fragile"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # PGM Outputs
+  - name: "DSC PGM 1"
+    unique_id: dsc_pgm_1
+    state_topic: "dsc/Get/PGM1"
+    availability_topic: "dsc/Status"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:electric-switch"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "DSC PGM 8"
+    unique_id: dsc_pgm_8
+    state_topic: "dsc/Get/PGM8"
+    availability_topic: "dsc/Status"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:electric-switch"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+# Enhanced Emergency Buttons with Better Safety Features
+button:
+  - name: "Fire Alarm"
+    unique_id: dsc_fire_button
+    command_topic: "dsc/Set"
+    payload_press: "f"
+    icon: "mdi:fire"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+    # Note: Consider removing or securing this for safety
+
+  - name: "Medical Alarm"
+    unique_id: dsc_aux_button
+    command_topic: "dsc/Set"
+    payload_press: "a"
+    icon: "mdi:hospital-box"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+    # Note: Consider removing or securing this for safety
+
+  - name: "Panic Alarm"
+    unique_id: dsc_panic_button
+    command_topic: "dsc/Set"
+    payload_press: "p"
+    icon: "mdi:police-badge"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+    # Note: Consider removing or securing this for safety
+
+# Enhanced Automations for Better System Management
+automation:
+  # System Health Monitoring
+  - alias: "DSC System Health Alert"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.dsc_system_health
+        to: "on"  # Problem detected
+    action:
+      - service: notify.persistent_notification
+        data:
+          title: "DSC System Alert"
+          message: "DSC alarm system has detected a problem. Check diagnostics."
+      - service: logbook.log
+        data:
+          name: "DSC System"
+          message: "System health problem detected"
+
+  # Buffer Overflow Alert
+  - alias: "DSC Buffer Overflow Alert"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.dsc_buffer_overflow
+        to: "on"
+    action:
+      - service: notify.persistent_notification
+        data:
+          title: "DSC Buffer Overflow"
+          message: "DSC system buffer overflow detected - system may be too busy"
+
+  # Keybus Disconnection Alert
+  - alias: "DSC Keybus Disconnected Alert"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.dsc_keybus_connected
+        to: "off"
+        for: "00:01:00"  # Alert after 1 minute
+    action:
+      - service: notify.persistent_notification
+        data:
+          title: "DSC Keybus Disconnected"
+          message: "DSC alarm system communication lost"
+
+# Custom Dashboard Card Configuration (Lovelace)
+# Add this to your dashboard configuration:
+#
+# type: entities
+# title: DSC Security System
+# entities:
+#   - alarm_control_panel.dsc_1500_alarm_panel
+#   - sensor.security_partition_1_status
+#   - binary_sensor.security_system_trouble
+#   - binary_sensor.dsc_system_health
+#   - sensor.dsc_system_uptime
+#   - binary_sensor.dsc_keybus_connected
+
+# Security Considerations:
+# 1. Store access codes in secrets.yaml, not in plain text
+# 2. Use MQTT authentication and TLS encryption in production
+# 3. Consider removing emergency buttons or securing them with confirmation
+# 4. Regularly monitor system health sensors
+# 5. Set up notifications for system troubles and connectivity issues

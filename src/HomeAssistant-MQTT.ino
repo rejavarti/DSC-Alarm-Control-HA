@@ -208,14 +208,22 @@ entity: alarm_control_panel.security_partition_1
 #include <PubSubClient.h>
 #include <dscKeybusInterface.h>
 
-// Settings
-const char* wifiSSID = "IoT_devices";
-const char* wifiPassword = "943Nelson8034";
-const char* accessCode = "7730";																	// An access code is required to disarm/night arm and may be required to arm or enable command outputs based on panel configuration.
-const char* mqttServer = "192.168.222.41";   														// MQTT server domain name or IP address
-const int mqttPort = 1883;																			// MQTT server port
-const char* mqttUsername = "homeassistant";															// Optional, leave blank if not required
-const char* mqttPassword = "ofaibah2Luj3un7niezi3ooshieyaey1kahsooz3xeeJ9oobok8ishaesiephish";		// Optional, leave blank if not required
+// Configuration - CHANGE THESE VALUES FOR YOUR SETUP
+// Security Note: For production use, consider using WiFiManager or SPIFFS/LittleFS to store credentials
+const char* wifiSSID = "YOUR_WIFI_SSID";        // Change to your WiFi SSID
+const char* wifiPassword = "YOUR_WIFI_PASSWORD";  // Change to your WiFi password
+const char* accessCode = "YOUR_ACCESS_CODE";      // Change to your DSC access code (required for disarm/night arm)
+const char* mqttServer = "YOUR_MQTT_SERVER";      // Change to your MQTT server IP or hostname
+const int mqttPort = 1883;                       // MQTT server port (default 1883, 8883 for TLS)
+const char* mqttUsername = "YOUR_MQTT_USERNAME";  // Change to your MQTT username (leave empty if not required)
+const char* mqttPassword = "YOUR_MQTT_PASSWORD";  // Change to your MQTT password (leave empty if not required)
+
+// System Configuration
+const unsigned long wifiReconnectInterval = 30000;     // WiFi reconnection attempt interval (30 seconds)
+const unsigned long mqttReconnectInterval = 5000;      // MQTT reconnection attempt interval (5 seconds)
+const unsigned long statusPublishInterval = 60000;     // Status publish interval (60 seconds)
+const byte maxReconnectAttempts = 10;                   // Maximum reconnection attempts before restart
+const bool enableDebugLogging = true;                  // Enable detailed debug logging
 
 
 // MQTT topics - match to Home Assistant's configuration.yaml
@@ -248,74 +256,127 @@ WiFiClient ipClient;
 PubSubClient mqtt(mqttServer, mqttPort, ipClient);
 unsigned long mqttPreviousTime;
 
+// System health and monitoring variables
+unsigned long wifiReconnectAttempts = 0;
+unsigned long mqttReconnectAttempts = 0;
+unsigned long lastStatusPublish = 0;
+unsigned long systemUptime = 0;
+bool systemHealthy = true;
+String lastError = "";
+
 // Tracks the previous status for each partition to detect status changes
 byte previousStatus[dscPartitions];
+
+// Function prototypes for improved error handling
+bool connectWiFiWithRetry();
+bool connectMQTTWithRetry();
+void publishSystemHealth();
+void handleSystemError(const String& error);
+void logMessage(const String& message, bool isError = false);
 
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println();
-  Serial.println();
+  Serial.println(F("=== DSC Keybus Interface with Home Assistant Integration ==="));
+  Serial.println(F("Version: 1.5 Enhanced - Improved Robustness"));
+  
+  systemUptime = millis();
+  logMessage("System starting up...");
 
   // Initialize previous status tracking
   for (byte i = 0; i < dscPartitions; i++) {
     previousStatus[i] = 0xFF;  // Initialize to invalid status to force initial publication
   }
 
-  Serial.print(F("WiFi...."));
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(wifiSSID, wifiPassword);
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
+  // Connect to WiFi with retry logic
+  if (!connectWiFiWithRetry()) {
+    handleSystemError("Failed to connect to WiFi after maximum attempts");
+    ESP.restart(); // Restart if WiFi fails completely
   }
-  Serial.print(F("connected: "));
-  Serial.println(WiFi.localIP());
 
+  // Connect to MQTT with retry logic  
   mqtt.setCallback(mqttCallback);
-  if (mqttConnect()) mqttPreviousTime = millis();
-  else mqttPreviousTime = 0;
+  if (connectMQTTWithRetry()) {
+    mqttPreviousTime = millis();
+    logMessage("MQTT connected successfully");
+  } else {
+    mqttPreviousTime = 0;
+    logMessage("MQTT connection failed, will retry during operation", true);
+  }
 
   // Starts the Keybus interface and optionally specifies how to print data.
-  // begin() sets Serial by default and can accept a different stream: begin(Serial1), etc.
   dsc.begin();
-  Serial.println(F("DSC Keybus Interface is online."));
+  logMessage("DSC Keybus Interface is online");
+  
+  // Publish initial system health
+  publishSystemHealth();
 }
 
 
 void loop() {
+  // Check WiFi connection health
+  if (!WiFi.isConnected()) {
+    handleSystemError("WiFi connection lost");
+    if (!connectWiFiWithRetry()) {
+      delay(wifiReconnectInterval);
+      return;
+    }
+  }
+  
+  // Handle MQTT connection
   mqttHandle();
 
+  // Main DSC processing
   dsc.loop();
 
-  if (dsc.statusChanged) {      // Checks if the security system status has changed
-    dsc.statusChanged = false;  // Reset the status tracking flag
-
-    // If the Keybus data buffer is exceeded, the sketch is too busy to process all Keybus commands.  Call
-    // loop() more often, or increase dscBufferSize in the library: src/dscKeybus.h or src/dscClassic.h
+  // Process DSC status changes
+  if (dsc.statusChanged) {
+    dsc.statusChanged = false;
+    
+    // Handle buffer overflow with enhanced error reporting
     if (dsc.bufferOverflow) {
-      Serial.println(F("Keybus buffer overflow"));
+      handleSystemError("Keybus buffer overflow - system may be too busy");
       dsc.bufferOverflow = false;
+      
+      // Publish buffer overflow diagnostic
+      if (mqtt.connected()) {
+        mqtt.publish("dsc/Diagnostics/BufferOverflow", "true", true);
+      }
     }
 
-    // Checks if the interface is connected to the Keybus
+    // Handle Keybus connection changes with enhanced logging
     if (dsc.keybusChanged) {
-      dsc.keybusChanged = false;  // Resets the Keybus data status flag
-      if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
-      else mqtt.publish(mqttStatusTopic, mqttLwtMessage, true);
+      dsc.keybusChanged = false;
+      if (dsc.keybusConnected) {
+        mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
+        logMessage("DSC Keybus connected");
+        systemHealthy = true;
+      } else {
+        mqtt.publish(mqttStatusTopic, mqttLwtMessage, true);
+        logMessage("DSC Keybus disconnected", true);
+        handleSystemError("DSC Keybus connection lost");
+      }
     }
 
-    // Sends the access code when needed by the panel for arming or command outputs
+    // Handle access code prompts
     if (dsc.accessCodePrompt) {
       dsc.accessCodePrompt = false;
       dsc.write(accessCode);
+      logMessage("Access code sent to panel");
     }
 
+    // Handle trouble status changes with enhanced logging
     if (dsc.troubleChanged) {
-      dsc.troubleChanged = false;  // Resets the trouble status flag
-      if (dsc.trouble) mqtt.publish(mqttTroubleTopic, "1", true);
-      else mqtt.publish(mqttTroubleTopic, "0", true);
+      dsc.troubleChanged = false;
+      if (dsc.trouble) {
+        mqtt.publish(mqttTroubleTopic, "1", true);
+        logMessage("System trouble detected", true);
+      } else {
+        mqtt.publish(mqttTroubleTopic, "0", true);
+        logMessage("System trouble cleared");
+      }
     }
 
     // Publishes status per partition
@@ -451,15 +512,41 @@ void loop() {
 
     mqtt.subscribe(mqttSubscribeTopic);
   }
+  
+  // Periodic system health monitoring and publishing
+  unsigned long currentTime = millis();
+  if (currentTime - lastStatusPublish > statusPublishInterval) {
+    lastStatusPublish = currentTime;
+    publishSystemHealth();
+    
+    // Reset system health if no recent errors
+    if (systemHealthy == false && (currentTime - systemUptime) > 300000) { // 5 minutes
+      systemHealthy = true;
+      lastError = "";
+      logMessage("System health status reset");
+    }
+  }
 }
 
 
 // Handles messages received in the mqttSubscribeTopic
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  // Input validation
+  if (length == 0 || length > 50) {  // Reasonable bounds checking
+    logMessage("Invalid MQTT payload length: " + String(length), true);
+    return;
+  }
+  
+  // Null-terminate payload for safe string operations
+  char safePayload[51];  // Max 50 chars + null terminator
+  memcpy(safePayload, payload, min(length, 50));
+  safePayload[min(length, 50)] = '\0';
+  
+  // Log command received
+  logMessage("MQTT command received: " + String(safePayload));
 
   // Handles unused parameters
   (void)topic;
-  (void)length;
 
   byte partition = 0;
   byte payloadIndex = 0;
@@ -470,6 +557,12 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   if (payload[0] >= 0x31 && payload[0] <= 0x38) {
     partition = payload[0] - 49;
     payloadIndex = 1;
+    
+    // Additional validation for partition number
+    if (partition >= dscPartitions) {
+      logMessage("Invalid partition number: " + String(partition + 1), true);
+      return;
+    }
     
     // Check for "!XXXX" format indicating disarm with specific access code
     if (length > 2 && payload[1] == '!') {
@@ -483,21 +576,44 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       }
       extractedAccessCode[codeLength] = '\0';  // Null terminate
       
-      // Debug output
-      Serial.print("DISARM WITH CODE: Partition ");
-      Serial.print(partition + 1);
-      Serial.print(" - Access Code: ");
-      Serial.println(extractedAccessCode);
+      // Validate extracted access code
+      if (codeLength == 0) {
+        logMessage("Invalid custom access code format", true);
+        return;
+      }
+      
+      // Enhanced debug output
+      logMessage("Custom disarm code for partition " + String(partition + 1) + 
+                " - Code length: " + String(codeLength));
     }
   }
 
+  // Enhanced command processing with logging
+  
   // Panic alarm
   if (payload[payloadIndex] == 'P') {
+    logMessage("Panic alarm triggered");
     dsc.write('p');
+    return;
   }
 
-  // Resets status if attempting to change the armed mode while armed or not ready
-  if (payload[payloadIndex] != 'D' && !dsc.ready[partition]) {
+  // Additional command: Fire alarm
+  if (payload[payloadIndex] == 'f' || payload[payloadIndex] == 'F') {
+    logMessage("Fire alarm triggered");
+    dsc.write('f');
+    return;
+  }
+
+  // Additional command: Aux/Medical alarm  
+  if (payload[payloadIndex] == 'a' || payload[payloadIndex] == 'A') {
+    logMessage("Auxiliary alarm triggered");
+    dsc.write('a');
+    return;
+  }
+
+  // Validate system readiness for arm commands
+  if (payload[payloadIndex] != 'D' && !disarmWithAccessCode && !dsc.ready[partition]) {
+    logMessage("Partition " + String(partition + 1) + " not ready for arming", true);
     dsc.armedChanged[partition] = true;
     dsc.statusChanged = true;
     return;
@@ -505,32 +621,47 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   // Arm stay
   if (payload[payloadIndex] == 'S' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write('s');                             // Virtual keypad arm stay
+    logMessage("Arming partition " + String(partition + 1) + " in Stay mode");
+    dsc.writePartition = partition + 1;
+    dsc.write('s');
   }
 
   // Arm away
   else if (payload[payloadIndex] == 'A' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write('w');                             // Virtual keypad arm away
+    logMessage("Arming partition " + String(partition + 1) + " in Away mode");
+    dsc.writePartition = partition + 1;
+    dsc.write('w');
   }
 
   // Arm night
   else if (payload[payloadIndex] == 'N' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write('n');                             // Virtual keypad arm away
+    logMessage("Arming partition " + String(partition + 1) + " in Night mode");
+    dsc.writePartition = partition + 1;
+    dsc.write('n');
   }
 
 
   // Disarm - either standard "1D" format or custom access code "1!XXXX" format  
   else if ((payload[payloadIndex] == 'D' || disarmWithAccessCode) && 
            (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
+    
+    String disarmType = disarmWithAccessCode ? "custom access code" : "default access code";
+    logMessage("Disarming partition " + String(partition + 1) + " using " + disarmType);
+    
+    dsc.writePartition = partition + 1;
     if (disarmWithAccessCode) {
       dsc.write(extractedAccessCode);
     } else {
       dsc.write(accessCode);
     }
+  }
+  
+  // Log unrecognized commands for debugging
+  else if (payload[payloadIndex] != 'D' && payload[payloadIndex] != 'S' && 
+           payload[payloadIndex] != 'A' && payload[payloadIndex] != 'N' &&
+           payload[payloadIndex] != 'P' && payload[payloadIndex] != 'f' &&
+           payload[payloadIndex] != 'a' && !disarmWithAccessCode) {
+    logMessage("Unrecognized command: " + String((char)payload[payloadIndex]), true);
   }
 }
 
@@ -538,32 +669,19 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void mqttHandle() {
   if (!mqtt.connected()) {
     unsigned long mqttCurrentTime = millis();
-    if (mqttCurrentTime - mqttPreviousTime > 5000) {
+    if (mqttCurrentTime - mqttPreviousTime > mqttReconnectInterval) {
       mqttPreviousTime = mqttCurrentTime;
-      if (mqttConnect()) {
+      if (connectMQTTWithRetry()) {
         if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
-        Serial.println(F("MQTT disconnected, successfully reconnected."));
+        logMessage("MQTT reconnected successfully");
         mqttPreviousTime = 0;
+      } else {
+        logMessage("MQTT reconnection failed", true);
       }
-      else Serial.println(F("MQTT disconnected, failed to reconnect."));
     }
+  } else {
+    mqtt.loop();
   }
-  else mqtt.loop();
-}
-
-
-bool mqttConnect() {
-  Serial.print(F("MQTT...."));
-  if (mqtt.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
-    Serial.print(F("connected: "));
-    Serial.println(mqttServer);
-    dsc.resetStatus();  // Resets the state of all status components as changed to get the current status
-  }
-  else {
-    Serial.print(F("connection error: "));
-    Serial.println(mqttServer);
-  }
-  return mqtt.connected();
 }
 
 
@@ -674,5 +792,143 @@ void publishMessage(const char* sourceTopic, byte partition) {
     case 0xF8: mqtt.publish(publishTopic, "Keypad programming", true); break;
     case 0xFA: mqtt.publish(publishTopic, "Input: 6 digits"); break;
     default: return;
+  }
+}
+
+
+// Enhanced WiFi connection with retry logic
+bool connectWiFiWithRetry() {
+  logMessage("Connecting to WiFi: " + String(wifiSSID));
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(wifiSSID, wifiPassword);
+  
+  wifiReconnectAttempts = 0;
+  while (WiFi.status() != WL_CONNECTED && wifiReconnectAttempts < maxReconnectAttempts) {
+    delay(1000);
+    wifiReconnectAttempts++;
+    if (enableDebugLogging) {
+      Serial.print(".");
+    }
+    
+    // Try reconnecting every 5 attempts
+    if (wifiReconnectAttempts % 5 == 0) {
+      logMessage("WiFi retry attempt " + String(wifiReconnectAttempts) + "/" + String(maxReconnectAttempts));
+      WiFi.disconnect();
+      delay(1000);
+      WiFi.begin(wifiSSID, wifiPassword);
+    }
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    logMessage("WiFi connected - IP: " + WiFi.localIP().toString());
+    wifiReconnectAttempts = 0;
+    return true;
+  } else {
+    lastError = "WiFi connection failed after " + String(maxReconnectAttempts) + " attempts";
+    logMessage(lastError, true);
+    return false;
+  }
+}
+
+
+// Enhanced MQTT connection with retry logic
+bool connectMQTTWithRetry() {
+  if (!WiFi.isConnected()) {
+    logMessage("WiFi not connected, cannot connect to MQTT", true);
+    return false;
+  }
+  
+  mqttReconnectAttempts = 0;
+  while (!mqtt.connected() && mqttReconnectAttempts < maxReconnectAttempts) {
+    logMessage("Attempting MQTT connection...");
+    
+    String clientId = String(mqttClientName) + "-" + String(ESP.getEfuseMac(), HEX);
+    
+    if (mqtt.connect(clientId.c_str(), mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+      logMessage("MQTT connected to: " + String(mqttServer));
+      dsc.resetStatus();  // Reset status to get current state
+      mqtt.subscribe(mqttSubscribeTopic);
+      mqttReconnectAttempts = 0;
+      return true;
+    } else {
+      mqttReconnectAttempts++;
+      String error = "MQTT connection failed, rc=" + String(mqtt.state()) + 
+                    " (attempt " + String(mqttReconnectAttempts) + "/" + String(maxReconnectAttempts) + ")";
+      logMessage(error, true);
+      delay(2000);
+    }
+  }
+  
+  lastError = "MQTT connection failed after " + String(maxReconnectAttempts) + " attempts";
+  logMessage(lastError, true);
+  return false;
+}
+
+
+// Publish system health and diagnostics
+void publishSystemHealth() {
+  if (!mqtt.connected()) return;
+  
+  unsigned long currentUptime = (millis() - systemUptime) / 1000; // Convert to seconds
+  
+  // Publish system diagnostic information
+  mqtt.publish("dsc/Diagnostics/Uptime", String(currentUptime).c_str(), true);
+  mqtt.publish("dsc/Diagnostics/FreeHeap", String(ESP.getFreeHeap()).c_str(), true);
+  mqtt.publish("dsc/Diagnostics/WiFiRSSI", String(WiFi.RSSI()).c_str(), true);
+  mqtt.publish("dsc/Diagnostics/WiFiReconnects", String(wifiReconnectAttempts).c_str(), true);
+  mqtt.publish("dsc/Diagnostics/MQTTReconnects", String(mqttReconnectAttempts).c_str(), true);
+  mqtt.publish("dsc/Diagnostics/SystemHealthy", systemHealthy ? "true" : "false", true);
+  
+  if (!lastError.isEmpty()) {
+    mqtt.publish("dsc/Diagnostics/LastError", lastError.c_str(), true);
+  }
+  
+  // DSC specific diagnostics
+  mqtt.publish("dsc/Diagnostics/KeybusConnected", dsc.keybusConnected ? "true" : "false", true);
+  mqtt.publish("dsc/Diagnostics/BufferOverflow", dsc.bufferOverflow ? "true" : "false", true);
+  
+  logMessage("System health published");
+}
+
+
+// Handle system errors with appropriate recovery actions
+void handleSystemError(const String& error) {
+  lastError = error;
+  systemHealthy = false;
+  logMessage("SYSTEM ERROR: " + error, true);
+  
+  // Publish error to MQTT if possible
+  if (mqtt.connected()) {
+    mqtt.publish("dsc/Diagnostics/LastError", error.c_str(), true);
+    mqtt.publish("dsc/Diagnostics/SystemHealthy", "false", true);
+  }
+  
+  // Attempt recovery based on error type
+  if (error.indexOf("WiFi") >= 0) {
+    logMessage("Attempting WiFi recovery...");
+    WiFi.disconnect();
+    delay(5000);
+    connectWiFiWithRetry();
+  } else if (error.indexOf("MQTT") >= 0) {
+    logMessage("Attempting MQTT recovery...");
+    mqtt.disconnect();
+    delay(2000);
+    connectMQTTWithRetry();
+  }
+}
+
+
+// Enhanced logging function with timestamps and error levels
+void logMessage(const String& message, bool isError) {
+  unsigned long timestamp = millis() / 1000;
+  String logLevel = isError ? "[ERROR]" : "[INFO] ";
+  String formattedMessage = "[" + String(timestamp) + "s] " + logLevel + " " + message;
+  
+  Serial.println(formattedMessage);
+  
+  // Also send to MQTT if connected and debug logging enabled
+  if (mqtt.connected() && enableDebugLogging) {
+    String topic = isError ? "dsc/Debug/Errors" : "dsc/Debug/Info";
+    mqtt.publish(topic.c_str(), message.c_str(), false); // Don't retain debug messages
   }
 }
