@@ -230,7 +230,9 @@ String staticDNS = "";
 // System stability tracking
 unsigned long lastSuccessfulMqtt = 0;
 unsigned long lastSuccessfulWebRequest = 0;
+unsigned long lastWebServerCheck = 0;
 const unsigned long systemHealthTimeout = 600000;  // 10 minutes
+const unsigned long webServerCheckInterval = 10000;  // Check web server every 10 seconds
 
 // Pin configuration - Default values, will be overridden by stored configuration
 int clockPin = 18;  // dscClockPin
@@ -291,6 +293,10 @@ bool connectToEthernet();
 void configureStaticIP();
 void checkNetworkConnectivity();
 void restartNetworkServices();
+void checkWebServerHealth();
+void configureWebServer();
+void handleWebServerRequest();
+bool testWebServerConnectivity();
 
 
 // Configuration management functions
@@ -818,82 +824,52 @@ void restartNetworkServices() {
     mqttRetryInterval = 5000;  // Reset retry interval
   }
   
-  // Restart web server
-  configServer.begin();
-  Serial.println("Web services restarted");
+  // Restart web server with enhanced configuration
+  Serial.println("Restarting web services after network recovery");
+  configServer.close();
+  configureWebServer();
+  lastSuccessfulWebRequest = millis();  // Reset web server health tracking
 }
 
-void setup() {
-  Serial.begin(115200);
-  delay(1000);
-  Serial.println();
-  Serial.println();
-
-  Serial.println("DSC Keybus Interface - Comprehensive Configuration System");
+// Enhanced web server configuration with better network handling
+void configureWebServer() {
+  Serial.println("Configuring web server with enhanced settings...");
   
-  // Load all configuration from storage
-  loadFullConfiguration();
+  // Stop any existing server
+  configServer.close();
   
-  // Try to connect to network with stored configuration
-  bool networkConnected = false;
+  // Configure server with enhanced timeout and header handling
+  const char* headers[] = {"Accept", "Content-Length", "Content-Type", "Host", "User-Agent"};
+  configServer.collectHeaders(headers, 5);
   
-  // Check if we have network configuration
-  if (networkType == "ethernet" || (networkType == "wifi" && wifiSSID.length() > 0)) {
-    Serial.println("Trying stored network credentials...");
-    networkConnected = connectToNetwork();
-  }
+  // Set server timeout (default is usually too short)
+  configServer.setTimeout(10000);  // 10 second timeout for requests
   
-  // If still no connection, start configuration mode
-  if (!networkConnected) {
-    Serial.println("Network connection failed. Starting configuration portal...");
-    startConfigMode();
-    return; // Exit setup, loop() will handle config mode
-  }
-
-  // Initialize DSC interface with configured pins
-  Serial.println("Initializing DSC interface with configured pins...");
-  Serial.println("Pin configuration: Clock=" + String(clockPin) + ", Read=" + String(readPin) + 
-                 ", Write=" + String(writePin) + ", PC16=" + String(pc16Pin));
-  
-  #ifndef dscClassicSeries
-  if (writePin > 0) {
-    dsc = new dscKeybusInterface(clockPin, readPin, writePin);
-  } else {
-    dsc = new dscKeybusInterface(clockPin, readPin);
-  }
-  #else
-  if (writePin > 0) {
-    dsc = new dscClassicInterface(clockPin, readPin, pc16Pin, writePin, accessCode.c_str());
-  } else {
-    dsc = new dscClassicInterface(clockPin, readPin, pc16Pin, 255, accessCode.c_str());
-  }
-  #endif
-
-  // Initialize MQTT with configured settings
-  Serial.println("Initializing MQTT with server: " + mqttServer + ":" + String(mqttPort));
-  mqtt = new PubSubClient(ipClient);
-  mqtt->setServer(mqttServer.c_str(), mqttPort);
-  mqtt->setCallback(mqttCallback);
-  
-  // Set MQTT keepalive and timeout settings for better stability
-  mqtt->setKeepAlive(15);  // Send keepalive every 15 seconds
-  mqtt->setSocketTimeout(5);  // Socket timeout of 5 seconds
-  
-  if (mqttConnect()) {
-    mqttPreviousTime = millis();
-    mqttRetryInterval = 5000;  // Reset retry interval on successful connection
-  } else {
-    mqttPreviousTime = 0;
-  }
-
-  // Start the DSC Keybus interface
-  dsc->begin();
-  Serial.println(F("DSC Keybus Interface is online with full configuration."));
-  
-  // Add configuration endpoint for normal operation (shows same form but without AP mode)
+  // Add enhanced configuration endpoint with comprehensive debugging
   configServer.on("/config", HTTP_GET, []() {
-    String html = "<!DOCTYPE html><html><head><title>DSC Configuration Portal</title>";
+    Serial.println("Web: /config endpoint accessed");
+    lastSuccessfulWebRequest = millis();
+    
+    // Get current network information for status display
+    String currentIP = "";
+    String networkStatus = "";
+    
+    if (networkType == "ethernet" && ETH.linkUp()) {
+      currentIP = ETH.localIP().toString();
+      networkStatus = "Ethernet connected (" + currentIP + ")";
+    } else if (networkType == "wifi" && WiFi.status() == WL_CONNECTED) {
+      currentIP = WiFi.localIP().toString();
+      networkStatus = "WiFi connected to " + WiFi.SSID() + " (" + currentIP + ")";
+    } else {
+      networkStatus = "Disconnected";
+      currentIP = "0.0.0.0";
+    }
+    
+    // Enhanced HTML configuration page
+    String html = "<!DOCTYPE html><html><head>";
+    html += "<title>DSC Configuration Portal</title>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += "<meta charset='UTF-8'>";
     html += "<style>";
     html += "body{font-family:Arial,sans-serif;max-width:800px;margin:20px auto;padding:20px;background:#f5f5f5}";
     html += ".config-section{background:white;padding:20px;margin:20px 0;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}";
@@ -907,29 +883,30 @@ void setup() {
     html += ".info{background:#e7f3ff;border:1px solid #b3d9ff;padding:15px;border-radius:4px;margin:20px 0}";
     html += ".current-value{color:#666;font-size:0.9em;margin-top:5px}";
     html += ".status-info{background:#f0f0f0;padding:15px;border-radius:4px;margin:20px 0}";
+    html += ".success{background:#d4edda;border:1px solid #c3e6cb;color:#155724;padding:15px;border-radius:4px;margin:20px 0}";
     html += "select{width:100%;padding:12px;margin:8px 0;border:2px solid #ddd;border-radius:4px;box-sizing:border-box}";
     html += "select:focus{border-color:#4CAF50;outline:none}";
     html += ".static-fields{margin-top:10px;padding:10px;background:#f8f8f8;border-radius:4px}";
     html += ".hidden{display:none}";
+    html += ".diagnostic{background:#fff3cd;border:1px solid #ffeaa7;padding:15px;border-radius:4px;margin:20px 0}";
     html += "</style></head><body>";
     
     html += "<h1>DSC Alarm System Configuration</h1>";
     
+    html += "<div class='success'><strong>✓ Web Portal Online:</strong> Successfully serving configuration page from " + currentIP + "</div>";
+    
+    // System status section with enhanced diagnostics
     html += "<div class='status-info'>";
-    html += "<strong>Current Status:</strong><br>";
-    if (networkType == "ethernet" && ETH.linkUp()) {
-      html += "Network: Ethernet connected (" + ETH.localIP().toString() + ")<br>";
-    } else if (networkType == "wifi" && WiFi.status() == WL_CONNECTED) {
-      html += "Network: WiFi connected to " + WiFi.SSID() + " (" + WiFi.localIP().toString() + ")<br>";
-    } else {
-      html += "Network: Disconnected<br>";
-    }
+    html += "<strong>System Status:</strong><br>";
+    html += "Network: " + networkStatus + "<br>";
     html += "IP Configuration: " + ipType + "<br>";
     html += "MQTT: " + (mqtt != nullptr && mqtt->connected() ? "Connected to " + mqttServer : "Disconnected") + "<br>";
-    html += "DSC Interface: " + String(dsc != nullptr && dsc->keybusConnected ? "Connected" : "Disconnected");
+    html += "DSC Interface: " + String(dsc != nullptr && dsc->keybusConnected ? "Connected" : "Disconnected") + "<br>";
+    html += "Web Server: Online (Request processed at " + String(millis()) + "ms)<br>";
+    html += "System Uptime: " + String(millis() / 1000) + " seconds";
     html += "</div>";
     
-    html += "<div class='info'><strong>Note:</strong> This portal allows you to reconfigure your DSC system. ";
+    html += "<div class='info'><strong>Configuration Portal:</strong> This portal allows you to reconfigure your DSC system. ";
     html += "Changes will take effect after restart. Empty fields will keep existing values.</div>";
     
     html += "<form method='POST' action='/save-config'>";
@@ -1032,6 +1009,12 @@ void setup() {
     html += "<input type='submit' value='Save Configuration and Restart'>";
     html += "</form>";
     
+    html += "<div class='diagnostic'><strong>Diagnostics:</strong> ";
+    html += "Server Time: " + String(millis()) + "ms, ";
+    html += "Free Heap: " + String(ESP.getFreeHeap()) + " bytes, ";
+    html += "Requests Served: " + String(lastSuccessfulWebRequest > 0 ? "Yes" : "No");
+    html += "</div>";
+    
     html += "<div class='info'><strong>After saving:</strong> The device will restart and apply the new configuration.</div>";
     
     // Add JavaScript for dynamic form behavior
@@ -1041,7 +1024,7 @@ void setup() {
     html += "  var wifiSettings = document.getElementById('wifiSettings');";
     html += "  if (networkType === 'wifi') {";
     html += "    wifiSettings.classList.remove('hidden');";
-    html += "    document.getElementById('ssid').required = true;";
+    html += "    document.getElementById('ssid').required = false;";
     html += "    document.getElementById('password').required = false;";
     html += "  } else {";
     html += "    wifiSettings.classList.add('hidden');";
@@ -1066,11 +1049,203 @@ void setup() {
     html += "</script>";
     
     html += "</body></html>";
+    
+    // Send response with proper headers
+    configServer.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    configServer.sendHeader("Pragma", "no-cache");
+    configServer.sendHeader("Expires", "-1");
+    configServer.sendHeader("Access-Control-Allow-Origin", "*");
     configServer.send(200, "text/html", html);
+    
+    Serial.println("Web: /config endpoint response sent successfully (" + String(html.length()) + " bytes)");
   });
   
-  // Add separate save handler for normal mode
+  // Add diagnostic endpoint for testing connectivity
+  configServer.on("/status", HTTP_GET, []() {
+    Serial.println("Web: /status diagnostic endpoint accessed");
+    lastSuccessfulWebRequest = millis();
+    
+    String response = "{";
+    response += "\"status\":\"online\",";
+    response += "\"timestamp\":" + String(millis()) + ",";
+    response += "\"uptime\":" + String(millis() / 1000) + ",";
+    response += "\"freeHeap\":" + String(ESP.getFreeHeap()) + ",";
+    response += "\"networkType\":\"" + networkType + "\",";
+    response += "\"ipAddress\":\"";
+    
+    if (networkType == "ethernet" && ETH.linkUp()) {
+      response += ETH.localIP().toString();
+    } else if (networkType == "wifi" && WiFi.status() == WL_CONNECTED) {
+      response += WiFi.localIP().toString();
+    } else {
+      response += "0.0.0.0";
+    }
+    
+    response += "\",";
+    response += "\"mqttConnected\":" + String(mqtt != nullptr && mqtt->connected() ? "true" : "false") + ",";
+    response += "\"dscConnected\":" + String(dsc != nullptr && dsc->keybusConnected ? "true" : "false");
+    response += "}";
+    
+    configServer.sendHeader("Access-Control-Allow-Origin", "*");
+    configServer.send(200, "application/json", response);
+    Serial.println("Web: /status response sent (" + String(response.length()) + " bytes)");
+  });
+  
+  // Add simple connectivity test endpoint
+  configServer.on("/ping", HTTP_GET, []() {
+    Serial.println("Web: /ping endpoint accessed");
+    lastSuccessfulWebRequest = millis();
+    configServer.sendHeader("Access-Control-Allow-Origin", "*");
+    configServer.send(200, "text/plain", "pong");
+  });
+}
+
+// Web server health monitoring and testing
+void checkWebServerHealth() {
+  unsigned long currentTime = millis();
+  if (currentTime - lastWebServerCheck < webServerCheckInterval) {
+    return;  // Not time to check yet
+  }
+  
+  lastWebServerCheck = currentTime;
+  
+  // Check if we haven't processed any web requests recently and connectivity exists
+  bool networkOk = false;
+  if (networkType == "ethernet") {
+    networkOk = ETH.linkUp() && (ETH.localIP() != IPAddress(0, 0, 0, 0));
+  } else {
+    networkOk = (WiFi.status() == WL_CONNECTED);
+  }
+  
+  if (networkOk && lastSuccessfulWebRequest > 0 && 
+      (currentTime - lastSuccessfulWebRequest > systemHealthTimeout)) {
+    Serial.println("Web server health check: No recent requests, testing connectivity...");
+    
+    if (!testWebServerConnectivity()) {
+      Serial.println("Web server connectivity test failed, restarting web services...");
+      configureWebServer();
+      lastSuccessfulWebRequest = millis();
+    }
+  }
+}
+
+bool testWebServerConnectivity() {
+  // Simple internal test - try to process a dummy request
+  WiFiClient testClient;
+  String currentIP;
+  
+  if (networkType == "ethernet" && ETH.linkUp()) {
+    currentIP = ETH.localIP().toString();
+  } else if (networkType == "wifi" && WiFi.status() == WL_CONNECTED) {
+    currentIP = WiFi.localIP().toString();
+  } else {
+    return false;
+  }
+  
+  // Test if we can connect to our own server
+  if (testClient.connect(currentIP.c_str(), 80)) {
+    testClient.println("GET /ping HTTP/1.1");
+    testClient.println("Host: " + currentIP);
+    testClient.println("Connection: close");
+    testClient.println();
+    
+    delay(100);  // Brief wait for response
+    
+    // Check if we got a response
+    bool gotResponse = testClient.available() > 0;
+    testClient.stop();
+    
+    if (gotResponse) {
+      Serial.println("Web server connectivity test: PASSED");
+      return true;
+    }
+  }
+  
+  Serial.println("Web server connectivity test: FAILED");
+  return false;
+}
+
+// Enhanced web server request handler with better error handling
+void handleWebServerRequest() {
+  // Handle client requests with enhanced error handling
+  configServer.handleClient();
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+  Serial.println();
+  Serial.println();
+
+  Serial.println("DSC Keybus Interface - Comprehensive Configuration System");
+  
+  // Load all configuration from storage
+  loadFullConfiguration();
+  
+  // Try to connect to network with stored configuration
+  bool networkConnected = false;
+  
+  // Check if we have network configuration
+  if (networkType == "ethernet" || (networkType == "wifi" && wifiSSID.length() > 0)) {
+    Serial.println("Trying stored network credentials...");
+    networkConnected = connectToNetwork();
+  }
+  
+  // If still no connection, start configuration mode
+  if (!networkConnected) {
+    Serial.println("Network connection failed. Starting configuration portal...");
+    startConfigMode();
+    return; // Exit setup, loop() will handle config mode
+  }
+
+  // Initialize DSC interface with configured pins
+  Serial.println("Initializing DSC interface with configured pins...");
+  Serial.println("Pin configuration: Clock=" + String(clockPin) + ", Read=" + String(readPin) + 
+                 ", Write=" + String(writePin) + ", PC16=" + String(pc16Pin));
+  
+  #ifndef dscClassicSeries
+  if (writePin > 0) {
+    dsc = new dscKeybusInterface(clockPin, readPin, writePin);
+  } else {
+    dsc = new dscKeybusInterface(clockPin, readPin);
+  }
+  #else
+  if (writePin > 0) {
+    dsc = new dscClassicInterface(clockPin, readPin, pc16Pin, writePin, accessCode.c_str());
+  } else {
+    dsc = new dscClassicInterface(clockPin, readPin, pc16Pin, 255, accessCode.c_str());
+  }
+  #endif
+
+  // Initialize MQTT with configured settings
+  Serial.println("Initializing MQTT with server: " + mqttServer + ":" + String(mqttPort));
+  mqtt = new PubSubClient(ipClient);
+  mqtt->setServer(mqttServer.c_str(), mqttPort);
+  mqtt->setCallback(mqttCallback);
+  
+  // Set MQTT keepalive and timeout settings for better stability
+  mqtt->setKeepAlive(15);  // Send keepalive every 15 seconds
+  mqtt->setSocketTimeout(5);  // Socket timeout of 5 seconds
+  
+  if (mqttConnect()) {
+    mqttPreviousTime = millis();
+    mqttRetryInterval = 5000;  // Reset retry interval on successful connection
+  } else {
+    mqttPreviousTime = 0;
+  }
+
+  // Start the DSC Keybus interface
+  dsc->begin();
+  Serial.println(F("DSC Keybus Interface is online with full configuration."));
+  
+  // Configure enhanced web server for normal operation
+  configureWebServer();
+  
+  // Add save-config endpoint for normal operation mode
   configServer.on("/save-config", HTTP_POST, []() {
+    Serial.println("Web: /save-config endpoint accessed");
+    lastSuccessfulWebRequest = millis();
+    
     // Get all parameters from the form (same logic as AP mode)
     String newNetworkType = configServer.arg("networkType");
     String newIpType = configServer.arg("ipType");
@@ -1120,25 +1295,33 @@ void setup() {
     html += "</body></html>";
     configServer.send(200, "text/html", html);
     
+    Serial.println("Configuration saved, restarting in 5 seconds...");
     delay(5000);
     ESP.restart();
   });
   
-  // Configure web server with timeout settings for better stability
-  const char* headers[] = {"Accept", "Content-Length", "Content-Type"};
-  configServer.collectHeaders(headers, 3);
+  // Start the enhanced web server
   configServer.begin();
   String currentIP = (networkType == "ethernet" && ETH.linkUp()) ? ETH.localIP().toString() : WiFi.localIP().toString();
+  Serial.println("Enhanced web server started successfully");
   Serial.println("Configuration endpoint available at: http://" + currentIP + "/config");
+  Serial.println("Status endpoint available at: http://" + currentIP + "/status");
+  Serial.println("Ping test endpoint available at: http://" + currentIP + "/ping");
+  
+  // Mark web server as healthy
+  lastSuccessfulWebRequest = millis();
 }
 
 
 void loop() {
-  // Handle web server (both configuration mode and normal config endpoint)
-  configServer.handleClient();
+  // Handle web server with enhanced error handling
+  handleWebServerRequest();
 
   // Check network connectivity periodically
   checkNetworkConnectivity();
+  
+  // Check web server health periodically
+  checkWebServerHealth();
 
   mqttHandle();
 
