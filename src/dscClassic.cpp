@@ -720,6 +720,8 @@ void dscClassicInterface::write(const char receivedKey) {
       case 'W': write(accessCodeAway); break;
       case 'n':
       case 'N': write(accessCodeNight); break;
+      case 'd':
+      case 'D': write(accessCodeStay); break;        // Use same access code as stay for disarm
       default: setWriteKey(receivedKey);
     }
   }
