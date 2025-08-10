@@ -248,7 +248,7 @@ dscKeybusInterface dsc(dscClockPin, dscReadPin, dscWritePin);
 dscClassicInterface dsc(dscClockPin, dscReadPin, dscPC16Pin, dscWritePin, accessCode);
 #endif
 WiFiClient ipClient;
-PubSubClient mqtt(mqttServer, mqttPort, ipClient);
+PubSubClient mqtt(ipClient);  // Initialize without server to avoid empty string connection attempts
 unsigned long mqttPreviousTime;
 
 // WiFi Manager variables
@@ -568,8 +568,7 @@ void setup() {
   }
   
   // Configure MQTT client with the determined settings
-  PubSubClient mqttConfigured(currentMqttServer.c_str(), currentMqttPort, ipClient);
-  mqtt = mqttConfigured;
+  mqtt.setServer(currentMqttServer.c_str(), currentMqttPort);
   
   Serial.println("MQTT Configuration:");
   Serial.println("  Server: " + currentMqttServer);
@@ -602,152 +601,6 @@ void loop() {
   }
 
   mqttHandle();
-
-  dsc.loop();
-
-  if (dsc.statusChanged) {      // Checks if the security system status has changed
-    dsc.statusChanged = false;  // Reset the status tracking flag
-
-    // If the Keybus data buffer is exceeded, the sketch is too busy to process all Keybus commands.  Call
-    // loop() more often, or increase dscBufferSize in the library: src/dscKeybus.h or src/dscClassic.h
-    if (dsc.bufferOverflow) {
-      Serial.println(F("Keybus buffer overflow"));
-      dsc.bufferOverflow = false;
-    }
-
-    // Checks if the interface is connected to the Keybus
-    if (dsc.keybusChanged) {
-      dsc.keybusChanged = false;  // Resets the Keybus data status flag
-      if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
-      else mqtt.publish(mqttStatusTopic, mqttLwtMessage, true);
-    }
-
-    // Sends the access code when needed by the panel for arming or command outputs
-    if (dsc.accessCodePrompt) {
-      dsc.accessCodePrompt = false;
-      dsc.write(accessCode);
-    }
-
-    if (dsc.troubleChanged) {
-      dsc.troubleChanged = false;  // Resets the trouble status flag
-      if (dsc.trouble) mqtt.publish(mqttTroubleTopic, "1", true);
-      else mqtt.publish(mqttTroubleTopic, "0", true);
-    }
-
-    // Publishes status per partition
-    for (byte partition = 0; partition < dscPartitions; partition++) {
-
-      // Skips processing if the partition is disabled or in installer programming
-      if (dsc.disabled[partition]) continue;
-
-      // Publishes the partition status message
-      publishMessage(mqttPartitionTopic, partition);
-
-      // Publishes armed/disarmed status
-      if (dsc.armedChanged[partition]) {
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
-
-        if (dsc.armed[partition]) {
-          if (dsc.armedAway[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
-          else if (dsc.armedAway[partition]) mqtt.publish(publishTopic, "armed_away", true);
-          else if (dsc.armedStay[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
-          else if (dsc.armedStay[partition]) mqtt.publish(publishTopic, "armed_home", true);
-        }
-        else mqtt.publish(publishTopic, "disarmed", true);
-      }
-
-      // Publishes exit delay status
-      if (dsc.exitDelayChanged[partition]) {
-        dsc.exitDelayChanged[partition] = false;  // Resets the exit delay status flag
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
-
-        if (dsc.exitDelay[partition]) mqtt.publish(publishTopic, "pending", true);  // Publish as a retained message
-        else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) mqtt.publish(publishTopic, "disarmed", true);
-        // Note: When exit delay ends and system is armed, the armedChanged[partition] flag handles publishing the armed state
-      }
-
-      // Publishes alarm status
-      if (dsc.alarmChanged[partition]) {
-        dsc.alarmChanged[partition] = false;  // Resets the partition alarm status flag
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
-
-        if (dsc.alarm[partition]) mqtt.publish(publishTopic, "triggered", true);  // Alarm tripped
-        else if (!dsc.armedChanged[partition]) mqtt.publish(publishTopic, "disarmed", true);
-      }
-      if (dsc.armedChanged[partition]) dsc.armedChanged[partition] = false;  // Resets the partition armed status flag
-
-      // Publishes fire alarm status
-      if (dsc.fireChanged[partition]) {
-        dsc.fireChanged[partition] = false;  // Resets the fire status flag
-        char publishTopic[strlen(mqttFireTopic) + 2];
-        appendPartition(mqttFireTopic, partition, publishTopic);  // Appends the mqttFireTopic with the partition number
-
-        if (dsc.fire[partition]) mqtt.publish(publishTopic, "1");  // Fire alarm tripped
-        else mqtt.publish(publishTopic, "0");                      // Fire alarm restored
-      }
-    }
-
-    // Publishes zones 1-64 status in a separate topic per zone
-    // Zone status is stored in the openZones[] and openZonesChanged[] arrays using 1 bit per zone, up to 64 zones:
-    //   openZones[0] and openZonesChanged[0]: Bit 0 = Zone 1 ... Bit 7 = Zone 8
-    //   openZones[1] and openZonesChanged[1]: Bit 0 = Zone 9 ... Bit 7 = Zone 16
-    //   ...
-    //   openZones[7] and openZonesChanged[7]: Bit 0 = Zone 57 ... Bit 7 = Zone 64
-    if (dsc.openZonesStatusChanged) {
-      dsc.openZonesStatusChanged = false;                           // Resets the open zones status flag
-      for (byte zoneGroup = 0; zoneGroup < dscZones; zoneGroup++) {
-        for (byte zoneBit = 0; zoneBit < 8; zoneBit++) {
-          if (bitRead(dsc.openZonesChanged[zoneGroup], zoneBit)) {  // Checks an individual open zone status flag
-            bitWrite(dsc.openZonesChanged[zoneGroup], zoneBit, 0);  // Resets the individual open zone status flag
-
-            // Appends the mqttZoneTopic with the zone number
-            char zonePublishTopic[strlen(mqttZoneTopic) + 3];
-            char zone[3];
-            strcpy(zonePublishTopic, mqttZoneTopic);
-            itoa(zoneBit + 1 + (zoneGroup * 8), zone, 10);
-            strcat(zonePublishTopic, zone);
-
-            if (bitRead(dsc.openZones[zoneGroup], zoneBit)) {
-              mqtt.publish(zonePublishTopic, "1", true);            // Zone open
-            }
-            else mqtt.publish(zonePublishTopic, "0", true);         // Zone closed
-          }
-        }
-      }
-    }
-
-    // Publishes PGM outputs 1-14 status in a separate topic per zone
-    // PGM status is stored in the pgmOutputs[] and pgmOutputsChanged[] arrays using 1 bit per PGM output:
-    //   pgmOutputs[0] and pgmOutputsChanged[0]: Bit 0 = PGM 1 ... Bit 7 = PGM 8
-    //   pgmOutputs[1] and pgmOutputsChanged[1]: Bit 0 = PGM 9 ... Bit 5 = PGM 14
-    if (dsc.pgmOutputsStatusChanged) {
-      dsc.pgmOutputsStatusChanged = false;  // Resets the PGM outputs status flag
-      for (byte pgmGroup = 0; pgmGroup < 2; pgmGroup++) {
-        for (byte pgmBit = 0; pgmBit < 8; pgmBit++) {
-          if (bitRead(dsc.pgmOutputsChanged[pgmGroup], pgmBit)) {  // Checks an individual PGM output status flag
-            bitWrite(dsc.pgmOutputsChanged[pgmGroup], pgmBit, 0);  // Resets the individual PGM output status flag
-
-            // Appends the mqttPgmTopic with the PGM number
-            char pgmPublishTopic[strlen(mqttPgmTopic) + 3];
-            char pgm[3];
-            strcpy(pgmPublishTopic, mqttPgmTopic);
-            itoa(pgmBit + 1 + (pgmGroup * 8), pgm, 10);
-            strcat(pgmPublishTopic, pgm);
-
-            if (bitRead(dsc.pgmOutputs[pgmGroup], pgmBit)) {
-              mqtt.publish(pgmPublishTopic, "1", true);           // PGM enabled
-            }
-            else mqtt.publish(pgmPublishTopic, "0", true);        // PGM disabled
-          }
-        }
-      }
-    }
-
-    mqtt.subscribe(mqttSubscribeTopic);
-  }
 
   dsc.loop();
 
@@ -994,6 +847,9 @@ bool mqttConnectWithCredentials(const char* username, const char* password) {
   
   Serial.print(F("MQTT...."));
   
+  // Ensure MQTT client is configured with current server/port
+  mqtt.setServer(currentMqttServer.c_str(), currentMqttPort);
+  
   // First, try to resolve the hostname if it's not already an IP address
   IPAddress mqttIP;
   bool isIPAddress = mqttIP.fromString(currentMqttServer);
@@ -1007,11 +863,9 @@ bool mqttConnectWithCredentials(const char* username, const char* password) {
       Serial.print(mqttIP);
       Serial.println();
       
-      // Create a new MQTT client with the resolved IP
-      PubSubClient mqttWithIP(mqttIP, currentMqttPort, ipClient);
-      if (mqttWithIP.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
-        // Copy the working client back to the global mqtt object
-        mqtt = mqttWithIP;
+      // Update MQTT client with resolved IP
+      mqtt.setServer(mqttIP, currentMqttPort);
+      if (mqtt.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
         Serial.print(F("connected via IP: "));
         Serial.println(mqttIP);
         dsc.resetStatus();
@@ -1032,9 +886,8 @@ bool mqttConnectWithCredentials(const char* username, const char* password) {
         Serial.print("Resolved with alternate DNS: ");
         Serial.println(mqttIP);
         
-        PubSubClient mqttWithIP(mqttIP, currentMqttPort, ipClient);
-        if (mqttWithIP.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
-          mqtt = mqttWithIP;
+        mqtt.setServer(mqttIP, currentMqttPort);
+        if (mqtt.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
           Serial.print(F("connected via alternate DNS: "));
           Serial.println(mqttIP);
           dsc.resetStatus();
@@ -1048,9 +901,8 @@ bool mqttConnectWithCredentials(const char* username, const char* password) {
   }
   
   // Fallback to original connection method (works if mqttServer is already an IP)
-  PubSubClient mqttDirect(currentMqttServer.c_str(), currentMqttPort, ipClient);
-  if (mqttDirect.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
-    mqtt = mqttDirect;
+  mqtt.setServer(currentMqttServer.c_str(), currentMqttPort);
+  if (mqtt.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
     Serial.print(F("connected: "));
     Serial.println(currentMqttServer);
     dsc.resetStatus();
