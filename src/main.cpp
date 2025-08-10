@@ -705,6 +705,24 @@ bool connectToEthernet() {
   }
   
   if (ETH.linkUp()) {
+    // Wait for valid IP address assignment when using DHCP
+    if (ipType != "static") {
+      Serial.print(" link up, waiting for DHCP");
+      int dhcpAttempts = 0;
+      const int maxDhcpAttempts = 40; // Additional 20 seconds for DHCP
+      
+      while (ETH.localIP() == IPAddress(0, 0, 0, 0) && dhcpAttempts < maxDhcpAttempts) {
+        delay(500);
+        Serial.print(".");
+        dhcpAttempts++;
+      }
+      
+      if (ETH.localIP() == IPAddress(0, 0, 0, 0)) {
+        Serial.println(" DHCP failed!");
+        return false;
+      }
+    }
+    
     Serial.print(" connected! IP: ");
     Serial.println(ETH.localIP());
     return true;
