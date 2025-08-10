@@ -1,0 +1,129 @@
+# https://www.home-assistant.io/integrations/alarm_control_panel.mqtt/
+  alarm_control_panel:
+    - name: "DSC 1500 Alarm Panel"
+      unique_id: dscPartition1
+      state_topic: "dsc/Get/Partition1"
+      code: REMOTE_CODE
+      command_template: >
+        {% if action == "1D" %}
+          1!{{ code }}
+        {% else %}
+          {{ action }}
+        {% endif %}
+      payload_disarm: "1D"
+      payload_arm_home: "1S"
+      payload_arm_away: "1A"
+      payload_arm_night: "1N"
+      availability_topic: "dsc/Status"
+      command_topic: "dsc/Set"
+      supported_features:
+        - arm_home
+        - arm_away
+        - arm_night
+      code_arm_required: true
+      code_disarm_required: true
+      code_trigger_required: true
+
+
+  # https://www.home-assistant.io/integrations/sensor.mqtt/
+  sensor:
+    - name: "Security Partition 1"
+      unique_id: dscPartitionMessage1
+      state_topic: "dsc/Get/Partition1/Message"
+      icon: "mdi:shield"
+      availability_topic: "dsc/Status"
+
+  # https://www.home-assistant.io/integrations/binary_sensor.mqtt/
+  binary_sensor:
+    - name: "Security Trouble"
+      unique_id: dscTrouble
+      state_topic: "dsc/Get/Trouble"
+      device_class: "problem"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "Downstairs Smoke Alarm"
+      unique_id: dscFire1
+      state_topic: "dsc/Get/Fire1"
+      device_class: "smoke"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "Back Door"
+      unique_id: dscZone1
+      state_topic: "dsc/Get/Zone1"
+      device_class: "door"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "Front Door"
+      unique_id: dscZone2
+      state_topic: "dsc/Get/Zone2"
+      device_class: "door"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "Upper Patio Door"
+      unique_id: dscZone3
+      state_topic: "dsc/Get/Zone3"
+      device_class: "door"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "Downstairs Motion"
+      unique_id: dscZone4
+      state_topic: "dsc/Get/Zone4"
+      device_class: "motion"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "Kitchen Glass Break"
+      unique_id: dscZone5
+      state_topic: "dsc/Get/Zone5"
+      device_class: "tamper"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "PGM 1"
+      unique_id: dscPGM1
+      state_topic: "dsc/Get/PGM1"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+    - name: "PGM 8"
+      unique_id: dscPGM8
+      state_topic: "dsc/Get/PGM8"
+      payload_on: "1"
+      payload_off: "0"
+      availability_topic: "dsc/Status"
+
+  # https://www.home-assistant.io/integrations/button.mqtt/
+  button:
+    - name: "Fire Alarm"
+      unique_id: dscFire
+      command_topic: "dsc/Set"
+      payload_press: "f"
+      icon: "mdi:fire"
+      availability_topic: "dsc/Status"
+
+    - name: "Aux Alarm"
+      unique_id: dscAux
+      command_topic: "dsc/Set"
+      payload_press: "a"
+      icon: "mdi:hospital-box"
+      availability_topic: "dsc/Status"
+
+    - name: "Panic Alarm"
+      unique_id: dscPanic
+      command_topic: "dsc/Set"
+      payload_press: "p"
+      icon: "mdi:police-badge"
+      availability_topic: "dsc/Status"
