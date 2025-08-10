@@ -521,54 +521,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     dsc.write('n');                             // Virtual keypad arm away
   }
 
-  // Handle disarm command with access code format (1!XXXX)
-  if (disarmWithAccessCode && (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    
-    // Send the extracted access code directly
-    Serial.print("DISARM WITH EXTRACTED CODE: Partition ");
-    Serial.print(partition + 1);
-    Serial.print(" - Armed: ");
-    Serial.print(dsc.armed[partition]);
-    Serial.print(", ExitDelay: ");
-    Serial.print(dsc.exitDelay[partition]);
-    Serial.print(", Alarm: ");
-    Serial.print(dsc.alarm[partition]);
-    Serial.print(" - Sending access code: ");
-    Serial.println(extractedAccessCode);
-    
-    #ifdef dscClassicSeries
-    // For DSC Classic, send the access code directly
-    dsc.write(extractedAccessCode);
-    #else
-    // For regular DSC, send access code directly
-    dsc.write(extractedAccessCode);
-    #endif
-  }
-  // Disarm - Send access code when system is armed, in exit delay, or alarm
+
   else if (payload[payloadIndex] == 'D' && (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
     dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    
-    // Add debug output to serial console
-    Serial.print("DISARM: Partition ");
-    Serial.print(partition + 1);
-    Serial.print(" - Armed: ");
-    Serial.print(dsc.armed[partition]);
-    Serial.print(", ExitDelay: ");
-    Serial.print(dsc.exitDelay[partition]);
-    Serial.print(", Alarm: ");
-    Serial.print(dsc.alarm[partition]);
-    
-    #ifdef dscClassicSeries
-    // For DSC Classic, send the disarm keypad command which will automatically send the access code
-    Serial.println(" - Sending disarm command 'D' (Classic)");
-    dsc.write('D');
-    #else
-    // For regular DSC, send access code directly
-    Serial.print(" - Sending access code: ");
-    Serial.println(accessCode);
     dsc.write(accessCode);
-    #endif
   }
 }
 
