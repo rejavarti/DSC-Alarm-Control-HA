@@ -207,6 +207,9 @@ entity: alarm_control_panel.security_partition_1
 #include <PubSubClient.h>
 #include <WebServer.h>
 #include <Preferences.h>
+#include <WiFiGeneric.h>
+#include <nvs_flash.h>
+#include <esp_err.h>
 #include <dscKeybusInterface.h>
 
 // Settings
@@ -259,11 +262,46 @@ String storedPassword = "";
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void mqttHandle();
 bool mqttConnect();
+bool mqttConnectWithDNSFallback();
+void configureDNS();
+void initializeNVSWithFallback();
 void appendPartition(const char* sourceTopic, byte sourceNumber, char* publishTopic);
 void publishMessage(const char* sourceTopic, byte partition);
 
 
 // WiFi Manager functions
+void configureDNS() {
+  // Configure primary and secondary DNS servers for better reliability
+  IPAddress primaryDNS(8, 8, 8, 8);     // Google DNS
+  IPAddress secondaryDNS(1, 1, 1, 1);   // Cloudflare DNS
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, primaryDNS, secondaryDNS);
+  
+  Serial.println("DNS servers configured:");
+  Serial.print("  Primary DNS: ");
+  Serial.println(primaryDNS);
+  Serial.print("  Secondary DNS: ");
+  Serial.println(secondaryDNS);
+}
+
+void initializeNVSWithFallback() {
+  // Try to initialize NVS with error handling
+  esp_err_t err = nvs_flash_init();
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    // NVS partition was truncated and needs to be erased
+    Serial.println("NVS partition needs to be erased, attempting to fix...");
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    err = nvs_flash_init();
+  }
+  
+  if (err != ESP_OK) {
+    Serial.print("Warning: NVS initialization failed with error: ");
+    Serial.println(esp_err_to_name(err));
+    Serial.println("WiFi credentials will not persist between reboots");
+  } else {
+    Serial.println("NVS initialized successfully");
+  }
+}
+
 void startConfigMode() {
   configMode = true;
   Serial.println("Starting WiFi configuration mode...");
@@ -347,6 +385,9 @@ bool connectToWiFi(const char* ssid, const char* password) {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.print(" connected! IP: ");
     Serial.println(WiFi.localIP());
+    
+    // Configure DNS servers after successful WiFi connection
+    configureDNS();
     return true;
   } else {
     Serial.println(" failed!");
@@ -361,6 +402,9 @@ void setup() {
   Serial.println();
 
   Serial.println("DSC Keybus Interface - WiFi Manager Enabled");
+  
+  // Initialize NVS with proper error handling
+  initializeNVSWithFallback();
   
   // Try to load saved WiFi credentials
   bool hasStoredCredentials = loadWiFiCredentials();
@@ -780,18 +824,81 @@ void mqttHandle() {
 }
 
 
-bool mqttConnect() {
+bool mqttConnectWithDNSFallback() {
   Serial.print(F("MQTT...."));
+  
+  // First, try to resolve the hostname if it's not already an IP address
+  IPAddress mqttIP;
+  bool isIPAddress = mqttIP.fromString(mqttServer);
+  
+  if (!isIPAddress && strlen(mqttServer) > 0) {
+    Serial.print("resolving hostname: ");
+    Serial.print(mqttServer);
+    Serial.print(" -> ");
+    
+    if (WiFi.hostByName(mqttServer, mqttIP)) {
+      Serial.print(mqttIP);
+      Serial.println();
+      
+      // Create a new MQTT client with the resolved IP
+      PubSubClient mqttWithIP(mqttIP, mqttPort, ipClient);
+      if (mqttWithIP.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+        // Copy the working client back to the global mqtt object
+        mqtt = mqttWithIP;
+        Serial.print(F("connected via IP: "));
+        Serial.println(mqttIP);
+        dsc.resetStatus();
+        return true;
+      }
+    } else {
+      Serial.println("DNS resolution failed!");
+      
+      // Try with different DNS servers
+      Serial.println("Retrying with alternate DNS configuration...");
+      IPAddress alternateDNS1(1, 1, 1, 1);     // Cloudflare
+      IPAddress alternateDNS2(8, 8, 4, 4);     // Google alternate
+      WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, alternateDNS1, alternateDNS2);
+      
+      delay(1000); // Give time for DNS change to take effect
+      
+      if (WiFi.hostByName(mqttServer, mqttIP)) {
+        Serial.print("Resolved with alternate DNS: ");
+        Serial.println(mqttIP);
+        
+        PubSubClient mqttWithIP(mqttIP, mqttPort, ipClient);
+        if (mqttWithIP.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+          mqtt = mqttWithIP;
+          Serial.print(F("connected via alternate DNS: "));
+          Serial.println(mqttIP);
+          dsc.resetStatus();
+          return true;
+        }
+      }
+      
+      // Restore original DNS configuration
+      configureDNS();
+    }
+  }
+  
+  // Fallback to original connection method (works if mqttServer is already an IP)
   if (mqtt.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
     Serial.print(F("connected: "));
     Serial.println(mqttServer);
-    dsc.resetStatus();  // Resets the state of all status components as changed to get the current status
+    dsc.resetStatus();
+    return true;
   }
-  else {
-    Serial.print(F("connection error: "));
-    Serial.println(mqttServer);
+  
+  Serial.print(F("connection error: "));
+  Serial.println(mqttServer);
+  if (strlen(mqttServer) == 0) {
+    Serial.println("ERROR: MQTT server not configured! Please set mqttServer in the sketch.");
   }
-  return mqtt.connected();
+  
+  return false;
+}
+
+bool mqttConnect() {
+  return mqttConnectWithDNSFallback();
 }
 
 
