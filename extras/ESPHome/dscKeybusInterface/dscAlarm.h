@@ -270,6 +270,12 @@ bool isInt(std::string s, int base){
 				dsc.exitDelayChanged[partition] = false;  // Resets the exit delay status flag
 				if (dsc.exitDelay[partition]) partitionStatusChangeCallback(partition+1,STATUS_PENDING );  
 				else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) partitionStatusChangeCallback(partition+1,STATUS_OFF );
+				else if (!dsc.exitDelay[partition] && dsc.armed[partition]) {
+					// Publish armed status when exiting delay and transitioning to armed state
+					if ((dsc.armedAway[partition] || dsc.armedStay[partition] )&& dsc.noEntryDelay[partition]) partitionStatusChangeCallback(partition+1,STATUS_NIGHT);
+					else if (dsc.armedStay[partition]) partitionStatusChangeCallback(partition+1,STATUS_STAY );
+					else partitionStatusChangeCallback(partition+1,STATUS_ARM);
+				}
 			}
 			
 			// Publishes ready status

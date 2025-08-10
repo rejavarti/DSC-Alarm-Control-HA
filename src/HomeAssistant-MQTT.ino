@@ -339,6 +339,13 @@ void loop() {
 
         if (dsc.exitDelay[partition]) mqtt.publish(publishTopic, "pending", true);  // Publish as a retained message
         else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) mqtt.publish(publishTopic, "disarmed", true);
+        else if (!dsc.exitDelay[partition] && dsc.armed[partition]) {
+          // Publish armed status when exiting delay and transitioning to armed state
+          if (dsc.armedAway[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
+          else if (dsc.armedAway[partition]) mqtt.publish(publishTopic, "armed_away", true);
+          else if (dsc.armedStay[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
+          else if (dsc.armedStay[partition]) mqtt.publish(publishTopic, "armed_home", true);
+        }
       }
 
       // Publishes alarm status
