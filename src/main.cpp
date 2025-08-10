@@ -204,6 +204,7 @@ entity: alarm_control_panel.security_partition_1
 //#define dscClassicSeries
 
 #include <WiFi.h>
+#include <ETH.h>
 #include <PubSubClient.h>
 #include <WebServer.h>
 #include <Preferences.h>
@@ -217,6 +218,14 @@ String mqttServer = "";      // MQTT server domain name or IP address
 int    mqttPort = 1883;      // MQTT server port
 String mqttUsername = "";    // Optional, leave blank if not required
 String mqttPassword = "";    // Optional, leave blank if not required
+
+// Network configuration
+String networkType = "wifi";   // "wifi" or "ethernet"
+String ipType = "dhcp";        // "dhcp" or "static"
+String staticIP = "";
+String staticGateway = "";
+String staticSubnet = "";
+String staticDNS = "";
 
 // Pin configuration - Default values, will be overridden by stored configuration
 int clockPin = 18;  // dscClockPin
@@ -267,6 +276,10 @@ void publishMessage(const char* sourceTopic, byte partition);
 void loadFullConfiguration();
 void saveFullConfiguration();
 void startConfigMode();
+bool connectToNetwork();
+bool connectToWiFi(String ssid, String password);
+bool connectToEthernet();
+void configureStaticIP();
 
 
 // Configuration management functions
@@ -276,6 +289,14 @@ void loadFullConfiguration() {
   // Load WiFi settings  
   wifiSSID = preferences.getString("ssid", "");
   wifiPassword = preferences.getString("password", "");
+  
+  // Load Network configuration
+  networkType = preferences.getString("networkType", "wifi");
+  ipType = preferences.getString("ipType", "dhcp");
+  staticIP = preferences.getString("staticIP", "");
+  staticGateway = preferences.getString("staticGW", "");
+  staticSubnet = preferences.getString("staticSN", "");
+  staticDNS = preferences.getString("staticDNS", "");
   
   // Load MQTT settings
   mqttServer = preferences.getString("mqttServer", "");
@@ -303,6 +324,14 @@ void saveFullConfiguration() {
   // Save WiFi settings
   preferences.putString("ssid", wifiSSID);
   preferences.putString("password", wifiPassword);
+  
+  // Save Network configuration
+  preferences.putString("networkType", networkType);
+  preferences.putString("ipType", ipType);
+  preferences.putString("staticIP", staticIP);
+  preferences.putString("staticGW", staticGateway);
+  preferences.putString("staticSN", staticSubnet);
+  preferences.putString("staticDNS", staticDNS);
   
   // Save MQTT settings  
   preferences.putString("mqttServer", mqttServer);
@@ -359,6 +388,10 @@ void startConfigMode() {
     html += "input[type=submit]:hover{background:#45a049}";
     html += ".info{background:#e7f3ff;border:1px solid #b3d9ff;padding:15px;border-radius:4px;margin:20px 0}";
     html += ".current-value{color:#666;font-size:0.9em;margin-top:5px}";
+    html += "select{width:100%;padding:12px;margin:8px 0;border:2px solid #ddd;border-radius:4px;box-sizing:border-box}";
+    html += "select:focus{border-color:#4CAF50;outline:none}";
+    html += ".static-fields{margin-top:10px;padding:10px;background:#f8f8f8;border-radius:4px}";
+    html += ".hidden{display:none}";
     html += "</style></head><body>";
     
     html += "<h1>DSC Alarm System Configuration</h1>";
@@ -367,14 +400,58 @@ void startConfigMode() {
     
     html += "<form method='POST' action='/save'>";
     
-    // WiFi Configuration Section
+    // Network Configuration Section
     html += "<div class='config-section'>";
-    html += "<h2>WiFi Network Settings</h2>";
+    html += "<h2>Network Configuration</h2>";
+    
+    // Network Type Selection
+    html += "<label for='networkType'>Network Type: *</label>";
+    html += "<select id='networkType' name='networkType' onchange='toggleNetworkSettings()' required>";
+    html += "<option value='wifi'";
+    if (networkType == "wifi") html += " selected";
+    html += ">WiFi</option>";
+    html += "<option value='ethernet'";
+    if (networkType == "ethernet") html += " selected";
+    html += ">Ethernet</option>";
+    html += "</select>";
+    html += "<div class='current-value'>Current: " + networkType + "</div>";
+    
+    // IP Configuration Type
+    html += "<label for='ipType'>IP Configuration: *</label>";
+    html += "<select id='ipType' name='ipType' onchange='toggleStaticFields()' required>";
+    html += "<option value='dhcp'";
+    if (ipType == "dhcp") html += " selected";
+    html += ">DHCP (Automatic)</option>";
+    html += "<option value='static'";
+    if (ipType == "static") html += " selected";
+    html += ">Static IP</option>";
+    html += "</select>";
+    html += "<div class='current-value'>Current: " + ipType + "</div>";
+    
+    // WiFi Settings (shown only when WiFi is selected)
+    html += "<div id='wifiSettings' class='";
+    if (networkType != "wifi") html += "hidden";
+    html += "'>";
     html += "<label for='ssid'>WiFi Network Name (SSID): *</label>";
-    html += "<input type='text' id='ssid' name='ssid' placeholder='Enter WiFi SSID' value='" + wifiSSID + "' required>";
+    html += "<input type='text' id='ssid' name='ssid' placeholder='Enter WiFi SSID' value='" + wifiSSID + "'>";
     html += "<div class='current-value'>Current: " + (wifiSSID.length() > 0 ? wifiSSID : "Not configured") + "</div>";
     html += "<label for='password'>WiFi Password: *</label>";
-    html += "<input type='password' id='password' name='password' placeholder='Enter WiFi Password' value='" + wifiPassword + "' required>";
+    html += "<input type='password' id='password' name='password' placeholder='Enter WiFi Password' value='" + wifiPassword + "'>";
+    html += "</div>";
+    
+    // Static IP Settings (shown only when Static IP is selected)
+    html += "<div id='staticSettings' class='static-fields ";
+    if (ipType != "static") html += "hidden";
+    html += "'>";
+    html += "<label for='staticIP'>Static IP Address:</label>";
+    html += "<input type='text' id='staticIP' name='staticIP' placeholder='192.168.1.100' value='" + staticIP + "'>";
+    html += "<label for='staticGateway'>Gateway:</label>";
+    html += "<input type='text' id='staticGateway' name='staticGateway' placeholder='192.168.1.1' value='" + staticGateway + "'>";
+    html += "<label for='staticSubnet'>Subnet Mask:</label>";
+    html += "<input type='text' id='staticSubnet' name='staticSubnet' placeholder='255.255.255.0' value='" + staticSubnet + "'>";
+    html += "<label for='staticDNS'>DNS Server:</label>";
+    html += "<input type='text' id='staticDNS' name='staticDNS' placeholder='8.8.8.8' value='" + staticDNS + "'>";
+    html += "</div>";
     html += "</div>";
     
     // MQTT Configuration Section  
@@ -422,14 +499,51 @@ void startConfigMode() {
     html += "<div class='info'><strong>After saving:</strong> The device will restart and attempt to connect with the new settings. ";
     html += "If connection fails, this configuration portal will restart automatically.</div>";
     
+    // Add JavaScript for dynamic form behavior
+    html += "<script>";
+    html += "function toggleNetworkSettings() {";
+    html += "  var networkType = document.getElementById('networkType').value;";
+    html += "  var wifiSettings = document.getElementById('wifiSettings');";
+    html += "  if (networkType === 'wifi') {";
+    html += "    wifiSettings.classList.remove('hidden');";
+    html += "    document.getElementById('ssid').required = true;";
+    html += "    document.getElementById('password').required = true;";
+    html += "  } else {";
+    html += "    wifiSettings.classList.add('hidden');";
+    html += "    document.getElementById('ssid').required = false;";
+    html += "    document.getElementById('password').required = false;";
+    html += "  }";
+    html += "}";
+    html += "function toggleStaticFields() {";
+    html += "  var ipType = document.getElementById('ipType').value;";
+    html += "  var staticSettings = document.getElementById('staticSettings');";
+    html += "  if (ipType === 'static') {";
+    html += "    staticSettings.classList.remove('hidden');";
+    html += "  } else {";
+    html += "    staticSettings.classList.add('hidden');";
+    html += "  }";
+    html += "}";
+    html += "// Initialize form state on load";
+    html += "document.addEventListener('DOMContentLoaded', function() {";
+    html += "  toggleNetworkSettings();";
+    html += "  toggleStaticFields();";
+    html += "});";
+    html += "</script>";
+    
     html += "</body></html>";
     configServer.send(200, "text/html", html);
   });
   
   configServer.on("/save", HTTP_POST, []() {
     // Get all parameters from the form
+    String newNetworkType = configServer.arg("networkType");
+    String newIpType = configServer.arg("ipType");
     String newSSID = configServer.arg("ssid");
     String newPassword = configServer.arg("password");
+    String newStaticIP = configServer.arg("staticIP");
+    String newStaticGateway = configServer.arg("staticGateway");
+    String newStaticSubnet = configServer.arg("staticSubnet");
+    String newStaticDNS = configServer.arg("staticDNS");
     String newMqttServer = configServer.arg("mqttServer");
     String newMqttPort = configServer.arg("mqttPort");
     String newMqttUsername = configServer.arg("mqttUsername");
@@ -441,11 +555,27 @@ void startConfigMode() {
     String newPc16Pin = configServer.arg("pc16Pin");
     
     // Validate required fields
-    if (newSSID.length() == 0 || newMqttServer.length() == 0 || newAccessCode.length() == 0) {
+    bool validConfig = true;
+    String errorMsg = "";
+    
+    if (newMqttServer.length() == 0) {
+      validConfig = false;
+      errorMsg += "MQTT Server is required. ";
+    }
+    if (newAccessCode.length() == 0) {
+      validConfig = false;
+      errorMsg += "Access Code is required. ";
+    }
+    if (newNetworkType == "wifi" && newSSID.length() == 0) {
+      validConfig = false;
+      errorMsg += "WiFi SSID is required when using WiFi. ";
+    }
+    
+    if (!validConfig) {
       String html = "<!DOCTYPE html><html><head><title>Configuration Error</title>";
       html += "<style>body{font-family:Arial,sans-serif;max-width:600px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
       html += "<h2>Configuration Error</h2>";
-      html += "<p>WiFi SSID, MQTT Server, and Access Code are required fields.</p>";
+      html += "<p>" + errorMsg + "</p>";
       html += "<p><a href='/'>Go back and try again</a></p>";
       html += "</body></html>";
       configServer.send(400, "text/html", html);
@@ -453,8 +583,14 @@ void startConfigMode() {
     }
     
     // Update configuration variables
+    networkType = newNetworkType;
+    ipType = newIpType;
     wifiSSID = newSSID;
     wifiPassword = newPassword;
+    staticIP = newStaticIP;
+    staticGateway = newStaticGateway;
+    staticSubnet = newStaticSubnet;
+    staticDNS = newStaticDNS;
     mqttServer = newMqttServer;
     if (newMqttPort.length() > 0) mqttPort = newMqttPort.toInt();
     mqttUsername = newMqttUsername;
@@ -494,6 +630,12 @@ bool loadWiFiCredentials() {
 
 bool connectToWiFi(String ssid, String password) {
   WiFi.mode(WIFI_STA);
+  
+  // Configure static IP if needed
+  if (ipType == "static") {
+    configureStaticIP();
+  }
+  
   WiFi.begin(ssid.c_str(), password.c_str());
   
   Serial.print("Connecting to WiFi");
@@ -516,6 +658,77 @@ bool connectToWiFi(String ssid, String password) {
   }
 }
 
+// Network connection functions
+void configureStaticIP() {
+  if (ipType == "static" && staticIP.length() > 0) {
+    IPAddress ip, gateway, subnet, dns;
+    
+    if (ip.fromString(staticIP) && 
+        gateway.fromString(staticGateway.length() > 0 ? staticGateway : "192.168.1.1") &&
+        subnet.fromString(staticSubnet.length() > 0 ? staticSubnet : "255.255.255.0")) {
+      
+      IPAddress dns1 = dns.fromString(staticDNS.length() > 0 ? staticDNS : "8.8.8.8") ? dns : IPAddress(8, 8, 8, 8);
+      IPAddress dns2(8, 8, 4, 4); // Google secondary DNS
+      
+      if (networkType == "wifi") {
+        WiFi.config(ip, gateway, subnet, dns1, dns2);
+      } else if (networkType == "ethernet") {
+        ETH.config(ip, gateway, subnet, dns1, dns2);
+      }
+      
+      Serial.println("Static IP configuration applied:");
+      Serial.println("  IP: " + staticIP);
+      Serial.println("  Gateway: " + staticGateway);
+      Serial.println("  Subnet: " + staticSubnet);
+      Serial.println("  DNS: " + staticDNS);
+    }
+  }
+}
+
+bool connectToEthernet() {
+  Serial.print("Connecting to Ethernet");
+  
+  // Configure static IP if needed
+  if (ipType == "static") {
+    configureStaticIP();
+  }
+  
+  ETH.begin();
+  
+  int attempts = 0;
+  const int maxAttempts = 60; // 30 seconds with 500ms delay
+  
+  while (!ETH.linkUp() && attempts < maxAttempts) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+  }
+  
+  if (ETH.linkUp()) {
+    Serial.print(" connected! IP: ");
+    Serial.println(ETH.localIP());
+    return true;
+  } else {
+    Serial.println(" failed!");
+    return false;
+  }
+}
+
+bool connectToNetwork() {
+  if (networkType == "ethernet") {
+    Serial.println("Connecting via Ethernet...");
+    return connectToEthernet();
+  } else {
+    Serial.println("Connecting via WiFi...");
+    if (wifiSSID.length() > 0) {
+      return connectToWiFi(wifiSSID, wifiPassword);
+    } else {
+      Serial.println("WiFi SSID not configured");
+      return false;
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -527,18 +740,18 @@ void setup() {
   // Load all configuration from storage
   loadFullConfiguration();
   
-  // Try to connect to WiFi with stored or hardcoded credentials
-  bool wifiConnected = false;
+  // Try to connect to network with stored configuration
+  bool networkConnected = false;
   
-  // If we have stored credentials, try them
-  if (wifiSSID.length() > 0) {
-    Serial.println("Trying stored WiFi credentials...");
-    wifiConnected = connectToWiFi(wifiSSID, wifiPassword);
+  // Check if we have network configuration
+  if (networkType == "ethernet" || (networkType == "wifi" && wifiSSID.length() > 0)) {
+    Serial.println("Trying stored network credentials...");
+    networkConnected = connectToNetwork();
   }
   
   // If still no connection, start configuration mode
-  if (!wifiConnected) {
-    Serial.println("WiFi connection failed. Starting configuration portal...");
+  if (!networkConnected) {
+    Serial.println("Network connection failed. Starting configuration portal...");
     startConfigMode();
     return; // Exit setup, loop() will handle config mode
   }
@@ -592,13 +805,24 @@ void setup() {
     html += ".info{background:#e7f3ff;border:1px solid #b3d9ff;padding:15px;border-radius:4px;margin:20px 0}";
     html += ".current-value{color:#666;font-size:0.9em;margin-top:5px}";
     html += ".status-info{background:#f0f0f0;padding:15px;border-radius:4px;margin:20px 0}";
+    html += "select{width:100%;padding:12px;margin:8px 0;border:2px solid #ddd;border-radius:4px;box-sizing:border-box}";
+    html += "select:focus{border-color:#4CAF50;outline:none}";
+    html += ".static-fields{margin-top:10px;padding:10px;background:#f8f8f8;border-radius:4px}";
+    html += ".hidden{display:none}";
     html += "</style></head><body>";
     
     html += "<h1>DSC Alarm System Configuration</h1>";
     
     html += "<div class='status-info'>";
     html += "<strong>Current Status:</strong><br>";
-    html += "WiFi: Connected to " + WiFi.SSID() + " (" + WiFi.localIP().toString() + ")<br>";
+    if (networkType == "ethernet" && ETH.linkUp()) {
+      html += "Network: Ethernet connected (" + ETH.localIP().toString() + ")<br>";
+    } else if (networkType == "wifi" && WiFi.status() == WL_CONNECTED) {
+      html += "Network: WiFi connected to " + WiFi.SSID() + " (" + WiFi.localIP().toString() + ")<br>";
+    } else {
+      html += "Network: Disconnected<br>";
+    }
+    html += "IP Configuration: " + ipType + "<br>";
     html += "MQTT: " + (mqtt != nullptr && mqtt->connected() ? "Connected to " + mqttServer : "Disconnected") + "<br>";
     html += "DSC Interface: " + String(dsc != nullptr && dsc->keybusConnected ? "Connected" : "Disconnected");
     html += "</div>";
@@ -608,15 +832,59 @@ void setup() {
     
     html += "<form method='POST' action='/save-config'>";
     
-    // WiFi Configuration Section
+    // Network Configuration Section
     html += "<div class='config-section'>";
-    html += "<h2>WiFi Network Settings</h2>";
+    html += "<h2>Network Configuration</h2>";
+    
+    // Network Type Selection
+    html += "<label for='networkType'>Network Type:</label>";
+    html += "<select id='networkType' name='networkType' onchange='toggleNetworkSettings()'>";
+    html += "<option value='wifi'";
+    if (networkType == "wifi") html += " selected";
+    html += ">WiFi</option>";
+    html += "<option value='ethernet'";
+    if (networkType == "ethernet") html += " selected";
+    html += ">Ethernet</option>";
+    html += "</select>";
+    html += "<div class='current-value'>Current: " + networkType + "</div>";
+    
+    // IP Configuration Type
+    html += "<label for='ipType'>IP Configuration:</label>";
+    html += "<select id='ipType' name='ipType' onchange='toggleStaticFields()'>";
+    html += "<option value='dhcp'";
+    if (ipType == "dhcp") html += " selected";
+    html += ">DHCP (Automatic)</option>";
+    html += "<option value='static'";
+    if (ipType == "static") html += " selected";
+    html += ">Static IP</option>";
+    html += "</select>";
+    html += "<div class='current-value'>Current: " + ipType + "</div>";
+    
+    // WiFi Settings (shown only when WiFi is selected)
+    html += "<div id='wifiSettings' class='";
+    if (networkType != "wifi") html += "hidden";
+    html += "'>";
     html += "<label for='ssid'>WiFi Network Name (SSID):</label>";
     html += "<input type='text' id='ssid' name='ssid' placeholder='Enter WiFi SSID' value='" + wifiSSID + "'>";
     html += "<div class='current-value'>Current: " + wifiSSID + "</div>";
     html += "<label for='password'>WiFi Password:</label>";
     html += "<input type='password' id='password' name='password' placeholder='Enter WiFi Password'>";
     html += "<div class='current-value'>Leave blank to keep current password</div>";
+    html += "</div>";
+    
+    // Static IP Settings (shown only when Static IP is selected)
+    html += "<div id='staticSettings' class='static-fields ";
+    if (ipType != "static") html += "hidden";
+    html += "'>";
+    html += "<label for='staticIP'>Static IP Address:</label>";
+    html += "<input type='text' id='staticIP' name='staticIP' placeholder='192.168.1.100' value='" + staticIP + "'>";
+    html += "<label for='staticGateway'>Gateway:</label>";
+    html += "<input type='text' id='staticGateway' name='staticGateway' placeholder='192.168.1.1' value='" + staticGateway + "'>";
+    html += "<label for='staticSubnet'>Subnet Mask:</label>";
+    html += "<input type='text' id='staticSubnet' name='staticSubnet' placeholder='255.255.255.0' value='" + staticSubnet + "'>";
+    html += "<label for='staticDNS'>DNS Server:</label>";
+    html += "<input type='text' id='staticDNS' name='staticDNS' placeholder='8.8.8.8' value='" + staticDNS + "'>";
+    html += "</div>";
     html += "</div>";
     
     // MQTT Configuration Section  
@@ -664,6 +932,37 @@ void setup() {
     
     html += "<div class='info'><strong>After saving:</strong> The device will restart and apply the new configuration.</div>";
     
+    // Add JavaScript for dynamic form behavior
+    html += "<script>";
+    html += "function toggleNetworkSettings() {";
+    html += "  var networkType = document.getElementById('networkType').value;";
+    html += "  var wifiSettings = document.getElementById('wifiSettings');";
+    html += "  if (networkType === 'wifi') {";
+    html += "    wifiSettings.classList.remove('hidden');";
+    html += "    document.getElementById('ssid').required = true;";
+    html += "    document.getElementById('password').required = false;";
+    html += "  } else {";
+    html += "    wifiSettings.classList.add('hidden');";
+    html += "    document.getElementById('ssid').required = false;";
+    html += "    document.getElementById('password').required = false;";
+    html += "  }";
+    html += "}";
+    html += "function toggleStaticFields() {";
+    html += "  var ipType = document.getElementById('ipType').value;";
+    html += "  var staticSettings = document.getElementById('staticSettings');";
+    html += "  if (ipType === 'static') {";
+    html += "    staticSettings.classList.remove('hidden');";
+    html += "  } else {";
+    html += "    staticSettings.classList.add('hidden');";
+    html += "  }";
+    html += "}";
+    html += "// Initialize form state on load";
+    html += "document.addEventListener('DOMContentLoaded', function() {";
+    html += "  toggleNetworkSettings();";
+    html += "  toggleStaticFields();";
+    html += "});";
+    html += "</script>";
+    
     html += "</body></html>";
     configServer.send(200, "text/html", html);
   });
@@ -671,8 +970,14 @@ void setup() {
   // Add separate save handler for normal mode
   configServer.on("/save-config", HTTP_POST, []() {
     // Get all parameters from the form (same logic as AP mode)
+    String newNetworkType = configServer.arg("networkType");
+    String newIpType = configServer.arg("ipType");
     String newSSID = configServer.arg("ssid");
     String newPassword = configServer.arg("password");
+    String newStaticIP = configServer.arg("staticIP");
+    String newStaticGateway = configServer.arg("staticGateway");
+    String newStaticSubnet = configServer.arg("staticSubnet");
+    String newStaticDNS = configServer.arg("staticDNS");
     String newMqttServer = configServer.arg("mqttServer");
     String newMqttPort = configServer.arg("mqttPort");
     String newMqttUsername = configServer.arg("mqttUsername");
@@ -684,8 +989,14 @@ void setup() {
     String newPc16Pin = configServer.arg("pc16Pin");
     
     // Update configuration variables (only if values are provided)
+    if (newNetworkType.length() > 0) networkType = newNetworkType;
+    if (newIpType.length() > 0) ipType = newIpType;
     if (newSSID.length() > 0) wifiSSID = newSSID;
     if (newPassword.length() > 0) wifiPassword = newPassword;
+    if (newStaticIP.length() > 0 || configServer.hasArg("staticIP")) staticIP = newStaticIP;
+    if (newStaticGateway.length() > 0 || configServer.hasArg("staticGateway")) staticGateway = newStaticGateway;
+    if (newStaticSubnet.length() > 0 || configServer.hasArg("staticSubnet")) staticSubnet = newStaticSubnet;
+    if (newStaticDNS.length() > 0 || configServer.hasArg("staticDNS")) staticDNS = newStaticDNS;
     if (newMqttServer.length() > 0) mqttServer = newMqttServer;
     if (newMqttPort.length() > 0) mqttPort = newMqttPort.toInt();
     if (newMqttUsername.length() > 0 || configServer.hasArg("mqttUsername")) mqttUsername = newMqttUsername;
@@ -712,7 +1023,8 @@ void setup() {
   });
   
   configServer.begin();
-  Serial.println("Configuration endpoint available at: http://" + WiFi.localIP().toString() + "/config");
+  String currentIP = (networkType == "ethernet" && ETH.linkUp()) ? ETH.localIP().toString() : WiFi.localIP().toString();
+  Serial.println("Configuration endpoint available at: http://" + currentIP + "/config");
 }
 
 
