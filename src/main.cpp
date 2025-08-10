@@ -842,8 +842,8 @@ void configureWebServer() {
   const char* headers[] = {"Accept", "Content-Length", "Content-Type", "Host", "User-Agent"};
   configServer.collectHeaders(headers, 5);
   
-  // Set server timeout (default is usually too short)
-  configServer.setTimeout(10000);  // 10 second timeout for requests
+  // Note: ESP32 WebServer doesn't support setTimeout() method
+  // The server uses its own internal timeout mechanisms
   
   // Add enhanced configuration endpoint with comprehensive debugging
   configServer.on("/config", HTTP_GET, []() {
