@@ -7,6 +7,7 @@ Validates the enhanced YAML configuration for common issues and best practices
 import yaml
 import re
 import sys
+import os
 
 class SecretLoader(yaml.SafeLoader):
     """Custom YAML loader that handles Home Assistant !secret tags"""
@@ -162,6 +163,52 @@ def validate_security_practices(config):
         print("✅ Security practices look good")
         return True
 
+def validate_yaml_structure(config):
+    """Check for common YAML structural mistakes that cause configuration errors"""
+    print("\n🔍 Validating YAML Structure...")
+    
+    structural_issues = []
+    
+    # Check if automation is nested under mqtt (common mistake)
+    if 'mqtt' in config and isinstance(config['mqtt'], dict):
+        if 'automation' in config['mqtt']:
+            structural_issues.append("'automation' section found nested under 'mqtt' - it should be at root level")
+        
+        # Check for nested mqtt section (duplicate mqtt key)
+        if 'mqtt' in config['mqtt']:
+            structural_issues.append("Duplicate 'mqtt' key found nested under 'mqtt' section")
+        
+        # Check for other root-level sections nested under mqtt
+        root_sections = ['alarm_control_panel', 'sensor', 'binary_sensor', 'button', 'switch', 'light']
+        for section in root_sections:
+            if section in config['mqtt']:
+                structural_issues.append(f"'{section}' section found nested under 'mqtt' - it should be at root level")
+    
+    # Check for proper top-level structure
+    expected_root_sections = ['mqtt', 'alarm_control_panel', 'sensor', 'binary_sensor']
+    found_sections = [section for section in expected_root_sections if section in config]
+    
+    if len(found_sections) < 2:
+        structural_issues.append("Configuration appears incomplete - ensure all sections are at root level")
+    
+    if structural_issues:
+        for issue in structural_issues:
+            print(f"❌ STRUCTURAL ERROR: {issue}")
+        print("\n💡 Common fix: Ensure all sections (mqtt, automation, alarm_control_panel, etc.) are at the root level")
+        print("   Example structure:")
+        print("   mqtt:")
+        print("     broker: ...")
+        print("   ")
+        print("   automation:")
+        print("     - alias: ...")
+        print("   ")
+        print("   alarm_control_panel:")
+        print("     - name: ...")
+        return False
+    else:
+        print("✅ YAML structure is properly organized")
+        return True
+
 def validate_diagnostic_coverage(config):
     """Check that diagnostic sensors are properly configured"""
     print("\n🔍 Validating Diagnostic Coverage...")
@@ -210,13 +257,28 @@ def main():
     print("🔍 DSC Alarm System Configuration Validator")
     print("=" * 50)
     
-    # Validate both YAML files
+    # Validate both YAML files and the example configuration
     original_config = validate_yaml_syntax('HA_Yaml.YAML')
     enhanced_config = validate_yaml_syntax('HA_Yaml_Enhanced.YAML')
+    example_config = validate_yaml_syntax('configuration.yaml.example')
+    
+    # Test with a problematic configuration if it exists
+    test_bad_config = None
+    if os.path.exists('/tmp/test_bad_config.yaml'):
+        print("\n🧪 Testing problematic configuration...")
+        test_bad_config = validate_yaml_syntax('/tmp/test_bad_config.yaml')
+        if test_bad_config:
+            print("📝 Demonstrating structural validation on test configuration:")
+            validate_yaml_structure(test_bad_config)
     
     if not enhanced_config:
         print("\n❌ Cannot proceed with enhanced configuration validation")
         return 1
+    
+    # Test for structural issues if example config exists
+    structural_check = True
+    if example_config:
+        structural_check = validate_yaml_structure(example_config)
     
     # Run validation checks on enhanced configuration
     checks = [
@@ -224,7 +286,8 @@ def main():
         validate_unique_ids(enhanced_config), 
         validate_device_consistency(enhanced_config),
         validate_security_practices(enhanced_config),
-        validate_diagnostic_coverage(enhanced_config)
+        validate_diagnostic_coverage(enhanced_config),
+        structural_check
     ]
     
     print("\n" + "=" * 50)
@@ -236,6 +299,10 @@ def main():
     if passed_checks == total_checks:
         print(f"✅ All {total_checks} validation checks passed!")
         print("\n🎉 Configuration is ready for production use")
+        print("\n💡 To fix MQTT configuration errors:")
+        print("   1. Use configuration.yaml.example as a template")
+        print("   2. Ensure all sections are at root level (not nested)")
+        print("   3. Check for duplicate 'mqtt' or misplaced 'automation' sections")
         return 0
     else:
         print(f"⚠️  {passed_checks}/{total_checks} validation checks passed")
