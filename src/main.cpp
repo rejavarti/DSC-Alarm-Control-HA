@@ -715,18 +715,34 @@ bool connectToEthernet() {
 }
 
 bool connectToNetwork() {
+  bool connected = false;
+  
   if (networkType == "ethernet") {
     Serial.println("Connecting via Ethernet...");
-    return connectToEthernet();
+    connected = connectToEthernet();
+    
+    // If Ethernet fails and WiFi is configured, try WiFi as fallback
+    if (!connected && wifiSSID.length() > 0) {
+      Serial.println("Ethernet connection failed, falling back to WiFi...");
+      connected = connectToWiFi(wifiSSID, wifiPassword);
+    }
   } else {
     Serial.println("Connecting via WiFi...");
     if (wifiSSID.length() > 0) {
-      return connectToWiFi(wifiSSID, wifiPassword);
+      connected = connectToWiFi(wifiSSID, wifiPassword);
     } else {
       Serial.println("WiFi SSID not configured");
-      return false;
+      connected = false;
+    }
+    
+    // If WiFi fails, try Ethernet as fallback
+    if (!connected) {
+      Serial.println("WiFi connection failed, falling back to Ethernet...");
+      connected = connectToEthernet();
     }
   }
+  
+  return connected;
 }
 
 void setup() {
