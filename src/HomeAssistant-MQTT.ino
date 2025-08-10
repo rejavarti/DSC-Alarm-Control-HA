@@ -125,7 +125,8 @@ entity: alarm_control_panel.security_partition_1
 
  *  The commands to set the alarm state are setup in Home Assistant with the partition number (1-8) as a
  *  prefix to the command, except to trigger the panic alarm:
- *    Partition 1 disarm: "1D"
+ *    Partition 1 disarm: "1D" (uses configured access code)
+ *    Partition 1 disarm with custom code: "1!7730" (uses specified access code)
  *    Partition 2 arm stay: "2S"
  *    Partition 2 arm away: "2A"
  *    Partition 1 arm night: "1N"
@@ -462,11 +463,32 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   byte partition = 0;
   byte payloadIndex = 0;
+  bool disarmWithAccessCode = false;
+  char extractedAccessCode[10] = "";  // Buffer for extracted access code
 
   // Checks if a partition number 1-8 has been sent and sets the second character as the payload
   if (payload[0] >= 0x31 && payload[0] <= 0x38) {
     partition = payload[0] - 49;
     payloadIndex = 1;
+    
+    // Check for "!XXXX" format indicating disarm with specific access code
+    if (length > 2 && payload[1] == '!') {
+      disarmWithAccessCode = true;
+      // Extract access code from payload starting at position 2
+      byte codeLength = 0;
+      for (byte i = 2; i < length && i < 11 && codeLength < 9; i++) {
+        if (payload[i] >= '0' && payload[i] <= '9') {
+          extractedAccessCode[codeLength++] = payload[i];
+        }
+      }
+      extractedAccessCode[codeLength] = '\0';  // Null terminate
+      
+      // Debug output
+      Serial.print("DISARM WITH CODE: Partition ");
+      Serial.print(partition + 1);
+      Serial.print(" - Access Code: ");
+      Serial.println(extractedAccessCode);
+    }
   }
 
   // Panic alarm
@@ -499,7 +521,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     dsc.write('n');                             // Virtual keypad arm away
   }
 
-  // Disarm
+
   else if (payload[payloadIndex] == 'D' && (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
     dsc.writePartition = partition + 1;         // Sets writes to the partition number
     dsc.write(accessCode);
