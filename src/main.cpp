@@ -209,14 +209,20 @@ entity: alarm_control_panel.security_partition_1
 #include <Preferences.h>
 #include <dscKeybusInterface.h>
 
-// Settings
-const char* wifiSSID = "";
-const char* wifiPassword = "";
-const char* accessCode = "";    // An access code is required to disarm/night arm and may be required to arm or enable command outputs based on panel configuration.
-const char* mqttServer = "";    // MQTT server domain name or IP address
-const int   mqttPort = 1883;    // MQTT server port
-const char* mqttUsername = "";  // Optional, leave blank if not required
-const char* mqttPassword = "";  // Optional, leave blank if not required
+// Settings - Default values, will be overridden by stored configuration
+String wifiSSID = "";
+String wifiPassword = "";
+String accessCode = "";      // An access code is required to disarm/night arm and may be required to arm or enable command outputs based on panel configuration.
+String mqttServer = "";      // MQTT server domain name or IP address
+int    mqttPort = 1883;      // MQTT server port
+String mqttUsername = "";    // Optional, leave blank if not required
+String mqttPassword = "";    // Optional, leave blank if not required
+
+// Pin configuration - Default values, will be overridden by stored configuration
+int clockPin = 18;  // dscClockPin
+int readPin = 19;   // dscReadPin  
+int writePin = 21;  // dscWritePin
+int pc16Pin = 17;   // dscPC16Pin
 
 // MQTT topics - match to Home Assistant's configuration.yaml
 const char* mqttClientName = "dscKeybusInterface";
@@ -231,29 +237,26 @@ const char* mqttBirthMessage = "online";
 const char* mqttLwtMessage = "offline";
 const char* mqttSubscribeTopic = "dsc/Set";            // Receives messages to write to the panel
 
+// Pin assignments will be configured from stored settings
 // Configures the Keybus interface with the specified pins - dscWritePin is optional, leaving it out disables the
 // virtual keypad.
-#define dscClockPin 18  // 4,13,16-39
-#define dscReadPin  19  // 4,13,16-39
-#define dscPC16Pin  17  // DSC Classic Series only, 4,13,16-39
-#define dscWritePin 21  // 4,13,16-33
+// Note: Actual pin assignments are loaded from configuration and set during setup()
 
-// Initialize components
+// Initialize components (will be reconfigured in setup() based on stored settings)
+// DSC interface will be initialized in setup() with configured pins
 #ifndef dscClassicSeries
-dscKeybusInterface dsc(dscClockPin, dscReadPin, dscWritePin);
+dscKeybusInterface* dsc = nullptr;
 #else
-dscClassicInterface dsc(dscClockPin, dscReadPin, dscPC16Pin, dscWritePin, accessCode);
+dscClassicInterface* dsc = nullptr;
 #endif
 WiFiClient ipClient;
-PubSubClient mqtt(mqttServer, mqttPort, ipClient);
+PubSubClient* mqtt = nullptr;
 unsigned long mqttPreviousTime;
 
 // WiFi Manager variables
 WebServer configServer(80);
 Preferences preferences;
 bool configMode = false;
-String storedSSID = "";
-String storedPassword = "";
 
 // Forward declarations
 void mqttCallback(char* topic, byte* payload, unsigned int length);
@@ -261,12 +264,77 @@ void mqttHandle();
 bool mqttConnect();
 void appendPartition(const char* sourceTopic, byte sourceNumber, char* publishTopic);
 void publishMessage(const char* sourceTopic, byte partition);
+void loadFullConfiguration();
+void saveFullConfiguration();
+void startConfigMode();
 
+
+// Configuration management functions
+void loadFullConfiguration() {
+  preferences.begin("config", true);
+  
+  // Load WiFi settings  
+  wifiSSID = preferences.getString("ssid", "");
+  wifiPassword = preferences.getString("password", "");
+  
+  // Load MQTT settings
+  mqttServer = preferences.getString("mqttServer", "");
+  mqttPort = preferences.getInt("mqttPort", 1883);
+  mqttUsername = preferences.getString("mqttUser", "");
+  mqttPassword = preferences.getString("mqttPass", "");
+  
+  // Load access code
+  accessCode = preferences.getString("accessCode", "");
+  
+  // Load pin assignments
+  clockPin = preferences.getInt("clockPin", 18);
+  readPin = preferences.getInt("readPin", 19);
+  writePin = preferences.getInt("writePin", 21);
+  pc16Pin = preferences.getInt("pc16Pin", 17);
+  
+  preferences.end();
+  
+  Serial.println("Configuration loaded from storage");
+}
+
+void saveFullConfiguration() {
+  preferences.begin("config", false);
+  
+  // Save WiFi settings
+  preferences.putString("ssid", wifiSSID);
+  preferences.putString("password", wifiPassword);
+  
+  // Save MQTT settings  
+  preferences.putString("mqttServer", mqttServer);
+  preferences.putInt("mqttPort", mqttPort);
+  preferences.putString("mqttUser", mqttUsername);
+  preferences.putString("mqttPass", mqttPassword);
+  
+  // Save access code
+  preferences.putString("accessCode", accessCode);
+  
+  // Save pin assignments
+  preferences.putInt("clockPin", clockPin);
+  preferences.putInt("readPin", readPin);
+  preferences.putInt("writePin", writePin);
+  preferences.putInt("pc16Pin", pc16Pin);
+  
+  preferences.end();
+  
+  Serial.println("Configuration saved to storage");
+}
+
+bool hasStoredConfiguration() {
+  preferences.begin("config", true);
+  bool hasConfig = preferences.getString("ssid", "").length() > 0;
+  preferences.end();
+  return hasConfig;
+}
 
 // WiFi Manager functions
 void startConfigMode() {
   configMode = true;
-  Serial.println("Starting WiFi configuration mode...");
+  Serial.println("Starting comprehensive configuration mode...");
   
   WiFi.mode(WIFI_AP);
   WiFi.softAP("DSC-Config", "12345678");
@@ -277,62 +345,156 @@ void startConfigMode() {
   Serial.println(WiFi.softAPIP());
   
   configServer.on("/", HTTP_GET, []() {
-    String html = "<!DOCTYPE html><html><head><title>DSC WiFi Configuration</title>";
-    html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px}";
-    html += "input[type=text],input[type=password]{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:4px}";
-    html += "input[type=submit]{background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%}";
-    html += "input[type=submit]:hover{background-color:#45a049}</style></head><body>";
-    html += "<h2>DSC WiFi Configuration</h2>";
+    String html = "<!DOCTYPE html><html><head><title>DSC Configuration Portal</title>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += "<style>";
+    html += "body{font-family:Arial,sans-serif;max-width:800px;margin:20px auto;padding:20px;background:#f5f5f5}";
+    html += ".config-section{background:white;padding:20px;margin:20px 0;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}";
+    html += "h1{color:#333;text-align:center;margin-bottom:30px}";
+    html += "h2{color:#555;border-bottom:2px solid #4CAF50;padding-bottom:10px}";
+    html += "label{display:block;margin-top:15px;font-weight:bold;color:#333}";
+    html += "input[type=text],input[type=password],input[type=number]{width:100%;padding:12px;margin:8px 0;border:2px solid #ddd;border-radius:4px;box-sizing:border-box}";
+    html += "input:focus{border-color:#4CAF50;outline:none}";
+    html += "input[type=submit]{background:#4CAF50;color:white;padding:15px 30px;border:none;border-radius:4px;cursor:pointer;width:100%;font-size:16px;margin-top:20px}";
+    html += "input[type=submit]:hover{background:#45a049}";
+    html += ".info{background:#e7f3ff;border:1px solid #b3d9ff;padding:15px;border-radius:4px;margin:20px 0}";
+    html += ".current-value{color:#666;font-size:0.9em;margin-top:5px}";
+    html += "</style></head><body>";
+    
+    html += "<h1>DSC Alarm System Configuration</h1>";
+    html += "<div class='info'><strong>Note:</strong> This portal configures your DSC alarm system interface. ";
+    html += "Fill in all required fields. Empty fields will keep existing values.</div>";
+    
     html += "<form method='POST' action='/save'>";
-    html += "<p>WiFi Network Name (SSID):</p>";
-    html += "<input type='text' name='ssid' placeholder='Enter WiFi SSID' required>";
-    html += "<p>WiFi Password:</p>";
-    html += "<input type='password' name='password' placeholder='Enter WiFi Password' required>";
-    html += "<br><br><input type='submit' value='Save and Connect'>";
-    html += "</form></body></html>";
+    
+    // WiFi Configuration Section
+    html += "<div class='config-section'>";
+    html += "<h2>WiFi Network Settings</h2>";
+    html += "<label for='ssid'>WiFi Network Name (SSID): *</label>";
+    html += "<input type='text' id='ssid' name='ssid' placeholder='Enter WiFi SSID' value='" + wifiSSID + "' required>";
+    html += "<div class='current-value'>Current: " + (wifiSSID.length() > 0 ? wifiSSID : "Not configured") + "</div>";
+    html += "<label for='password'>WiFi Password: *</label>";
+    html += "<input type='password' id='password' name='password' placeholder='Enter WiFi Password' value='" + wifiPassword + "' required>";
+    html += "</div>";
+    
+    // MQTT Configuration Section  
+    html += "<div class='config-section'>";
+    html += "<h2>MQTT Broker Settings</h2>";
+    html += "<label for='mqttServer'>MQTT Server/IP: *</label>";
+    html += "<input type='text' id='mqttServer' name='mqttServer' placeholder='mqtt.example.com or 192.168.1.100' value='" + mqttServer + "' required>";
+    html += "<div class='current-value'>Current: " + (mqttServer.length() > 0 ? mqttServer : "Not configured") + "</div>";
+    html += "<label for='mqttPort'>MQTT Port:</label>";
+    html += "<input type='number' id='mqttPort' name='mqttPort' placeholder='1883' value='" + String(mqttPort) + "' min='1' max='65535'>";
+    html += "<label for='mqttUsername'>MQTT Username (optional):</label>";
+    html += "<input type='text' id='mqttUsername' name='mqttUsername' placeholder='Leave blank if not required' value='" + mqttUsername + "'>";
+    html += "<label for='mqttPassword'>MQTT Password (optional):</label>";
+    html += "<input type='password' id='mqttPassword' name='mqttPassword' placeholder='Leave blank if not required' value='" + mqttPassword + "'>";
+    html += "</div>";
+    
+    // DSC System Configuration
+    html += "<div class='config-section'>";
+    html += "<h2>DSC System Settings</h2>";
+    html += "<label for='accessCode'>Access Code: *</label>";
+    html += "<input type='text' id='accessCode' name='accessCode' placeholder='Enter DSC access code' value='" + accessCode + "' required>";
+    html += "<div class='current-value'>Required for disarming and some arm operations</div>";
+    html += "</div>";
+    
+    // Pin Configuration Section
+    html += "<div class='config-section'>";
+    html += "<h2>ESP32 Pin Assignments</h2>";
+    html += "<label for='clockPin'>Clock Pin (DSC Yellow wire):</label>";
+    html += "<input type='number' id='clockPin' name='clockPin' placeholder='18' value='" + String(clockPin) + "' min='4' max='39'>";
+    html += "<div class='current-value'>Current: " + String(clockPin) + " (Default: 18)</div>";
+    html += "<label for='readPin'>Data Read Pin (DSC Green wire):</label>";
+    html += "<input type='number' id='readPin' name='readPin' placeholder='19' value='" + String(readPin) + "' min='4' max='39'>";
+    html += "<div class='current-value'>Current: " + String(readPin) + " (Default: 19)</div>";
+    html += "<label for='writePin'>Data Write Pin (Virtual Keypad):</label>";
+    html += "<input type='number' id='writePin' name='writePin' placeholder='21' value='" + String(writePin) + "' min='4' max='33'>";
+    html += "<div class='current-value'>Current: " + String(writePin) + " (Default: 21, set to 0 to disable virtual keypad)</div>";
+    html += "<label for='pc16Pin'>PC16 Pin (Classic Series only):</label>";
+    html += "<input type='number' id='pc16Pin' name='pc16Pin' placeholder='17' value='" + String(pc16Pin) + "' min='4' max='39'>";
+    html += "<div class='current-value'>Current: " + String(pc16Pin) + " (Default: 17, only used for DSC Classic series)</div>";
+    html += "</div>";
+    
+    html += "<input type='submit' value='Save Configuration and Restart'>";
+    html += "</form>";
+    
+    html += "<div class='info'><strong>After saving:</strong> The device will restart and attempt to connect with the new settings. ";
+    html += "If connection fails, this configuration portal will restart automatically.</div>";
+    
+    html += "</body></html>";
     configServer.send(200, "text/html", html);
   });
   
   configServer.on("/save", HTTP_POST, []() {
-    String ssid = configServer.arg("ssid");
-    String password = configServer.arg("password");
+    // Get all parameters from the form
+    String newSSID = configServer.arg("ssid");
+    String newPassword = configServer.arg("password");
+    String newMqttServer = configServer.arg("mqttServer");
+    String newMqttPort = configServer.arg("mqttPort");
+    String newMqttUsername = configServer.arg("mqttUsername");
+    String newMqttPassword = configServer.arg("mqttPassword");
+    String newAccessCode = configServer.arg("accessCode");
+    String newClockPin = configServer.arg("clockPin");
+    String newReadPin = configServer.arg("readPin");
+    String newWritePin = configServer.arg("writePin");
+    String newPc16Pin = configServer.arg("pc16Pin");
     
-    if (ssid.length() > 0) {
-      preferences.begin("wifi", false);
-      preferences.putString("ssid", ssid);
-      preferences.putString("password", password);
-      preferences.end();
-      
-      String html = "<!DOCTYPE html><html><head><title>DSC WiFi Configuration</title>";
-      html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
-      html += "<h2>Configuration Saved!</h2>";
-      html += "<p>WiFi credentials have been saved. The device will now restart and attempt to connect.</p>";
-      html += "<p>If connection fails, the configuration portal will restart automatically.</p>";
+    // Validate required fields
+    if (newSSID.length() == 0 || newMqttServer.length() == 0 || newAccessCode.length() == 0) {
+      String html = "<!DOCTYPE html><html><head><title>Configuration Error</title>";
+      html += "<style>body{font-family:Arial,sans-serif;max-width:600px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
+      html += "<h2>Configuration Error</h2>";
+      html += "<p>WiFi SSID, MQTT Server, and Access Code are required fields.</p>";
+      html += "<p><a href='/'>Go back and try again</a></p>";
       html += "</body></html>";
-      configServer.send(200, "text/html", html);
-      
-      delay(2000);
-      ESP.restart();
-    } else {
-      configServer.send(400, "text/plain", "Invalid SSID");
+      configServer.send(400, "text/html", html);
+      return;
     }
+    
+    // Update configuration variables
+    wifiSSID = newSSID;
+    wifiPassword = newPassword;
+    mqttServer = newMqttServer;
+    if (newMqttPort.length() > 0) mqttPort = newMqttPort.toInt();
+    mqttUsername = newMqttUsername;
+    mqttPassword = newMqttPassword;
+    accessCode = newAccessCode;
+    if (newClockPin.length() > 0) clockPin = newClockPin.toInt();
+    if (newReadPin.length() > 0) readPin = newReadPin.toInt();  
+    if (newWritePin.length() > 0) writePin = newWritePin.toInt();
+    if (newPc16Pin.length() > 0) pc16Pin = newPc16Pin.toInt();
+    
+    // Save all configuration
+    saveFullConfiguration();
+    
+    String html = "<!DOCTYPE html><html><head><title>DSC Configuration Saved</title>";
+    html += "<style>body{font-family:Arial,sans-serif;max-width:600px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
+    html += "<h2>Configuration Saved Successfully!</h2>";
+    html += "<p>All settings have been saved. The device will now restart and attempt to connect.</p>";
+    html += "<p><strong>WiFi:</strong> " + wifiSSID + "</p>";
+    html += "<p><strong>MQTT Server:</strong> " + mqttServer + ":" + String(mqttPort) + "</p>";
+    html += "<p><strong>DSC Pins:</strong> Clock=" + String(clockPin) + ", Read=" + String(readPin) + ", Write=" + String(writePin) + "</p>";
+    html += "<p>If connection fails, the configuration portal will restart automatically.</p>";
+    html += "</body></html>";
+    configServer.send(200, "text/html", html);
+    
+    delay(2000);
+    ESP.restart();
   });
   
   configServer.begin();
 }
 
 bool loadWiFiCredentials() {
-  preferences.begin("wifi", true);
-  storedSSID = preferences.getString("ssid", "");
-  storedPassword = preferences.getString("password", "");
-  preferences.end();
-  
-  return (storedSSID.length() > 0);
+  // This function is kept for compatibility but now uses the comprehensive config system
+  loadFullConfiguration();
+  return (wifiSSID.length() > 0);
 }
 
-bool connectToWiFi(const char* ssid, const char* password) {
+bool connectToWiFi(String ssid, String password) {
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFi.begin(ssid.c_str(), password.c_str());
   
   Serial.print("Connecting to WiFi");
   int attempts = 0;
@@ -360,31 +522,18 @@ void setup() {
   Serial.println();
   Serial.println();
 
-  Serial.println("DSC Keybus Interface - WiFi Manager Enabled");
+  Serial.println("DSC Keybus Interface - Comprehensive Configuration System");
   
-  // Try to load saved WiFi credentials
-  bool hasStoredCredentials = loadWiFiCredentials();
+  // Load all configuration from storage
+  loadFullConfiguration();
+  
+  // Try to connect to WiFi with stored or hardcoded credentials
   bool wifiConnected = false;
   
-  // If we have hardcoded credentials, try them first
-  if (strlen(wifiSSID) > 0 && strlen(wifiPassword) > 0) {
-    Serial.println("Trying hardcoded WiFi credentials...");
-    wifiConnected = connectToWiFi(wifiSSID, wifiPassword);
-    
-    // If successful, save these credentials for future use
-    if (wifiConnected) {
-      preferences.begin("wifi", false);
-      preferences.putString("ssid", wifiSSID);
-      preferences.putString("password", wifiPassword);
-      preferences.end();
-      Serial.println("Hardcoded credentials saved for future use");
-    }
-  }
-  
-  // If hardcoded credentials failed or don't exist, try stored credentials
-  if (!wifiConnected && hasStoredCredentials) {
+  // If we have stored credentials, try them
+  if (wifiSSID.length() > 0) {
     Serial.println("Trying stored WiFi credentials...");
-    wifiConnected = connectToWiFi(storedSSID.c_str(), storedPassword.c_str());
+    wifiConnected = connectToWiFi(wifiSSID, wifiPassword);
   }
   
   // If still no connection, start configuration mode
@@ -394,15 +543,176 @@ void setup() {
     return; // Exit setup, loop() will handle config mode
   }
 
-  // Only initialize MQTT and DSC if we have WiFi connection
-  mqtt.setCallback(mqttCallback);
+  // Initialize DSC interface with configured pins
+  Serial.println("Initializing DSC interface with configured pins...");
+  Serial.println("Pin configuration: Clock=" + String(clockPin) + ", Read=" + String(readPin) + 
+                 ", Write=" + String(writePin) + ", PC16=" + String(pc16Pin));
+  
+  #ifndef dscClassicSeries
+  if (writePin > 0) {
+    dsc = new dscKeybusInterface(clockPin, readPin, writePin);
+  } else {
+    dsc = new dscKeybusInterface(clockPin, readPin);
+  }
+  #else
+  if (writePin > 0) {
+    dsc = new dscClassicInterface(clockPin, readPin, pc16Pin, writePin, accessCode.c_str());
+  } else {
+    dsc = new dscClassicInterface(clockPin, readPin, pc16Pin, 255, accessCode.c_str());
+  }
+  #endif
+
+  // Initialize MQTT with configured settings
+  Serial.println("Initializing MQTT with server: " + mqttServer + ":" + String(mqttPort));
+  mqtt = new PubSubClient(ipClient);
+  mqtt->setServer(mqttServer.c_str(), mqttPort);
+  mqtt->setCallback(mqttCallback);
+  
   if (mqttConnect()) mqttPreviousTime = millis();
   else mqttPreviousTime = 0;
 
-  // Starts the Keybus interface and optionally specifies how to print data.
-  // begin() sets Serial by default and can accept a different stream: begin(Serial1), etc.
-  dsc.begin();
-  Serial.println(F("DSC Keybus Interface is online."));
+  // Start the DSC Keybus interface
+  dsc->begin();
+  Serial.println(F("DSC Keybus Interface is online with full configuration."));
+  
+  // Add configuration endpoint for normal operation (shows same form but without AP mode)
+  configServer.on("/config", HTTP_GET, []() {
+    String html = "<!DOCTYPE html><html><head><title>DSC Configuration Portal</title>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += "<style>";
+    html += "body{font-family:Arial,sans-serif;max-width:800px;margin:20px auto;padding:20px;background:#f5f5f5}";
+    html += ".config-section{background:white;padding:20px;margin:20px 0;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}";
+    html += "h1{color:#333;text-align:center;margin-bottom:30px}";
+    html += "h2{color:#555;border-bottom:2px solid #4CAF50;padding-bottom:10px}";
+    html += "label{display:block;margin-top:15px;font-weight:bold;color:#333}";
+    html += "input[type=text],input[type=password],input[type=number]{width:100%;padding:12px;margin:8px 0;border:2px solid #ddd;border-radius:4px;box-sizing:border-box}";
+    html += "input:focus{border-color:#4CAF50;outline:none}";
+    html += "input[type=submit]{background:#4CAF50;color:white;padding:15px 30px;border:none;border-radius:4px;cursor:pointer;width:100%;font-size:16px;margin-top:20px}";
+    html += "input[type=submit]:hover{background:#45a049}";
+    html += ".info{background:#e7f3ff;border:1px solid #b3d9ff;padding:15px;border-radius:4px;margin:20px 0}";
+    html += ".current-value{color:#666;font-size:0.9em;margin-top:5px}";
+    html += ".status-info{background:#f0f0f0;padding:15px;border-radius:4px;margin:20px 0}";
+    html += "</style></head><body>";
+    
+    html += "<h1>DSC Alarm System Configuration</h1>";
+    
+    html += "<div class='status-info'>";
+    html += "<strong>Current Status:</strong><br>";
+    html += "WiFi: Connected to " + WiFi.SSID() + " (" + WiFi.localIP().toString() + ")<br>";
+    html += "MQTT: " + (mqtt != nullptr && mqtt->connected() ? "Connected to " + mqttServer : "Disconnected") + "<br>";
+    html += "DSC Interface: " + String(dsc != nullptr && dsc->keybusConnected ? "Connected" : "Disconnected");
+    html += "</div>";
+    
+    html += "<div class='info'><strong>Note:</strong> This portal allows you to reconfigure your DSC system. ";
+    html += "Changes will take effect after restart. Empty fields will keep existing values.</div>";
+    
+    html += "<form method='POST' action='/save-config'>";
+    
+    // WiFi Configuration Section
+    html += "<div class='config-section'>";
+    html += "<h2>WiFi Network Settings</h2>";
+    html += "<label for='ssid'>WiFi Network Name (SSID):</label>";
+    html += "<input type='text' id='ssid' name='ssid' placeholder='Enter WiFi SSID' value='" + wifiSSID + "'>";
+    html += "<div class='current-value'>Current: " + wifiSSID + "</div>";
+    html += "<label for='password'>WiFi Password:</label>";
+    html += "<input type='password' id='password' name='password' placeholder='Enter WiFi Password'>";
+    html += "<div class='current-value'>Leave blank to keep current password</div>";
+    html += "</div>";
+    
+    // MQTT Configuration Section  
+    html += "<div class='config-section'>";
+    html += "<h2>MQTT Broker Settings</h2>";
+    html += "<label for='mqttServer'>MQTT Server/IP:</label>";
+    html += "<input type='text' id='mqttServer' name='mqttServer' placeholder='mqtt.example.com or 192.168.1.100' value='" + mqttServer + "'>";
+    html += "<div class='current-value'>Current: " + mqttServer + "</div>";
+    html += "<label for='mqttPort'>MQTT Port:</label>";
+    html += "<input type='number' id='mqttPort' name='mqttPort' placeholder='1883' value='" + String(mqttPort) + "' min='1' max='65535'>";
+    html += "<label for='mqttUsername'>MQTT Username (optional):</label>";
+    html += "<input type='text' id='mqttUsername' name='mqttUsername' placeholder='Leave blank if not required' value='" + mqttUsername + "'>";
+    html += "<label for='mqttPassword'>MQTT Password (optional):</label>";
+    html += "<input type='password' id='mqttPassword' name='mqttPassword' placeholder='Leave blank if not required'>";
+    html += "<div class='current-value'>Leave blank to keep current password</div>";
+    html += "</div>";
+    
+    // DSC System Configuration
+    html += "<div class='config-section'>";
+    html += "<h2>DSC System Settings</h2>";
+    html += "<label for='accessCode'>Access Code:</label>";
+    html += "<input type='text' id='accessCode' name='accessCode' placeholder='Enter DSC access code' value='" + accessCode + "'>";
+    html += "<div class='current-value'>Required for disarming and some arm operations</div>";
+    html += "</div>";
+    
+    // Pin Configuration Section
+    html += "<div class='config-section'>";
+    html += "<h2>ESP32 Pin Assignments</h2>";
+    html += "<label for='clockPin'>Clock Pin (DSC Yellow wire):</label>";
+    html += "<input type='number' id='clockPin' name='clockPin' value='" + String(clockPin) + "' min='4' max='39'>";
+    html += "<div class='current-value'>Current: " + String(clockPin) + "</div>";
+    html += "<label for='readPin'>Data Read Pin (DSC Green wire):</label>";
+    html += "<input type='number' id='readPin' name='readPin' value='" + String(readPin) + "' min='4' max='39'>";
+    html += "<div class='current-value'>Current: " + String(readPin) + "</div>";
+    html += "<label for='writePin'>Data Write Pin (Virtual Keypad):</label>";
+    html += "<input type='number' id='writePin' name='writePin' value='" + String(writePin) + "' min='0' max='33'>";
+    html += "<div class='current-value'>Current: " + String(writePin) + " (set to 0 to disable virtual keypad)</div>";
+    html += "<label for='pc16Pin'>PC16 Pin (Classic Series only):</label>";
+    html += "<input type='number' id='pc16Pin' name='pc16Pin' value='" + String(pc16Pin) + "' min='4' max='39'>";
+    html += "<div class='current-value'>Current: " + String(pc16Pin) + "</div>";
+    html += "</div>";
+    
+    html += "<input type='submit' value='Save Configuration and Restart'>";
+    html += "</form>";
+    
+    html += "<div class='info'><strong>After saving:</strong> The device will restart and apply the new configuration.</div>";
+    
+    html += "</body></html>";
+    configServer.send(200, "text/html", html);
+  });
+  
+  // Add separate save handler for normal mode
+  configServer.on("/save-config", HTTP_POST, []() {
+    // Get all parameters from the form (same logic as AP mode)
+    String newSSID = configServer.arg("ssid");
+    String newPassword = configServer.arg("password");
+    String newMqttServer = configServer.arg("mqttServer");
+    String newMqttPort = configServer.arg("mqttPort");
+    String newMqttUsername = configServer.arg("mqttUsername");
+    String newMqttPassword = configServer.arg("mqttPassword");
+    String newAccessCode = configServer.arg("accessCode");
+    String newClockPin = configServer.arg("clockPin");
+    String newReadPin = configServer.arg("readPin");
+    String newWritePin = configServer.arg("writePin");
+    String newPc16Pin = configServer.arg("pc16Pin");
+    
+    // Update configuration variables (only if values are provided)
+    if (newSSID.length() > 0) wifiSSID = newSSID;
+    if (newPassword.length() > 0) wifiPassword = newPassword;
+    if (newMqttServer.length() > 0) mqttServer = newMqttServer;
+    if (newMqttPort.length() > 0) mqttPort = newMqttPort.toInt();
+    if (newMqttUsername.length() > 0 || configServer.hasArg("mqttUsername")) mqttUsername = newMqttUsername;
+    if (newMqttPassword.length() > 0) mqttPassword = newMqttPassword;
+    if (newAccessCode.length() > 0) accessCode = newAccessCode;
+    if (newClockPin.length() > 0) clockPin = newClockPin.toInt();
+    if (newReadPin.length() > 0) readPin = newReadPin.toInt();
+    if (newWritePin.length() > 0) writePin = newWritePin.toInt();
+    if (newPc16Pin.length() > 0) pc16Pin = newPc16Pin.toInt();
+    
+    // Save configuration
+    saveFullConfiguration();
+    
+    String html = "<!DOCTYPE html><html><head><title>DSC Configuration Updated</title>";
+    html += "<style>body{font-family:Arial,sans-serif;max-width:600px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
+    html += "<h2>Configuration Updated Successfully!</h2>";
+    html += "<p>Settings have been saved. The device will restart in 5 seconds.</p>";
+    html += "<p>Please reconnect after restart if WiFi settings were changed.</p>";
+    html += "</body></html>";
+    configServer.send(200, "text/html", html);
+    
+    delay(5000);
+    ESP.restart();
+  });
+  
+  configServer.begin();
+  Serial.println("Configuration endpoint available at: http://" + WiFi.localIP().toString() + "/config");
 }
 
 
@@ -413,298 +723,157 @@ void loop() {
     return;
   }
 
+  // Handle normal web server for config endpoint
+  configServer.handleClient();
+
   mqttHandle();
 
-  dsc.loop();
+  if (dsc != nullptr) {
+    dsc->loop();
 
-  if (dsc.statusChanged) {      // Checks if the security system status has changed
-    dsc.statusChanged = false;  // Reset the status tracking flag
+    if (dsc->statusChanged) {      // Checks if the security system status has changed
+      dsc->statusChanged = false;  // Reset the status tracking flag
 
-    // If the Keybus data buffer is exceeded, the sketch is too busy to process all Keybus commands.  Call
-    // loop() more often, or increase dscBufferSize in the library: src/dscKeybus.h or src/dscClassic.h
-    if (dsc.bufferOverflow) {
-      Serial.println(F("Keybus buffer overflow"));
-      dsc.bufferOverflow = false;
-    }
+      // If the Keybus data buffer is exceeded, the sketch is too busy to process all Keybus commands.  Call
+      // loop() more often, or increase dscBufferSize in the library: src/dscKeybus.h or src/dscClassic.h
+      if (dsc->bufferOverflow) {
+        Serial.println(F("Keybus buffer overflow"));
+        dsc->bufferOverflow = false;
+      }
 
-    // Checks if the interface is connected to the Keybus
-    if (dsc.keybusChanged) {
-      dsc.keybusChanged = false;  // Resets the Keybus data status flag
-      if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
-      else mqtt.publish(mqttStatusTopic, mqttLwtMessage, true);
-    }
+      // Checks if the interface is connected to the Keybus
+      if (dsc->keybusChanged) {
+        dsc->keybusChanged = false;  // Resets the Keybus data status flag
+        if (dsc->keybusConnected) mqtt->publish(mqttStatusTopic, mqttBirthMessage, true);
+        else mqtt->publish(mqttStatusTopic, mqttLwtMessage, true);
+      }
 
-    // Sends the access code when needed by the panel for arming or command outputs
-    if (dsc.accessCodePrompt) {
-      dsc.accessCodePrompt = false;
-      dsc.write(accessCode);
-    }
+      // Sends the access code when needed by the panel for arming or command outputs
+      if (dsc->accessCodePrompt) {
+        dsc->accessCodePrompt = false;
+        dsc->write(accessCode.c_str());
+      }
 
-    if (dsc.troubleChanged) {
-      dsc.troubleChanged = false;  // Resets the trouble status flag
-      if (dsc.trouble) mqtt.publish(mqttTroubleTopic, "1", true);
-      else mqtt.publish(mqttTroubleTopic, "0", true);
-    }
+      if (dsc->troubleChanged) {
+        dsc->troubleChanged = false;  // Resets the trouble status flag
+        if (dsc->trouble) mqtt->publish(mqttTroubleTopic, "1", true);
+        else mqtt->publish(mqttTroubleTopic, "0", true);
+      }
 
-    // Publishes status per partition
-    for (byte partition = 0; partition < dscPartitions; partition++) {
+      // Publishes status per partition
+      for (byte partition = 0; partition < dscPartitions; partition++) {
 
-      // Skips processing if the partition is disabled or in installer programming
-      if (dsc.disabled[partition]) continue;
+        // Skips processing if the partition is disabled or in installer programming
+        if (dsc->disabled[partition]) continue;
 
-      // Publishes the partition status message
-      publishMessage(mqttPartitionTopic, partition);
+        // Publishes the partition status message
+        publishMessage(mqttPartitionTopic, partition);
 
-      // Publishes armed/disarmed status
-      if (dsc.armedChanged[partition]) {
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
+        // Publishes armed/disarmed status
+        if (dsc->armedChanged[partition]) {
+          char publishTopic[strlen(mqttPartitionTopic) + 2];
+          appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
 
-        if (dsc.armed[partition]) {
-          if (dsc.armedAway[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
-          else if (dsc.armedAway[partition]) mqtt.publish(publishTopic, "armed_away", true);
-          else if (dsc.armedStay[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
-          else if (dsc.armedStay[partition]) mqtt.publish(publishTopic, "armed_home", true);
+          if (dsc->armed[partition]) {
+            if (dsc->armedAway[partition] && dsc->noEntryDelay[partition]) mqtt->publish(publishTopic, "armed_night", true);
+            else if (dsc->armedAway[partition]) mqtt->publish(publishTopic, "armed_away", true);
+            else if (dsc->armedStay[partition] && dsc->noEntryDelay[partition]) mqtt->publish(publishTopic, "armed_night", true);
+            else if (dsc->armedStay[partition]) mqtt->publish(publishTopic, "armed_home", true);
+          }
+          else mqtt->publish(publishTopic, "disarmed", true);
         }
-        else mqtt.publish(publishTopic, "disarmed", true);
+
+        // Publishes exit delay status
+        if (dsc->exitDelayChanged[partition]) {
+          dsc->exitDelayChanged[partition] = false;  // Resets the exit delay status flag
+          char publishTopic[strlen(mqttPartitionTopic) + 2];
+          appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
+
+          if (dsc->exitDelay[partition]) mqtt->publish(publishTopic, "pending", true);  // Publish as a retained message
+          else if (!dsc->exitDelay[partition] && !dsc->armed[partition]) mqtt->publish(publishTopic, "disarmed", true);
+          // Note: When exit delay ends and system is armed, the armedChanged[partition] flag handles publishing the armed state
+        }
+
+        // Publishes alarm status
+        if (dsc->alarmChanged[partition]) {
+          dsc->alarmChanged[partition] = false;  // Resets the partition alarm status flag
+          char publishTopic[strlen(mqttPartitionTopic) + 2];
+          appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
+
+          if (dsc->alarm[partition]) mqtt->publish(publishTopic, "triggered", true);  // Alarm tripped
+          else if (!dsc->armedChanged[partition]) mqtt->publish(publishTopic, "disarmed", true);
+        }
+        if (dsc->armedChanged[partition]) dsc->armedChanged[partition] = false;  // Resets the partition armed status flag
+
+        // Publishes fire alarm status
+        if (dsc->fireChanged[partition]) {
+          dsc->fireChanged[partition] = false;  // Resets the fire status flag
+          char publishTopic[strlen(mqttFireTopic) + 2];
+          appendPartition(mqttFireTopic, partition, publishTopic);  // Appends the mqttFireTopic with the partition number
+
+          if (dsc->fire[partition]) mqtt->publish(publishTopic, "1");  // Fire alarm tripped
+          else mqtt->publish(publishTopic, "0");                      // Fire alarm restored
+        }
       }
 
-      // Publishes exit delay status
-      if (dsc.exitDelayChanged[partition]) {
-        dsc.exitDelayChanged[partition] = false;  // Resets the exit delay status flag
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
+      // Publishes zones 1-64 status in a separate topic per zone
+      // Zone status is stored in the openZones[] and openZonesChanged[] arrays using 1 bit per zone, up to 64 zones:
+      //   openZones[0] and openZonesChanged[0]: Bit 0 = Zone 1 ... Bit 7 = Zone 8
+      //   openZones[1] and openZonesChanged[1]: Bit 0 = Zone 9 ... Bit 7 = Zone 16
+      //   ...
+      //   openZones[7] and openZonesChanged[7]: Bit 0 = Zone 57 ... Bit 7 = Zone 64
+      if (dsc->openZonesStatusChanged) {
+        dsc->openZonesStatusChanged = false;                           // Resets the open zones status flag
+        for (byte zoneGroup = 0; zoneGroup < dscZones; zoneGroup++) {
+          for (byte zoneBit = 0; zoneBit < 8; zoneBit++) {
+            if (bitRead(dsc->openZonesChanged[zoneGroup], zoneBit)) {  // Checks an individual open zone status flag
+              bitWrite(dsc->openZonesChanged[zoneGroup], zoneBit, 0);  // Resets the individual open zone status flag
 
-        if (dsc.exitDelay[partition]) mqtt.publish(publishTopic, "pending", true);  // Publish as a retained message
-        else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) mqtt.publish(publishTopic, "disarmed", true);
-        // Note: When exit delay ends and system is armed, the armedChanged[partition] flag handles publishing the armed state
-      }
+              // Appends the mqttZoneTopic with the zone number
+              char zonePublishTopic[strlen(mqttZoneTopic) + 3];
+              char zone[3];
+              strcpy(zonePublishTopic, mqttZoneTopic);
+              itoa(zoneBit + 1 + (zoneGroup * 8), zone, 10);
+              strcat(zonePublishTopic, zone);
 
-      // Publishes alarm status
-      if (dsc.alarmChanged[partition]) {
-        dsc.alarmChanged[partition] = false;  // Resets the partition alarm status flag
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
-
-        if (dsc.alarm[partition]) mqtt.publish(publishTopic, "triggered", true);  // Alarm tripped
-        else if (!dsc.armedChanged[partition]) mqtt.publish(publishTopic, "disarmed", true);
-      }
-      if (dsc.armedChanged[partition]) dsc.armedChanged[partition] = false;  // Resets the partition armed status flag
-
-      // Publishes fire alarm status
-      if (dsc.fireChanged[partition]) {
-        dsc.fireChanged[partition] = false;  // Resets the fire status flag
-        char publishTopic[strlen(mqttFireTopic) + 2];
-        appendPartition(mqttFireTopic, partition, publishTopic);  // Appends the mqttFireTopic with the partition number
-
-        if (dsc.fire[partition]) mqtt.publish(publishTopic, "1");  // Fire alarm tripped
-        else mqtt.publish(publishTopic, "0");                      // Fire alarm restored
-      }
-    }
-
-    // Publishes zones 1-64 status in a separate topic per zone
-    // Zone status is stored in the openZones[] and openZonesChanged[] arrays using 1 bit per zone, up to 64 zones:
-    //   openZones[0] and openZonesChanged[0]: Bit 0 = Zone 1 ... Bit 7 = Zone 8
-    //   openZones[1] and openZonesChanged[1]: Bit 0 = Zone 9 ... Bit 7 = Zone 16
-    //   ...
-    //   openZones[7] and openZonesChanged[7]: Bit 0 = Zone 57 ... Bit 7 = Zone 64
-    if (dsc.openZonesStatusChanged) {
-      dsc.openZonesStatusChanged = false;                           // Resets the open zones status flag
-      for (byte zoneGroup = 0; zoneGroup < dscZones; zoneGroup++) {
-        for (byte zoneBit = 0; zoneBit < 8; zoneBit++) {
-          if (bitRead(dsc.openZonesChanged[zoneGroup], zoneBit)) {  // Checks an individual open zone status flag
-            bitWrite(dsc.openZonesChanged[zoneGroup], zoneBit, 0);  // Resets the individual open zone status flag
-
-            // Appends the mqttZoneTopic with the zone number
-            char zonePublishTopic[strlen(mqttZoneTopic) + 3];
-            char zone[3];
-            strcpy(zonePublishTopic, mqttZoneTopic);
-            itoa(zoneBit + 1 + (zoneGroup * 8), zone, 10);
-            strcat(zonePublishTopic, zone);
-
-            if (bitRead(dsc.openZones[zoneGroup], zoneBit)) {
-              mqtt.publish(zonePublishTopic, "1", true);            // Zone open
+              if (bitRead(dsc->openZones[zoneGroup], zoneBit)) {
+                mqtt->publish(zonePublishTopic, "1", true);            // Zone open
+              }
+              else mqtt->publish(zonePublishTopic, "0", true);         // Zone closed
             }
-            else mqtt.publish(zonePublishTopic, "0", true);         // Zone closed
           }
         }
       }
-    }
 
-    // Publishes PGM outputs 1-14 status in a separate topic per zone
-    // PGM status is stored in the pgmOutputs[] and pgmOutputsChanged[] arrays using 1 bit per PGM output:
-    //   pgmOutputs[0] and pgmOutputsChanged[0]: Bit 0 = PGM 1 ... Bit 7 = PGM 8
-    //   pgmOutputs[1] and pgmOutputsChanged[1]: Bit 0 = PGM 9 ... Bit 5 = PGM 14
-    if (dsc.pgmOutputsStatusChanged) {
-      dsc.pgmOutputsStatusChanged = false;  // Resets the PGM outputs status flag
-      for (byte pgmGroup = 0; pgmGroup < 2; pgmGroup++) {
-        for (byte pgmBit = 0; pgmBit < 8; pgmBit++) {
-          if (bitRead(dsc.pgmOutputsChanged[pgmGroup], pgmBit)) {  // Checks an individual PGM output status flag
-            bitWrite(dsc.pgmOutputsChanged[pgmGroup], pgmBit, 0);  // Resets the individual PGM output status flag
+      // Publishes PGM outputs 1-14 status in a separate topic per zone
+      // PGM status is stored in the pgmOutputs[] and pgmOutputsChanged[] arrays using 1 bit per PGM output:
+      //   pgmOutputs[0] and pgmOutputsChanged[0]: Bit 0 = PGM 1 ... Bit 7 = PGM 8
+      //   pgmOutputs[1] and pgmOutputsChanged[1]: Bit 0 = PGM 9 ... Bit 5 = PGM 14
+      if (dsc->pgmOutputsStatusChanged) {
+        dsc->pgmOutputsStatusChanged = false;  // Resets the PGM outputs status flag
+        for (byte pgmGroup = 0; pgmGroup < 2; pgmGroup++) {
+          for (byte pgmBit = 0; pgmBit < 8; pgmBit++) {
+            if (bitRead(dsc->pgmOutputsChanged[pgmGroup], pgmBit)) {  // Checks an individual PGM output status flag
+              bitWrite(dsc->pgmOutputsChanged[pgmGroup], pgmBit, 0);  // Resets the individual PGM output status flag
 
-            // Appends the mqttPgmTopic with the PGM number
-            char pgmPublishTopic[strlen(mqttPgmTopic) + 3];
-            char pgm[3];
-            strcpy(pgmPublishTopic, mqttPgmTopic);
-            itoa(pgmBit + 1 + (pgmGroup * 8), pgm, 10);
-            strcat(pgmPublishTopic, pgm);
+              // Appends the mqttPgmTopic with the PGM number
+              char pgmPublishTopic[strlen(mqttPgmTopic) + 3];
+              char pgm[3];
+              strcpy(pgmPublishTopic, mqttPgmTopic);
+              itoa(pgmBit + 1 + (pgmGroup * 8), pgm, 10);
+              strcat(pgmPublishTopic, pgm);
 
-            if (bitRead(dsc.pgmOutputs[pgmGroup], pgmBit)) {
-              mqtt.publish(pgmPublishTopic, "1", true);           // PGM enabled
+              if (bitRead(dsc->pgmOutputs[pgmGroup], pgmBit)) {
+                mqtt->publish(pgmPublishTopic, "1", true);           // PGM enabled
+              }
+              else mqtt->publish(pgmPublishTopic, "0", true);        // PGM disabled
             }
-            else mqtt.publish(pgmPublishTopic, "0", true);        // PGM disabled
           }
         }
       }
+
+      mqtt->subscribe(mqttSubscribeTopic);
     }
-
-    mqtt.subscribe(mqttSubscribeTopic);
-  }
-
-  dsc.loop();
-
-  if (dsc.statusChanged) {      // Checks if the security system status has changed
-    dsc.statusChanged = false;  // Reset the status tracking flag
-
-    // If the Keybus data buffer is exceeded, the sketch is too busy to process all Keybus commands.  Call
-    // loop() more often, or increase dscBufferSize in the library: src/dscKeybus.h or src/dscClassic.h
-    if (dsc.bufferOverflow) {
-      Serial.println(F("Keybus buffer overflow"));
-      dsc.bufferOverflow = false;
-    }
-
-    // Checks if the interface is connected to the Keybus
-    if (dsc.keybusChanged) {
-      dsc.keybusChanged = false;  // Resets the Keybus data status flag
-      if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
-      else mqtt.publish(mqttStatusTopic, mqttLwtMessage, true);
-    }
-
-    // Sends the access code when needed by the panel for arming or command outputs
-    if (dsc.accessCodePrompt) {
-      dsc.accessCodePrompt = false;
-      dsc.write(accessCode);
-    }
-
-    if (dsc.troubleChanged) {
-      dsc.troubleChanged = false;  // Resets the trouble status flag
-      if (dsc.trouble) mqtt.publish(mqttTroubleTopic, "1", true);
-      else mqtt.publish(mqttTroubleTopic, "0", true);
-    }
-
-    // Publishes status per partition
-    for (byte partition = 0; partition < dscPartitions; partition++) {
-
-      // Skips processing if the partition is disabled or in installer programming
-      if (dsc.disabled[partition]) continue;
-
-      // Publishes the partition status message
-      publishMessage(mqttPartitionTopic, partition);
-
-      // Publishes armed/disarmed status
-      if (dsc.armedChanged[partition]) {
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
-
-        if (dsc.armed[partition]) {
-          if (dsc.armedAway[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
-          else if (dsc.armedAway[partition]) mqtt.publish(publishTopic, "armed_away", true);
-          else if (dsc.armedStay[partition] && dsc.noEntryDelay[partition]) mqtt.publish(publishTopic, "armed_night", true);
-          else if (dsc.armedStay[partition]) mqtt.publish(publishTopic, "armed_home", true);
-        }
-        else mqtt.publish(publishTopic, "disarmed", true);
-      }
-
-      // Publishes exit delay status
-      if (dsc.exitDelayChanged[partition]) {
-        dsc.exitDelayChanged[partition] = false;  // Resets the exit delay status flag
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
-
-        if (dsc.exitDelay[partition]) mqtt.publish(publishTopic, "pending", true);  // Publish as a retained message
-        else if (!dsc.exitDelay[partition] && !dsc.armed[partition]) mqtt.publish(publishTopic, "disarmed", true);
-        // Note: When exit delay ends and system is armed, the armedChanged[partition] flag handles publishing the armed state
-      }
-
-      // Publishes alarm status
-      if (dsc.alarmChanged[partition]) {
-        dsc.alarmChanged[partition] = false;  // Resets the partition alarm status flag
-        char publishTopic[strlen(mqttPartitionTopic) + 2];
-        appendPartition(mqttPartitionTopic, partition, publishTopic);  // Appends the mqttPartitionTopic with the partition number
-
-        if (dsc.alarm[partition]) mqtt.publish(publishTopic, "triggered", true);  // Alarm tripped
-        else if (!dsc.armedChanged[partition]) mqtt.publish(publishTopic, "disarmed", true);
-      }
-      if (dsc.armedChanged[partition]) dsc.armedChanged[partition] = false;  // Resets the partition armed status flag
-
-      // Publishes fire alarm status
-      if (dsc.fireChanged[partition]) {
-        dsc.fireChanged[partition] = false;  // Resets the fire status flag
-        char publishTopic[strlen(mqttFireTopic) + 2];
-        appendPartition(mqttFireTopic, partition, publishTopic);  // Appends the mqttFireTopic with the partition number
-
-        if (dsc.fire[partition]) mqtt.publish(publishTopic, "1");  // Fire alarm tripped
-        else mqtt.publish(publishTopic, "0");                      // Fire alarm restored
-      }
-    }
-
-    // Publishes zones 1-64 status in a separate topic per zone
-    // Zone status is stored in the openZones[] and openZonesChanged[] arrays using 1 bit per zone, up to 64 zones:
-    //   openZones[0] and openZonesChanged[0]: Bit 0 = Zone 1 ... Bit 7 = Zone 8
-    //   openZones[1] and openZonesChanged[1]: Bit 0 = Zone 9 ... Bit 7 = Zone 16
-    //   ...
-    //   openZones[7] and openZonesChanged[7]: Bit 0 = Zone 57 ... Bit 7 = Zone 64
-    if (dsc.openZonesStatusChanged) {
-      dsc.openZonesStatusChanged = false;                           // Resets the open zones status flag
-      for (byte zoneGroup = 0; zoneGroup < dscZones; zoneGroup++) {
-        for (byte zoneBit = 0; zoneBit < 8; zoneBit++) {
-          if (bitRead(dsc.openZonesChanged[zoneGroup], zoneBit)) {  // Checks an individual open zone status flag
-            bitWrite(dsc.openZonesChanged[zoneGroup], zoneBit, 0);  // Resets the individual open zone status flag
-
-            // Appends the mqttZoneTopic with the zone number
-            char zonePublishTopic[strlen(mqttZoneTopic) + 3];
-            char zone[3];
-            strcpy(zonePublishTopic, mqttZoneTopic);
-            itoa(zoneBit + 1 + (zoneGroup * 8), zone, 10);
-            strcat(zonePublishTopic, zone);
-
-            if (bitRead(dsc.openZones[zoneGroup], zoneBit)) {
-              mqtt.publish(zonePublishTopic, "1", true);            // Zone open
-            }
-            else mqtt.publish(zonePublishTopic, "0", true);         // Zone closed
-          }
-        }
-      }
-    }
-
-    // Publishes PGM outputs 1-14 status in a separate topic per zone
-    // PGM status is stored in the pgmOutputs[] and pgmOutputsChanged[] arrays using 1 bit per PGM output:
-    //   pgmOutputs[0] and pgmOutputsChanged[0]: Bit 0 = PGM 1 ... Bit 7 = PGM 8
-    //   pgmOutputs[1] and pgmOutputsChanged[1]: Bit 0 = PGM 9 ... Bit 5 = PGM 14
-    if (dsc.pgmOutputsStatusChanged) {
-      dsc.pgmOutputsStatusChanged = false;  // Resets the PGM outputs status flag
-      for (byte pgmGroup = 0; pgmGroup < 2; pgmGroup++) {
-        for (byte pgmBit = 0; pgmBit < 8; pgmBit++) {
-          if (bitRead(dsc.pgmOutputsChanged[pgmGroup], pgmBit)) {  // Checks an individual PGM output status flag
-            bitWrite(dsc.pgmOutputsChanged[pgmGroup], pgmBit, 0);  // Resets the individual PGM output status flag
-
-            // Appends the mqttPgmTopic with the PGM number
-            char pgmPublishTopic[strlen(mqttPgmTopic) + 3];
-            char pgm[3];
-            strcpy(pgmPublishTopic, mqttPgmTopic);
-            itoa(pgmBit + 1 + (pgmGroup * 8), pgm, 10);
-            strcat(pgmPublishTopic, pgm);
-
-            if (bitRead(dsc.pgmOutputs[pgmGroup], pgmBit)) {
-              mqtt.publish(pgmPublishTopic, "1", true);           // PGM enabled
-            }
-            else mqtt.publish(pgmPublishTopic, "0", true);        // PGM disabled
-          }
-        }
-      }
-    }
-
-    mqtt.subscribe(mqttSubscribeTopic);
   }
 }
 
@@ -715,6 +884,9 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   // Handles unused parameters
   (void)topic;
   (void)length;
+
+  // Check if DSC is initialized
+  if (dsc == nullptr) return;
 
   byte partition = 0;
   byte payloadIndex = 0;
@@ -727,71 +899,75 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   // Panic alarm
   if (payload[payloadIndex] == 'P') {
-    dsc.write('p');
+    dsc->write('p');
   }
 
   // Resets status if attempting to change the armed mode while armed or not ready
-  if (payload[payloadIndex] != 'D' && !dsc.ready[partition]) {
-    dsc.armedChanged[partition] = true;
-    dsc.statusChanged = true;
+  if (payload[payloadIndex] != 'D' && !dsc->ready[partition]) {
+    dsc->armedChanged[partition] = true;
+    dsc->statusChanged = true;
     return;
   }
 
   // Arm stay
-  if (payload[payloadIndex] == 'S' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write('s');                             // Virtual keypad arm stay
+  if (payload[payloadIndex] == 'S' && !dsc->armed[partition] && !dsc->exitDelay[partition]) {
+    dsc->writePartition = partition + 1;         // Sets writes to the partition number
+    dsc->write('s');                             // Virtual keypad arm stay
   }
 
   // Arm away
-  else if (payload[payloadIndex] == 'A' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write('w');                             // Virtual keypad arm away
+  else if (payload[payloadIndex] == 'A' && !dsc->armed[partition] && !dsc->exitDelay[partition]) {
+    dsc->writePartition = partition + 1;         // Sets writes to the partition number
+    dsc->write('w');                             // Virtual keypad arm away
   }
 
   // Arm night
-  else if (payload[payloadIndex] == 'N' && !dsc.armed[partition] && !dsc.exitDelay[partition]) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write('n');                             // Virtual keypad arm away
+  else if (payload[payloadIndex] == 'N' && !dsc->armed[partition] && !dsc->exitDelay[partition]) {
+    dsc->writePartition = partition + 1;         // Sets writes to the partition number
+    dsc->write('n');                             // Virtual keypad arm away
   }
 
   // Disarm
-  else if (payload[payloadIndex] == 'D' && (dsc.armed[partition] || dsc.exitDelay[partition] || dsc.alarm[partition])) {
-    dsc.writePartition = partition + 1;         // Sets writes to the partition number
-    dsc.write(accessCode);
+  else if (payload[payloadIndex] == 'D' && (dsc->armed[partition] || dsc->exitDelay[partition] || dsc->alarm[partition])) {
+    dsc->writePartition = partition + 1;         // Sets writes to the partition number
+    dsc->write(accessCode.c_str());
   }
 }
 
 
 void mqttHandle() {
-  if (!mqtt.connected()) {
-    unsigned long mqttCurrentTime = millis();
-    if (mqttCurrentTime - mqttPreviousTime > 5000) {
-      mqttPreviousTime = mqttCurrentTime;
-      if (mqttConnect()) {
-        if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
-        Serial.println(F("MQTT disconnected, successfully reconnected."));
-        mqttPreviousTime = 0;
+  if (mqtt == nullptr || !mqtt->connected()) {
+    if (mqtt != nullptr) {
+      unsigned long mqttCurrentTime = millis();
+      if (mqttCurrentTime - mqttPreviousTime > 5000) {
+        mqttPreviousTime = mqttCurrentTime;
+        if (mqttConnect()) {
+          if (dsc != nullptr && dsc->keybusConnected) mqtt->publish(mqttStatusTopic, mqttBirthMessage, true);
+          Serial.println(F("MQTT disconnected, successfully reconnected."));
+          mqttPreviousTime = 0;
+        }
+        else Serial.println(F("MQTT disconnected, failed to reconnect."));
       }
-      else Serial.println(F("MQTT disconnected, failed to reconnect."));
     }
   }
-  else mqtt.loop();
+  else mqtt->loop();
 }
 
 
 bool mqttConnect() {
+  if (mqtt == nullptr) return false;
+  
   Serial.print(F("MQTT...."));
-  if (mqtt.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+  if (mqtt->connect(mqttClientName, mqttUsername.c_str(), mqttPassword.c_str(), mqttStatusTopic, 0, true, mqttLwtMessage)) {
     Serial.print(F("connected: "));
     Serial.println(mqttServer);
-    dsc.resetStatus();  // Resets the state of all status components as changed to get the current status
+    if (dsc != nullptr) dsc->resetStatus();  // Resets the state of all status components as changed to get the current status
   }
   else {
     Serial.print(F("connection error: "));
     Serial.println(mqttServer);
   }
-  return mqtt.connected();
+  return mqtt->connected();
 }
 
 
@@ -805,6 +981,8 @@ void appendPartition(const char* sourceTopic, byte sourceNumber, char* publishTo
 
 // Publishes the partition status message
 void publishMessage(const char* sourceTopic, byte partition) {
+  if (dsc == nullptr || mqtt == nullptr) return;
+  
   char publishTopic[strlen(sourceTopic) + strlen(mqttPartitionMessageSuffix) + 2];
   char partitionNumber[2];
 
@@ -815,92 +993,92 @@ void publishMessage(const char* sourceTopic, byte partition) {
   strcat(publishTopic, mqttPartitionMessageSuffix);
 
   // Publishes the current partition message
-  switch (dsc.status[partition]) {
-    case 0x01: mqtt.publish(publishTopic, "Partition ready", true); break;
-    case 0x02: mqtt.publish(publishTopic, "Stay zones open", true); break;
-    case 0x03: mqtt.publish(publishTopic, "Zones open", true); break;
-    case 0x04: mqtt.publish(publishTopic, "Armed: Stay", true); break;
-    case 0x05: mqtt.publish(publishTopic, "Armed: Away", true); break;
-    case 0x06: mqtt.publish(publishTopic, "Armed: Stay with no entry delay", true); break;
-    case 0x07: mqtt.publish(publishTopic, "Failed to arm", true); break;
-    case 0x08: mqtt.publish(publishTopic, "Exit delay in progress", true); break;
-    case 0x09: mqtt.publish(publishTopic, "Arming with no entry delay", true); break;
-    case 0x0B: mqtt.publish(publishTopic, "Quick exit in progress", true); break;
-    case 0x0C: mqtt.publish(publishTopic, "Entry delay in progress", true); break;
-    case 0x0D: mqtt.publish(publishTopic, "Entry delay after alarm", true); break;
-    case 0x0E: mqtt.publish(publishTopic, "Function not available"); break;
-    case 0x10: mqtt.publish(publishTopic, "Keypad lockout", true); break;
-    case 0x11: mqtt.publish(publishTopic, "Partition in alarm", true); break;
-    case 0x12: mqtt.publish(publishTopic, "Battery check in progress"); break;
-    case 0x14: mqtt.publish(publishTopic, "Auto-arm in progress", true); break;
-    case 0x15: mqtt.publish(publishTopic, "Arming with bypassed zones", true); break;
-    case 0x16: mqtt.publish(publishTopic, "Armed: Away with no entry delay", true); break;
-    case 0x17: mqtt.publish(publishTopic, "Power saving: Keypad blanked", true); break;
-    case 0x19: mqtt.publish(publishTopic, "Disarmed: Alarm memory"); break;
-    case 0x22: mqtt.publish(publishTopic, "Disarmed: Recent closing", true); break;
-    case 0x2F: mqtt.publish(publishTopic, "Keypad LCD test"); break;
-    case 0x33: mqtt.publish(publishTopic, "Command output in progress", true); break;
-    case 0x3D: mqtt.publish(publishTopic, "Disarmed: Alarm memory", true); break;
-    case 0x3E: mqtt.publish(publishTopic, "Partition disarmed", true); break;
-    case 0x40: mqtt.publish(publishTopic, "Keypad blanked", true); break;
-    case 0x8A: mqtt.publish(publishTopic, "Activate stay/away zones", true); break;
-    case 0x8B: mqtt.publish(publishTopic, "Quick exit", true); break;
-    case 0x8E: mqtt.publish(publishTopic, "Function not available", true); break;
-    case 0x8F: mqtt.publish(publishTopic, "Invalid access code", true); break;
-    case 0x9E: mqtt.publish(publishTopic, "Enter * function key", true); break;
-    case 0x9F: mqtt.publish(publishTopic, "Enter access code", true); break;
-    case 0xA0: mqtt.publish(publishTopic, "*1: Zone bypass", true); break;
-    case 0xA1: mqtt.publish(publishTopic, "*2: Trouble menu", true); break;
-    case 0xA2: mqtt.publish(publishTopic, "*3: Alarm memory", true); break;
-    case 0xA3: mqtt.publish(publishTopic, "*4: Door chime enabled", true); break;
-    case 0xA4: mqtt.publish(publishTopic, "*4: Door chime disabled", true); break;
-    case 0xA5: mqtt.publish(publishTopic, "Enter master code", true); break;
-    case 0xA6: mqtt.publish(publishTopic, "*5: Access codes", true); break;
-    case 0xA7: mqtt.publish(publishTopic, "*5: Enter new 4-digit code", true); break;
-    case 0xA9: mqtt.publish(publishTopic, "*6: User functions", true); break;
-    case 0xAA: mqtt.publish(publishTopic, "*6: Time and date", true); break;
-    case 0xAB: mqtt.publish(publishTopic, "*6: Auto-arm time", true); break;
-    case 0xAC: mqtt.publish(publishTopic, "*6: Auto-arm enabled", true); break;
-    case 0xAD: mqtt.publish(publishTopic, "*6: Auto-arm disabled", true); break;
-    case 0xAF: mqtt.publish(publishTopic, "*6: System test", true); break;
-    case 0xB0: mqtt.publish(publishTopic, "*6: Enable DLS", true); break;
-    case 0xB2: mqtt.publish(publishTopic, "*7: Command output", true); break;
-    case 0xB3: mqtt.publish(publishTopic, "*7: Command output", true); break;
-    case 0xB7: mqtt.publish(publishTopic, "Enter installer code", true); break;
-    case 0xB8: mqtt.publish(publishTopic, "Enter * function key while armed", true); break;
-    case 0xB9: mqtt.publish(publishTopic, "*2: Zone tamper menu", true); break;
-    case 0xBA: mqtt.publish(publishTopic, "*2: Zones with low batteries", true); break;
-    case 0xBC: mqtt.publish(publishTopic, "*5: Enter new 6-digit code"); break;
-    case 0xBF: mqtt.publish(publishTopic, "*6: Auto-arm select day"); break;
-    case 0xC6: mqtt.publish(publishTopic, "*2: Zone fault menu", true); break;
-    case 0xC8: mqtt.publish(publishTopic, "*2: Service required menu", true); break;
-    case 0xCD: mqtt.publish(publishTopic, "Downloading in progress"); break;
-    case 0xCE: mqtt.publish(publishTopic, "Active camera monitor selection"); break;
-    case 0xD0: mqtt.publish(publishTopic, "*2: Keypads with low batteries", true); break;
-    case 0xD1: mqtt.publish(publishTopic, "*2: Keyfobs with low batteries", true); break;
-    case 0xD4: mqtt.publish(publishTopic, "*2: Sensors with RF delinquency", true); break;
-    case 0xE4: mqtt.publish(publishTopic, "*8: Installer programming, 3 digits", true); break;
-    case 0xE5: mqtt.publish(publishTopic, "Keypad slot assignment", true); break;
-    case 0xE6: mqtt.publish(publishTopic, "Input: 2 digits", true); break;
-    case 0xE7: mqtt.publish(publishTopic, "Input: 3 digits", true); break;
-    case 0xE8: mqtt.publish(publishTopic, "Input: 4 digits", true); break;
-    case 0xE9: mqtt.publish(publishTopic, "Input: 5 digits", true); break;
-    case 0xEA: mqtt.publish(publishTopic, "Input HEX: 2 digits", true); break;
-    case 0xEB: mqtt.publish(publishTopic, "Input HEX: 4 digits", true); break;
-    case 0xEC: mqtt.publish(publishTopic, "Input HEX: 6 digits", true); break;
-    case 0xED: mqtt.publish(publishTopic, "Input HEX: 32 digits", true); break;
-    case 0xEE: mqtt.publish(publishTopic, "Input: 1 option per zone", true); break;
-    case 0xEF: mqtt.publish(publishTopic, "Module supervision field", true); break;
-    case 0xF0: mqtt.publish(publishTopic, "Function key 1", true); break;
-    case 0xF1: mqtt.publish(publishTopic, "Function key 2", true); break;
-    case 0xF2: mqtt.publish(publishTopic, "Function key 3", true); break;
-    case 0xF3: mqtt.publish(publishTopic, "Function key 4", true); break;
-    case 0xF4: mqtt.publish(publishTopic, "Function key 5", true); break;
-    case 0xF5: mqtt.publish(publishTopic, "Wireless module placement test", true); break;
-    case 0xF6: mqtt.publish(publishTopic, "Activate device for test"); break;
-    case 0xF7: mqtt.publish(publishTopic, "*8: Installer programming, 2 digits", true); break;
-    case 0xF8: mqtt.publish(publishTopic, "Keypad programming", true); break;
-    case 0xFA: mqtt.publish(publishTopic, "Input: 6 digits"); break;
+  switch (dsc->status[partition]) {
+    case 0x01: mqtt->publish(publishTopic, "Partition ready", true); break;
+    case 0x02: mqtt->publish(publishTopic, "Stay zones open", true); break;
+    case 0x03: mqtt->publish(publishTopic, "Zones open", true); break;
+    case 0x04: mqtt->publish(publishTopic, "Armed: Stay", true); break;
+    case 0x05: mqtt->publish(publishTopic, "Armed: Away", true); break;
+    case 0x06: mqtt->publish(publishTopic, "Armed: Stay with no entry delay", true); break;
+    case 0x07: mqtt->publish(publishTopic, "Failed to arm", true); break;
+    case 0x08: mqtt->publish(publishTopic, "Exit delay in progress", true); break;
+    case 0x09: mqtt->publish(publishTopic, "Arming with no entry delay", true); break;
+    case 0x0B: mqtt->publish(publishTopic, "Quick exit in progress", true); break;
+    case 0x0C: mqtt->publish(publishTopic, "Entry delay in progress", true); break;
+    case 0x0D: mqtt->publish(publishTopic, "Entry delay after alarm", true); break;
+    case 0x0E: mqtt->publish(publishTopic, "Function not available"); break;
+    case 0x10: mqtt->publish(publishTopic, "Keypad lockout", true); break;
+    case 0x11: mqtt->publish(publishTopic, "Partition in alarm", true); break;
+    case 0x12: mqtt->publish(publishTopic, "Battery check in progress"); break;
+    case 0x14: mqtt->publish(publishTopic, "Auto-arm in progress", true); break;
+    case 0x15: mqtt->publish(publishTopic, "Arming with bypassed zones", true); break;
+    case 0x16: mqtt->publish(publishTopic, "Armed: Away with no entry delay", true); break;
+    case 0x17: mqtt->publish(publishTopic, "Power saving: Keypad blanked", true); break;
+    case 0x19: mqtt->publish(publishTopic, "Disarmed: Alarm memory"); break;
+    case 0x22: mqtt->publish(publishTopic, "Disarmed: Recent closing", true); break;
+    case 0x2F: mqtt->publish(publishTopic, "Keypad LCD test"); break;
+    case 0x33: mqtt->publish(publishTopic, "Command output in progress", true); break;
+    case 0x3D: mqtt->publish(publishTopic, "Disarmed: Alarm memory", true); break;
+    case 0x3E: mqtt->publish(publishTopic, "Partition disarmed", true); break;
+    case 0x40: mqtt->publish(publishTopic, "Keypad blanked", true); break;
+    case 0x8A: mqtt->publish(publishTopic, "Activate stay/away zones", true); break;
+    case 0x8B: mqtt->publish(publishTopic, "Quick exit", true); break;
+    case 0x8E: mqtt->publish(publishTopic, "Function not available", true); break;
+    case 0x8F: mqtt->publish(publishTopic, "Invalid access code", true); break;
+    case 0x9E: mqtt->publish(publishTopic, "Enter * function key", true); break;
+    case 0x9F: mqtt->publish(publishTopic, "Enter access code", true); break;
+    case 0xA0: mqtt->publish(publishTopic, "*1: Zone bypass", true); break;
+    case 0xA1: mqtt->publish(publishTopic, "*2: Trouble menu", true); break;
+    case 0xA2: mqtt->publish(publishTopic, "*3: Alarm memory", true); break;
+    case 0xA3: mqtt->publish(publishTopic, "*4: Door chime enabled", true); break;
+    case 0xA4: mqtt->publish(publishTopic, "*4: Door chime disabled", true); break;
+    case 0xA5: mqtt->publish(publishTopic, "Enter master code", true); break;
+    case 0xA6: mqtt->publish(publishTopic, "*5: Access codes", true); break;
+    case 0xA7: mqtt->publish(publishTopic, "*5: Enter new 4-digit code", true); break;
+    case 0xA9: mqtt->publish(publishTopic, "*6: User functions", true); break;
+    case 0xAA: mqtt->publish(publishTopic, "*6: Time and date", true); break;
+    case 0xAB: mqtt->publish(publishTopic, "*6: Auto-arm time", true); break;
+    case 0xAC: mqtt->publish(publishTopic, "*6: Auto-arm enabled", true); break;
+    case 0xAD: mqtt->publish(publishTopic, "*6: Auto-arm disabled", true); break;
+    case 0xAF: mqtt->publish(publishTopic, "*6: System test", true); break;
+    case 0xB0: mqtt->publish(publishTopic, "*6: Enable DLS", true); break;
+    case 0xB2: mqtt->publish(publishTopic, "*7: Command output", true); break;
+    case 0xB3: mqtt->publish(publishTopic, "*7: Command output", true); break;
+    case 0xB7: mqtt->publish(publishTopic, "Enter installer code", true); break;
+    case 0xB8: mqtt->publish(publishTopic, "Enter * function key while armed", true); break;
+    case 0xB9: mqtt->publish(publishTopic, "*2: Zone tamper menu", true); break;
+    case 0xBA: mqtt->publish(publishTopic, "*2: Zones with low batteries", true); break;
+    case 0xBC: mqtt->publish(publishTopic, "*5: Enter new 6-digit code"); break;
+    case 0xBF: mqtt->publish(publishTopic, "*6: Auto-arm select day"); break;
+    case 0xC6: mqtt->publish(publishTopic, "*2: Zone fault menu", true); break;
+    case 0xC8: mqtt->publish(publishTopic, "*2: Service required menu", true); break;
+    case 0xCD: mqtt->publish(publishTopic, "Downloading in progress"); break;
+    case 0xCE: mqtt->publish(publishTopic, "Active camera monitor selection"); break;
+    case 0xD0: mqtt->publish(publishTopic, "*2: Keypads with low batteries", true); break;
+    case 0xD1: mqtt->publish(publishTopic, "*2: Keyfobs with low batteries", true); break;
+    case 0xD4: mqtt->publish(publishTopic, "*2: Sensors with RF delinquency", true); break;
+    case 0xE4: mqtt->publish(publishTopic, "*8: Installer programming, 3 digits", true); break;
+    case 0xE5: mqtt->publish(publishTopic, "Keypad slot assignment", true); break;
+    case 0xE6: mqtt->publish(publishTopic, "Input: 2 digits", true); break;
+    case 0xE7: mqtt->publish(publishTopic, "Input: 3 digits", true); break;
+    case 0xE8: mqtt->publish(publishTopic, "Input: 4 digits", true); break;
+    case 0xE9: mqtt->publish(publishTopic, "Input: 5 digits", true); break;
+    case 0xEA: mqtt->publish(publishTopic, "Input HEX: 2 digits", true); break;
+    case 0xEB: mqtt->publish(publishTopic, "Input HEX: 4 digits", true); break;
+    case 0xEC: mqtt->publish(publishTopic, "Input HEX: 6 digits", true); break;
+    case 0xED: mqtt->publish(publishTopic, "Input HEX: 32 digits", true); break;
+    case 0xEE: mqtt->publish(publishTopic, "Input: 1 option per zone", true); break;
+    case 0xEF: mqtt->publish(publishTopic, "Module supervision field", true); break;
+    case 0xF0: mqtt->publish(publishTopic, "Function key 1", true); break;
+    case 0xF1: mqtt->publish(publishTopic, "Function key 2", true); break;
+    case 0xF2: mqtt->publish(publishTopic, "Function key 3", true); break;
+    case 0xF3: mqtt->publish(publishTopic, "Function key 4", true); break;
+    case 0xF4: mqtt->publish(publishTopic, "Function key 5", true); break;
+    case 0xF5: mqtt->publish(publishTopic, "Wireless module placement test", true); break;
+    case 0xF6: mqtt->publish(publishTopic, "Activate device for test"); break;
+    case 0xF7: mqtt->publish(publishTopic, "*8: Installer programming, 2 digits", true); break;
+    case 0xF8: mqtt->publish(publishTopic, "Keypad programming", true); break;
+    case 0xFA: mqtt->publish(publishTopic, "Input: 6 digits"); break;
     default: return;
   }
 }
