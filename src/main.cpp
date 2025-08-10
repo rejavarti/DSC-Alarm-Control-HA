@@ -632,7 +632,8 @@ void startConfigMode() {
   });
   
   // Configure web server with timeout settings for better stability
-  configServer.collectHeaders("Accept", "Content-Length", "Content-Type");
+  const char* headers[] = {"Accept", "Content-Length", "Content-Type"};
+  configServer.collectHeaders(headers, 3);
   configServer.begin();
 }
 
@@ -1124,7 +1125,8 @@ void setup() {
   });
   
   // Configure web server with timeout settings for better stability
-  configServer.collectHeaders("Accept", "Content-Length", "Content-Type");
+  const char* headers[] = {"Accept", "Content-Length", "Content-Type"};
+  configServer.collectHeaders(headers, 3);
   configServer.begin();
   String currentIP = (networkType == "ethernet" && ETH.linkUp()) ? ETH.localIP().toString() : WiFi.localIP().toString();
   Serial.println("Configuration endpoint available at: http://" + currentIP + "/config");
@@ -1132,18 +1134,8 @@ void setup() {
 
 
 void loop() {
-  // If in configuration mode, handle the web server
-  if (configMode) {
-    if (configServer.handleClient()) {
-      lastSuccessfulWebRequest = millis();  // Track successful web request handling
-    }
-    return;
-  }
-
-  // Handle normal web server for config endpoint
-  if (configServer.handleClient()) {
-    lastSuccessfulWebRequest = millis();  // Track successful web request handling
-  }
+  // Handle web server (both configuration mode and normal config endpoint)
+  configServer.handleClient();
 
   // Check network connectivity periodically
   checkNetworkConnectivity();
