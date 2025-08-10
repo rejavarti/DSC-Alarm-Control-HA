@@ -247,12 +247,20 @@ WiFiClient ipClient;
 PubSubClient mqtt(mqttServer, mqttPort, ipClient);
 unsigned long mqttPreviousTime;
 
+// Tracks the previous status for each partition to detect status changes
+byte previousStatus[dscPartitions];
+
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println();
   Serial.println();
+
+  // Initialize previous status tracking
+  for (byte i = 0; i < dscPartitions; i++) {
+    previousStatus[i] = 0xFF;  // Initialize to invalid status to force initial publication
+  }
 
   Serial.print(F("WiFi...."));
   WiFi.mode(WIFI_STA);
@@ -317,6 +325,19 @@ void loop() {
 
       // Publishes the partition status message
       publishMessage(mqttPartitionTopic, partition);
+
+      // Check for status transitions that require partition state synchronization
+      if (dsc.status[partition] != previousStatus[partition]) {
+        // When transitioning from exit delay (0x08) to partition ready (0x01)
+        // ensure the partition state topic is updated to "disarmed"
+        if (previousStatus[partition] == 0x08 && dsc.status[partition] == 0x01 && 
+            !dsc.armed[partition] && !dsc.exitDelay[partition]) {
+          char publishTopic[strlen(mqttPartitionTopic) + 2];
+          appendPartition(mqttPartitionTopic, partition, publishTopic);
+          mqtt.publish(publishTopic, "disarmed", true);
+        }
+        previousStatus[partition] = dsc.status[partition];
+      }
 
       // Publishes armed/disarmed status
       if (dsc.armedChanged[partition]) {
