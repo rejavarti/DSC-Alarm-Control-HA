@@ -258,11 +258,18 @@ bool configMode = false;
 String storedSSID = "";
 String storedPassword = "";
 
+// MQTT configuration storage
+String storedMqttServer = "";
+int storedMqttPort = 1883;
+String storedMqttUsername = "";
+String storedMqttPassword = "";
+
 // Forward declarations
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void mqttHandle();
 bool mqttConnect();
 bool mqttConnectWithDNSFallback();
+bool mqttConnectWithCredentials(const char* username, const char* password);
 void configureDNS();
 void initializeNVSWithFallback();
 void appendPartition(const char* sourceTopic, byte sourceNumber, char* publishTopic);
@@ -313,46 +320,117 @@ void startConfigMode() {
   Serial.println("Connect to: DSC-Config (password: 12345678)");
   Serial.print("Configuration portal: http://");
   Serial.println(WiFi.softAPIP());
+  Serial.println("Configure both WiFi and MQTT settings via the web interface");
   
   configServer.on("/", HTTP_GET, []() {
-    String html = "<!DOCTYPE html><html><head><title>DSC WiFi Configuration</title>";
-    html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px}";
-    html += "input[type=text],input[type=password]{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:4px}";
-    html += "input[type=submit]{background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%}";
-    html += "input[type=submit]:hover{background-color:#45a049}</style></head><body>";
-    html += "<h2>DSC WiFi Configuration</h2>";
+    String html = "<!DOCTYPE html><html><head><title>DSC Configuration Portal</title>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+    html += "<style>body{font-family:Arial,sans-serif;max-width:500px;margin:20px auto;padding:20px;background-color:#f5f5f5}";
+    html += ".container{background-color:white;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}";
+    html += "h2{color:#333;text-align:center;margin-bottom:30px}";
+    html += ".section{margin-bottom:25px;border-bottom:1px solid #eee;padding-bottom:20px}";
+    html += ".section:last-child{border-bottom:none}";
+    html += "label{display:block;margin-bottom:5px;color:#555;font-weight:bold}";
+    html += "input[type=text],input[type=password],input[type=number]{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box}";
+    html += "input[type=submit]{background-color:#4CAF50;color:white;padding:12px 20px;border:none;border-radius:4px;cursor:pointer;width:100%;font-size:16px;margin-top:20px}";
+    html += "input[type=submit]:hover{background-color:#45a049}";
+    html += ".note{color:#666;font-size:12px;margin-top:5px}</style></head><body>";
+    html += "<div class='container'>";
+    html += "<h2>DSC Configuration Portal</h2>";
     html += "<form method='POST' action='/save'>";
-    html += "<p>WiFi Network Name (SSID):</p>";
+    
+    // WiFi Section
+    html += "<div class='section'>";
+    html += "<h3>WiFi Settings</h3>";
+    html += "<label for='ssid'>WiFi Network Name (SSID):</label>";
     html += "<input type='text' name='ssid' placeholder='Enter WiFi SSID' required>";
-    html += "<p>WiFi Password:</p>";
+    html += "<label for='password'>WiFi Password:</label>";
     html += "<input type='password' name='password' placeholder='Enter WiFi Password' required>";
-    html += "<br><br><input type='submit' value='Save and Connect'>";
-    html += "</form></body></html>";
+    html += "</div>";
+    
+    // MQTT Section
+    html += "<div class='section'>";
+    html += "<h3>MQTT Settings</h3>";
+    html += "<label for='mqtt_server'>MQTT Server (hostname or IP):</label>";
+    html += "<input type='text' name='mqtt_server' placeholder='e.g., mqtt.example.com or 192.168.1.10' required>";
+    html += "<div class='note'>Enter your MQTT broker hostname or IP address</div>";
+    html += "<label for='mqtt_port'>MQTT Port:</label>";
+    html += "<input type='number' name='mqtt_port' placeholder='1883' value='1883' min='1' max='65535'>";
+    html += "<label for='mqtt_username'>MQTT Username (optional):</label>";
+    html += "<input type='text' name='mqtt_username' placeholder='Leave blank if not required'>";
+    html += "<label for='mqtt_password'>MQTT Password (optional):</label>";
+    html += "<input type='password' name='mqtt_password' placeholder='Leave blank if not required'>";
+    html += "</div>";
+    
+    html += "<input type='submit' value='Save Configuration and Connect'>";
+    html += "</form>";
+    html += "</div></body></html>";
     configServer.send(200, "text/html", html);
   });
   
   configServer.on("/save", HTTP_POST, []() {
     String ssid = configServer.arg("ssid");
     String password = configServer.arg("password");
+    String mqttServer = configServer.arg("mqtt_server");
+    String mqttPortStr = configServer.arg("mqtt_port");
+    String mqttUsername = configServer.arg("mqtt_username");
+    String mqttPassword = configServer.arg("mqtt_password");
     
-    if (ssid.length() > 0) {
+    // Validate required fields
+    if (ssid.length() > 0 && mqttServer.length() > 0) {
+      // Save WiFi credentials
       preferences.begin("wifi", false);
       preferences.putString("ssid", ssid);
       preferences.putString("password", password);
       preferences.end();
       
-      String html = "<!DOCTYPE html><html><head><title>DSC WiFi Configuration</title>";
-      html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px;text-align:center}</style></head><body>";
-      html += "<h2>Configuration Saved!</h2>";
-      html += "<p>WiFi credentials have been saved. The device will now restart and attempt to connect.</p>";
-      html += "<p>If connection fails, the configuration portal will restart automatically.</p>";
-      html += "</body></html>";
+      // Save MQTT credentials
+      preferences.begin("mqtt", false);
+      preferences.putString("server", mqttServer);
+      int mqttPort = mqttPortStr.length() > 0 ? mqttPortStr.toInt() : 1883;
+      preferences.putInt("port", mqttPort);
+      preferences.putString("username", mqttUsername);
+      preferences.putString("password", mqttPassword);
+      preferences.end();
+      
+      String html = "<!DOCTYPE html><html><head><title>DSC Configuration Saved</title>";
+      html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+      html += "<style>body{font-family:Arial,sans-serif;max-width:400px;margin:50px auto;padding:20px;text-align:center;background-color:#f5f5f5}";
+      html += ".container{background-color:white;padding:30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}";
+      html += "h2{color:#4CAF50}ul{text-align:left;margin:20px 0}li{margin:5px 0}</style></head><body>";
+      html += "<div class='container'>";
+      html += "<h2>✓ Configuration Saved!</h2>";
+      html += "<p><strong>Configuration Summary:</strong></p>";
+      html += "<ul>";
+      html += "<li><strong>WiFi:</strong> " + ssid + "</li>";
+      html += "<li><strong>MQTT Server:</strong> " + mqttServer + "</li>";
+      html += "<li><strong>MQTT Port:</strong> " + String(mqttPort) + "</li>";
+      if (mqttUsername.length() > 0) {
+        html += "<li><strong>MQTT Username:</strong> " + mqttUsername + "</li>";
+      }
+      html += "</ul>";
+      html += "<p>The device will now restart and attempt to connect with the new settings.</p>";
+      html += "<p><em>If connection fails, the configuration portal will restart automatically.</em></p>";
+      html += "</div></body></html>";
       configServer.send(200, "text/html", html);
       
-      delay(2000);
+      Serial.println("Configuration saved successfully:");
+      Serial.println("  WiFi SSID: " + ssid);
+      Serial.println("  MQTT Server: " + mqttServer);
+      Serial.println("  MQTT Port: " + String(mqttPort));
+      if (mqttUsername.length() > 0) {
+        Serial.println("  MQTT Username: " + mqttUsername);
+      }
+      
+      delay(3000); // Give time for user to read the confirmation
       ESP.restart();
     } else {
-      configServer.send(400, "text/plain", "Invalid SSID");
+      String html = "<!DOCTYPE html><html><head><title>Configuration Error</title></head><body>";
+      html += "<h2>Error: Missing Required Fields</h2>";
+      html += "<p>Both WiFi SSID and MQTT Server are required.</p>";
+      html += "<p><a href='/'>← Back to Configuration</a></p>";
+      html += "</body></html>";
+      configServer.send(400, "text/html", html);
     }
   });
   
@@ -366,6 +444,17 @@ bool loadWiFiCredentials() {
   preferences.end();
   
   return (storedSSID.length() > 0);
+}
+
+bool loadMqttCredentials() {
+  preferences.begin("mqtt", true);
+  storedMqttServer = preferences.getString("server", "");
+  storedMqttPort = preferences.getInt("port", 1883);
+  storedMqttUsername = preferences.getString("username", "");
+  storedMqttPassword = preferences.getString("password", "");
+  preferences.end();
+  
+  return (storedMqttServer.length() > 0);
 }
 
 bool connectToWiFi(const char* ssid, const char* password) {
@@ -406,8 +495,9 @@ void setup() {
   // Initialize NVS with proper error handling
   initializeNVSWithFallback();
   
-  // Try to load saved WiFi credentials
-  bool hasStoredCredentials = loadWiFiCredentials();
+  // Try to load saved WiFi and MQTT credentials
+  bool hasStoredWifiCredentials = loadWiFiCredentials();
+  bool hasStoredMqttCredentials = loadMqttCredentials();
   bool wifiConnected = false;
   
   // If we have hardcoded credentials, try them first
@@ -426,7 +516,7 @@ void setup() {
   }
   
   // If hardcoded credentials failed or don't exist, try stored credentials
-  if (!wifiConnected && hasStoredCredentials) {
+  if (!wifiConnected && hasStoredWifiCredentials) {
     Serial.println("Trying stored WiFi credentials...");
     wifiConnected = connectToWiFi(storedSSID.c_str(), storedPassword.c_str());
   }
@@ -438,10 +528,64 @@ void setup() {
     return; // Exit setup, loop() will handle config mode
   }
 
+  // Configure MQTT settings
+  String currentMqttServer = "";
+  int currentMqttPort = 1883;
+  String currentMqttUsername = "";
+  String currentMqttPassword = "";
+  
+  // Use hardcoded MQTT settings if available
+  if (strlen(mqttServer) > 0) {
+    Serial.println("Using hardcoded MQTT configuration");
+    currentMqttServer = mqttServer;
+    currentMqttPort = mqttPort;
+    currentMqttUsername = mqttUsername;
+    currentMqttPassword = mqttPassword;
+    
+    // Save hardcoded MQTT settings for future use
+    preferences.begin("mqtt", false);
+    preferences.putString("server", currentMqttServer);
+    preferences.putInt("port", currentMqttPort);
+    preferences.putString("username", currentMqttUsername);
+    preferences.putString("password", currentMqttPassword);
+    preferences.end();
+    Serial.println("Hardcoded MQTT settings saved for future use");
+  }
+  // Otherwise use stored MQTT settings
+  else if (hasStoredMqttCredentials) {
+    Serial.println("Using stored MQTT configuration");
+    currentMqttServer = storedMqttServer;
+    currentMqttPort = storedMqttPort;
+    currentMqttUsername = storedMqttUsername;
+    currentMqttPassword = storedMqttPassword;
+  }
+  else {
+    Serial.println("ERROR: No MQTT configuration found!");
+    Serial.println("Please configure MQTT settings via the configuration portal.");
+    Serial.println("Starting configuration portal...");
+    startConfigMode();
+    return;
+  }
+  
+  // Configure MQTT client with the determined settings
+  PubSubClient mqttConfigured(currentMqttServer.c_str(), currentMqttPort, ipClient);
+  mqtt = mqttConfigured;
+  
+  Serial.println("MQTT Configuration:");
+  Serial.println("  Server: " + currentMqttServer);
+  Serial.println("  Port: " + String(currentMqttPort));
+  if (currentMqttUsername.length() > 0) {
+    Serial.println("  Username: " + currentMqttUsername);
+  }
+
   // Only initialize MQTT and DSC if we have WiFi connection
   mqtt.setCallback(mqttCallback);
-  if (mqttConnect()) mqttPreviousTime = millis();
-  else mqttPreviousTime = 0;
+  if (mqttConnectWithCredentials(currentMqttUsername.c_str(), currentMqttPassword.c_str())) {
+    mqttPreviousTime = millis();
+  } else {
+    mqttPreviousTime = 0;
+    Serial.println("WARNING: Failed to connect to MQTT broker. Will retry automatically.");
+  }
 
   // Starts the Keybus interface and optionally specifies how to print data.
   // begin() sets Serial by default and can accept a different stream: begin(Serial1), etc.
@@ -812,7 +956,7 @@ void mqttHandle() {
     unsigned long mqttCurrentTime = millis();
     if (mqttCurrentTime - mqttPreviousTime > 5000) {
       mqttPreviousTime = mqttCurrentTime;
-      if (mqttConnect()) {
+      if (mqttConnectWithDNSFallback()) {
         if (dsc.keybusConnected) mqtt.publish(mqttStatusTopic, mqttBirthMessage, true);
         Serial.println(F("MQTT disconnected, successfully reconnected."));
         mqttPreviousTime = 0;
@@ -825,24 +969,47 @@ void mqttHandle() {
 
 
 bool mqttConnectWithDNSFallback() {
+  // Load current MQTT credentials from storage
+  preferences.begin("mqtt", true);
+  String currentMqttServer = preferences.getString("server", "");
+  int currentMqttPort = preferences.getInt("port", 1883);
+  String currentMqttUsername = preferences.getString("username", "");
+  String currentMqttPassword = preferences.getString("password", "");
+  preferences.end();
+  
+  return mqttConnectWithCredentials(currentMqttUsername.c_str(), currentMqttPassword.c_str());
+}
+
+bool mqttConnectWithCredentials(const char* username, const char* password) {
+  // Load current MQTT server settings
+  preferences.begin("mqtt", true);
+  String currentMqttServer = preferences.getString("server", "");
+  int currentMqttPort = preferences.getInt("port", 1883);
+  preferences.end();
+  
+  if (currentMqttServer.length() == 0) {
+    Serial.println("ERROR: MQTT server not configured!");
+    return false;
+  }
+  
   Serial.print(F("MQTT...."));
   
   // First, try to resolve the hostname if it's not already an IP address
   IPAddress mqttIP;
-  bool isIPAddress = mqttIP.fromString(mqttServer);
+  bool isIPAddress = mqttIP.fromString(currentMqttServer);
   
-  if (!isIPAddress && strlen(mqttServer) > 0) {
+  if (!isIPAddress) {
     Serial.print("resolving hostname: ");
-    Serial.print(mqttServer);
+    Serial.print(currentMqttServer);
     Serial.print(" -> ");
     
-    if (WiFi.hostByName(mqttServer, mqttIP)) {
+    if (WiFi.hostByName(currentMqttServer.c_str(), mqttIP)) {
       Serial.print(mqttIP);
       Serial.println();
       
       // Create a new MQTT client with the resolved IP
-      PubSubClient mqttWithIP(mqttIP, mqttPort, ipClient);
-      if (mqttWithIP.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+      PubSubClient mqttWithIP(mqttIP, currentMqttPort, ipClient);
+      if (mqttWithIP.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
         // Copy the working client back to the global mqtt object
         mqtt = mqttWithIP;
         Serial.print(F("connected via IP: "));
@@ -861,12 +1028,12 @@ bool mqttConnectWithDNSFallback() {
       
       delay(1000); // Give time for DNS change to take effect
       
-      if (WiFi.hostByName(mqttServer, mqttIP)) {
+      if (WiFi.hostByName(currentMqttServer.c_str(), mqttIP)) {
         Serial.print("Resolved with alternate DNS: ");
         Serial.println(mqttIP);
         
-        PubSubClient mqttWithIP(mqttIP, mqttPort, ipClient);
-        if (mqttWithIP.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+        PubSubClient mqttWithIP(mqttIP, currentMqttPort, ipClient);
+        if (mqttWithIP.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
           mqtt = mqttWithIP;
           Serial.print(F("connected via alternate DNS: "));
           Serial.println(mqttIP);
@@ -881,18 +1048,17 @@ bool mqttConnectWithDNSFallback() {
   }
   
   // Fallback to original connection method (works if mqttServer is already an IP)
-  if (mqtt.connect(mqttClientName, mqttUsername, mqttPassword, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+  PubSubClient mqttDirect(currentMqttServer.c_str(), currentMqttPort, ipClient);
+  if (mqttDirect.connect(mqttClientName, username, password, mqttStatusTopic, 0, true, mqttLwtMessage)) {
+    mqtt = mqttDirect;
     Serial.print(F("connected: "));
-    Serial.println(mqttServer);
+    Serial.println(currentMqttServer);
     dsc.resetStatus();
     return true;
   }
   
   Serial.print(F("connection error: "));
-  Serial.println(mqttServer);
-  if (strlen(mqttServer) == 0) {
-    Serial.println("ERROR: MQTT server not configured! Please set mqttServer in the sketch.");
-  }
+  Serial.println(currentMqttServer);
   
   return false;
 }
