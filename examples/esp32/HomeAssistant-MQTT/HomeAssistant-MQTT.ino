@@ -594,13 +594,14 @@ void setup() {
 
 
 void loop() {
+  // Always handle MQTT operations to maintain connection
+  mqttHandle();
+  
   // If in configuration mode, handle the web server
   if (configMode) {
     configServer.handleClient();
-    return;
+    return;  // Skip DSC operations in config mode, but MQTT continues
   }
-
-  mqttHandle();
 
   dsc.loop();
 
