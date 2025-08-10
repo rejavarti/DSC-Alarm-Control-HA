@@ -208,13 +208,14 @@ entity: alarm_control_panel.security_partition_1
 #include <dscKeybusInterface.h>
 
 // Settings
-const char* wifiSSID = "";
-const char* wifiPassword = "";
-const char* accessCode = "";    // An access code is required to disarm/night arm and may be required to arm or enable command outputs based on panel configuration.
-const char* mqttServer = "";    // MQTT server domain name or IP address
-const int   mqttPort = 1883;    // MQTT server port
-const char* mqttUsername = "";  // Optional, leave blank if not required
-const char* mqttPassword = "";  // Optional, leave blank if not required
+const char* wifiSSID = "IoT_devices";
+const char* wifiPassword = "943Nelson8034";
+const char* accessCode = "7730";																	// An access code is required to disarm/night arm and may be required to arm or enable command outputs based on panel configuration.
+const char* mqttServer = "192.168.222.41";   														// MQTT server domain name or IP address
+const int mqttPort = 1883;																			// MQTT server port
+const char* mqttUsername = "homeassistant";															// Optional, leave blank if not required
+const char* mqttPassword = "ofaibah2Luj3un7niezi3ooshieyaey1kahsooz3xeeJ9oobok8ishaesiephish";		// Optional, leave blank if not required
+
 
 // MQTT topics - match to Home Assistant's configuration.yaml
 const char* mqttClientName = "dscKeybusInterface";
