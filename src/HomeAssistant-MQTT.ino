@@ -125,7 +125,8 @@ entity: alarm_control_panel.security_partition_1
 
  *  The commands to set the alarm state are setup in Home Assistant with the partition number (1-8) as a
  *  prefix to the command, except to trigger the panic alarm:
- *    Partition 1 disarm: "1D"
+ *    Partition 1 disarm: "1D" (uses configured access code)
+ *    Partition 1 disarm with custom code: "1!7730" (uses specified access code)
  *    Partition 2 arm stay: "2S"
  *    Partition 2 arm away: "2A"
  *    Partition 1 arm night: "1N"
