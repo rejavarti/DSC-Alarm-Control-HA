@@ -65,33 +65,21 @@ void processMqttCommand(byte* payload, unsigned int length) {
     bool disarmWithAccessCode = false;
     char extractedAccessCode[10] = "";
 
-    printf("DEBUG: Processing payload length=%d: ", length);
-    for(int i = 0; i < length; i++) {
-        printf("0x%02X(%c) ", payload[i], payload[i]);
-    }
-    printf("\n");
-
     // Check if a partition number 1-8 has been sent
     if (payload[0] >= 0x31 && payload[0] <= 0x38) {
         partition = payload[0] - 49;
         payloadIndex = 1;
         
-        printf("DEBUG: Partition=%d, payloadIndex=%d\n", partition, payloadIndex);
-        
         // Check for "!XXXX" format indicating disarm with specific access code
         if (length > 2 && payload[1] == '!') {
-            printf("DEBUG: Found ! at position 1, extracting access code\n");
             disarmWithAccessCode = true;
             byte codeLength = 0;
             for (byte i = 2; i < length && i < 11 && codeLength < 9; i++) {
-                printf("DEBUG: Checking payload[%d] = 0x%02X (%c)\n", i, payload[i], payload[i]);
                 if (payload[i] >= '0' && payload[i] <= '9') {
                     extractedAccessCode[codeLength++] = payload[i];
-                    printf("DEBUG: Added digit: %c, codeLength now %d\n", payload[i], codeLength);
                 }
             }
             extractedAccessCode[codeLength] = '\0';
-            printf("DEBUG: Final extracted code: '%s'\n", extractedAccessCode);
         }
     }
 
@@ -124,10 +112,9 @@ void processMqttCommand(byte* payload, unsigned int length) {
         testSystem.write('n');
     }
     // Disarm - either explicit 'D' or implied disarm with custom access code
-    if ((payload[payloadIndex] == 'D' || disarmWithAccessCode) && 
-        (testSystem.armed[partition] || testSystem.exitDelay[partition] || testSystem.alarm[partition])) {
+    else if ((payload[payloadIndex] == 'D' || disarmWithAccessCode) && 
+             (testSystem.armed[partition] || testSystem.exitDelay[partition] || testSystem.alarm[partition])) {
         testSystem.writePartition = partition + 1;
-        printf("DEBUG: Disarming - disarmWithAccessCode=%d, extractedAccessCode='%s'\n", disarmWithAccessCode, extractedAccessCode);
         if (disarmWithAccessCode) {
             testSystem.write(extractedAccessCode);
         } else {
@@ -188,9 +175,7 @@ void test_disarm_command_custom_code() {
     testSystem.reset();
     testSystem.armed[0] = true;
     
-    printf("DEBUG: Testing custom access code extraction\n");
     simulateMqttMessage("1!9999");
-    printf("DEBUG: Extracted command: '%s'\n", testSystem.lastWrittenCommand);
     
     TEST_ASSERT_EQUAL_STRING("9999", testSystem.lastWrittenCommand);
     TEST_ASSERT_EQUAL(1, testSystem.writePartition);
