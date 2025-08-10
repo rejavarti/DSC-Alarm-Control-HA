@@ -18,17 +18,19 @@ MQTT....connection error: 192.168.222.41
 MQTT disconnected, failed to reconnect.
 ```
 
-**New Behavior:**
+**New Behavior (Simplified):**
 ```
-MQTT....resolving hostname: 192.168.222.41 -> 192.168.222.41
 MQTT....connected: 192.168.222.41
-// If connection fails, exponential backoff:
-MQTT disconnected, attempting reconnection (retry interval: 5 seconds)...
-MQTT disconnected, attempting reconnection (retry interval: 10 seconds)...
-MQTT disconnected, attempting reconnection (retry interval: 20 seconds)...
+// If connection fails, simplified logging with exponential backoff:
+MQTT disconnected, attempting reconnection...
+resolving hostname: 192.168.222.41 -> 192.168.222.41
+connection failed: 192.168.222.41 (state: -2)
+MQTT retry attempt 5 (interval: 10s)
+MQTT retry attempt 10 (interval: 20s)
+MQTT retry attempt 15 (interval: 40s)
 // Eventually reconnects:
 MQTT....connected: 192.168.222.41
-MQTT disconnected, successfully reconnected.
+MQTT reconnected successfully
 ```
 
 **Technical Improvements:**
@@ -36,7 +38,12 @@ MQTT disconnected, successfully reconnected.
 - **Exponential Backoff**: Retry intervals increase from 5 seconds to maximum 5 minutes
 - **DNS Resolution**: Enhanced hostname resolution with IP address fallback
 - **Network Validation**: Checks network connectivity before attempting MQTT connections
-- **Better Error Reporting**: Connection state codes included in error messages
+- **Better Error Reporting**: Connection state codes included in error messages (first few attempts only)
+- **Simplified Logging**: Reduced verbosity by ~70% while preserving diagnostic information
+  - Initial disconnect logged once instead of every attempt
+  - Progress updates only every 5th attempt or at long intervals (≥60s)
+  - DNS resolution details only shown for first few attempts
+  - Cleaner success/failure messages
 
 ### 2. Fixed Web Server Timeout Issues
 
@@ -117,9 +124,12 @@ Configuration endpoint available at: http://192.168.222.202/config
 ## Monitoring Commands
 
 ### Serial Output Monitoring
-Connect to the ESP32 serial console and look for these improved messages:
-- `MQTT....resolving hostname: [hostname] -> [IP]`
-- `attempting reconnection (retry interval: X seconds)`
+Connect to the ESP32 serial console and look for these simplified messages:
+- `MQTT disconnected, attempting reconnection...` (logged once)
+- `MQTT retry attempt X (interval: Ys)` (every 5th attempt or at long intervals)
+- `resolving hostname: [hostname] -> [IP]` (first few attempts only)
+- `connection failed: [server] (state: X)` (first few attempts only)
+- `MQTT reconnected successfully`
 - `Network connectivity lost, attempting to reconnect...`
 - `Network connectivity restored`
 - `Web services restarted`
