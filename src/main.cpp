@@ -273,6 +273,10 @@ const unsigned long mqttMaxRetryInterval = 300000;  // Max 5 minutes
 unsigned long lastNetworkCheck = 0;
 const unsigned long networkCheckInterval = 30000;  // Check network every 30 seconds
 
+// MQTT logging state tracking
+bool mqttDisconnectedLogged = false;  // Track if we've already logged the initial disconnect
+unsigned int mqttRetryCount = 0;      // Count retry attempts
+
 // WiFi Manager variables
 WebServer configServer(80);
 Preferences preferences;
@@ -822,6 +826,8 @@ void restartNetworkServices() {
     mqtt->disconnect();
     mqttPreviousTime = 0;  // Reset to trigger immediate reconnection attempt
     mqttRetryInterval = 5000;  // Reset retry interval
+    mqttDisconnectedLogged = false;  // Reset disconnect logging flag
+    mqttRetryCount = 0;
   }
   
   // Restart web server with enhanced configuration
@@ -1230,6 +1236,8 @@ void setup() {
   if (mqttConnect()) {
     mqttPreviousTime = millis();
     mqttRetryInterval = 5000;  // Reset retry interval on successful connection
+    mqttDisconnectedLogged = false;  // Reset disconnect logging flag
+    mqttRetryCount = 0;
   } else {
     mqttPreviousTime = 0;
   }
@@ -1538,23 +1546,36 @@ void mqttHandle() {
   if (!mqtt->connected()) {
     unsigned long mqttCurrentTime = millis();
     
+    // Log initial disconnect only once
+    if (!mqttDisconnectedLogged) {
+      Serial.println("MQTT disconnected, attempting reconnection...");
+      mqttDisconnectedLogged = true;
+      mqttRetryCount = 0;
+    }
+    
     // Use exponential backoff for reconnection attempts
     if (mqttCurrentTime - mqttPreviousTime > mqttRetryInterval) {
       mqttPreviousTime = mqttCurrentTime;
+      mqttRetryCount++;
       
-      Serial.print("MQTT disconnected, attempting reconnection (retry interval: ");
-      Serial.print(mqttRetryInterval / 1000);
-      Serial.println(" seconds)...");
+      // Log progress every 5 attempts or when interval changes significantly
+      if (mqttRetryCount % 5 == 0 || mqttRetryInterval >= 60000) {
+        Serial.print("MQTT retry attempt ");
+        Serial.print(mqttRetryCount);
+        Serial.print(" (interval: ");
+        Serial.print(mqttRetryInterval / 1000);
+        Serial.println("s)");
+      }
       
       if (mqttConnect()) {
         if (dsc != nullptr && dsc->keybusConnected) {
           mqtt->publish(mqttStatusTopic, mqttBirthMessage, true);
         }
-        Serial.println(F("MQTT disconnected, successfully reconnected."));
+        Serial.println("MQTT reconnected successfully");
         mqttRetryInterval = 5000;  // Reset retry interval on successful connection
+        mqttDisconnectedLogged = false;  // Reset disconnect logging flag
+        mqttRetryCount = 0;
       } else {
-        Serial.println(F("MQTT disconnected, failed to reconnect."));
-        
         // Implement exponential backoff
         mqttRetryInterval = min(mqttRetryInterval * 2, mqttMaxRetryInterval);
       }
@@ -1594,17 +1615,23 @@ bool mqttConnect() {
   bool isIPAddress = mqttIP.fromString(mqttServer);
   
   if (!isIPAddress) {
-    // Try DNS resolution with timeout
-    Serial.print("resolving hostname: ");
-    Serial.print(mqttServer);
-    Serial.print(" -> ");
+    // Try DNS resolution with timeout (only show details for first few attempts)
+    if (mqttRetryCount <= 3 || mqttRetryInterval >= 60000) {
+      Serial.print("resolving hostname: ");
+      Serial.print(mqttServer);
+      Serial.print(" -> ");
+    }
     
     if (WiFi.hostByName(mqttServer.c_str(), mqttIP)) {
-      Serial.println(mqttIP);
+      if (mqttRetryCount <= 3 || mqttRetryInterval >= 60000) {
+        Serial.println(mqttIP);
+      }
       // Update MQTT client with resolved IP for better connection stability
       mqtt->setServer(mqttIP, mqttPort);
     } else {
-      Serial.println("DNS resolution failed, trying with hostname");
+      if (mqttRetryCount <= 3 || mqttRetryInterval >= 60000) {
+        Serial.println("DNS resolution failed, trying with hostname");
+      }
       mqtt->setServer(mqttServer.c_str(), mqttPort);
     }
   } else {
@@ -1629,11 +1656,14 @@ bool mqttConnect() {
     lastSuccessfulMqtt = millis();  // Track successful connection
     return true;
   } else {
-    Serial.print(F("connection error: "));
-    Serial.print(mqttServer);
-    Serial.print(" (state: ");
-    Serial.print(mqtt->state());
-    Serial.println(")");
+    // Only show detailed error info for first few attempts or at longer intervals
+    if (mqttRetryCount <= 3 || mqttRetryInterval >= 60000) {
+      Serial.print(F("connection failed: "));
+      Serial.print(mqttServer);
+      Serial.print(" (state: ");
+      Serial.print(mqtt->state());
+      Serial.println(")");
+    }
     return false;
   }
 }
