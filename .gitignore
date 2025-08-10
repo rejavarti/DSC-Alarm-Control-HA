@@ -50,3 +50,6 @@
 
 # Temporary files  
 get-platformio.py
+
+# Build artifacts
+compile_commands.json
