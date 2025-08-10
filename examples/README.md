@@ -1,27 +1,44 @@
 # DSC Keybus Interface Examples
 
-This directory contains example sketches for the DSC Keybus Interface library with WiFi Manager functionality.
+This directory contains example sketches for the DSC Keybus Interface library with **Comprehensive Configuration Portal** functionality.
 
-## WiFi Configuration
+## 🚀 Comprehensive Configuration Portal
 
-All examples now include automatic WiFi Manager functionality. **No code modification is required** for basic WiFi setup.
+**NEW!** All examples now include a complete web-based configuration system. **No code modification required** for any settings!
+
+### ✨ What's Configurable
+- **WiFi Network** - SSID and password
+- **MQTT Broker** - Server, port, username, password  
+- **DSC System** - Access codes and alarm settings
+- **Pin Assignments** - All ESP32 GPIO connections
+- **Access Modes** - Available in both AP and WiFi modes
+
+![Configuration Portal](../enhanced-config-portal.png)
 
 ### Quick Start
 1. Flash any example to your ESP32
 2. Power on the device
-3. If no WiFi credentials are saved, the device will create a "DSC-Config" access point
-4. Connect to "DSC-Config" with password: `12345678`
-5. Open http://192.168.4.1 in your browser
-6. Enter your WiFi credentials and click "Save and Connect"
-7. The device will restart and connect to your WiFi network
+3. Connect to "DSC-Config" access point (password: `12345678`)
+4. Open http://192.168.4.1 in your browser  
+5. Configure ALL settings through the web interface
+6. Save and restart - device connects with full configuration
 
-### Examples
+### Reconfigure Anytime
+- Access http://[device-ip]/config when connected to WiFi
+- Update any settings without losing connection
+- No need to reflash firmware or edit code
 
-#### HomeAssistant-MQTT
-MQTT integration for Home Assistant with automatic WiFi configuration.
+📖 **[Complete Documentation](../CONFIGURATION_PORTAL.md)**
+
+---
+
+## Examples
+
+### HomeAssistant-MQTT
+MQTT integration for Home Assistant with comprehensive configuration.
 - **Path**: `esp32/HomeAssistant-MQTT/HomeAssistant-MQTT.ino`
-- **Features**: WiFi Manager, MQTT publishing, Home Assistant integration
-- **Configuration**: WiFi via web portal, MQTT settings in code
+- **Features**: Full web configuration, MQTT publishing, Home Assistant integration  
+- **Configuration**: Everything configurable via web portal - no code changes needed
 
 #### VirtualKeypad-Web  
 Web-based virtual keypad interface with integrated WiFi configuration.
