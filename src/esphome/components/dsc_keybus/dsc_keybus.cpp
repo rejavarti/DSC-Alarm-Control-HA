@@ -17,9 +17,9 @@ static const char *const TAG = "dsc_keybus";
 // Global DSC interface instance
 // Classic series requires PC-16 pin, PowerSeries uses 255 to disable
 #if defined(dscClassicSeries)
-dscKeybusInterface dsc(dscClockPin, dscReadPin, dscPC16Pin, dscWritePin);
+dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_PC16_PIN, DSC_DEFAULT_WRITE_PIN);
 #else  
-dscKeybusInterface dsc(dscClockPin, dscReadPin, dscWritePin);
+dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
 #endif
 
 void DSCKeybusComponent::setup() {
