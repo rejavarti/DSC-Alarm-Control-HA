@@ -4,8 +4,23 @@
 #define dscClockPin D1  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
 #define dscReadPin D2   // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
 #define dscWritePin D8  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
-  
+
+// DSC Classic Series PC-16 pin (required for Classic series panels)
+// For ESP8266: Use D5 (GPIO 14) with 1kΩ and 33kΩ resistors - see wiring guide
+// For ESP32: Use GPIO 17 with same resistor configuration
+#ifdef ESP8266
+#define dscPC16Pin D5   // NodeMCU D5 = GPIO 14
+#else
+#define dscPC16Pin 17   // ESP32 GPIO 17
+#endif
+
+// Initialize DSC Keybus Interface with proper pin configuration
+// Classic series requires PC-16 pin, PowerSeries uses 255 to disable
+#if defined(dscClassicSeries)
+dscKeybusInterface dsc(dscClockPin, dscReadPin, dscPC16Pin, dscWritePin);
+#else  
 dscKeybusInterface dsc(dscClockPin, dscReadPin, dscWritePin);
+#endif
 bool forceDisconnect;
 
 void disconnectKeybus() {
