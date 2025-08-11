@@ -30,6 +30,7 @@ All sensitive information (MQTT credentials, alarm codes, IP addresses) is now m
 
 - `HA_Yaml.YAML` - ⚠️ **UPDATED**: Now contains migration guide and template examples (MQTT entities removed)
 - `HA_Yaml_Enhanced.YAML` - ⚠️ **UPDATED**: MQTT broker config and automations only (MQTT entities removed)  
+- `LEGACY_HA_Yaml.YAML` - **NEW**: Legacy MQTT entities for Home Assistant <2023.8 only (⚠️ with warnings)
 - `configuration.yaml.example` - Template showing supported YAML configurations only
 - `secrets.yaml.example` - Template for secure credential storage
 - `MQTT_ENTITY_MIGRATION_GUIDE.md` - **NEW**: Complete migration guide for deprecated MQTT entities
@@ -47,6 +48,17 @@ All sensitive information (MQTT credentials, alarm codes, IP addresses) is now m
 - ✅ Added: Migration guidance and examples
 
 **Migration required** - see `MQTT_ENTITY_MIGRATION_GUIDE.md`
+
+## 🚨 Legacy Support for Older Home Assistant Versions
+
+**`LEGACY_HA_Yaml.YAML`** contains the original MQTT entity configurations for users running Home Assistant versions **before 2023.8**. 
+
+⚠️ **CRITICAL WARNINGS:**
+- **DO NOT** use with Home Assistant 2023.8+ (will cause errors)
+- **ONLY** for Home Assistant 2022.x and older
+- **Plan to upgrade** to current HA and use MQTT Discovery instead
+
+If you're on an older HA version and need the legacy entities, use that file with extreme caution and plan your migration path.
 
 ## ⚠️ Important Configuration Notes
 
