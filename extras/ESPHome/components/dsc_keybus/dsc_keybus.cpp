@@ -4,6 +4,11 @@
 // Include the DSC Keybus Interface library
 #include "dscKeybusInterface.h"
 
+#if defined(ESP_IDF_VERSION) || defined(USE_ESP_IDF) || defined(USE_ESP32) || defined(USE_ESP8266) || (!defined(ARDUINO))
+// Define the Serial object for ESP-IDF/ESPHome compatibility
+Stream Serial;
+#endif
+
 namespace esphome {
 namespace dsc_keybus {
 
