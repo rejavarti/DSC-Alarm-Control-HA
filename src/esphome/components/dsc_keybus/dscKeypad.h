@@ -20,6 +20,9 @@
 #ifndef dscKeypad_h
 #define dscKeypad_h
 
+#include <cstdint>
+#include <Arduino.h>
+
 // ESPHome compatible type definitions
 #ifndef byte
 typedef uint8_t byte;
