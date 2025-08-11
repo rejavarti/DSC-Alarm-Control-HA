@@ -26,6 +26,19 @@ See `MQTT_ENTITY_MIGRATION_GUIDE.md` for complete migration instructions.
 
 All sensitive information (MQTT credentials, alarm codes, IP addresses) is now managed through `secrets.yaml`. See `SECRETS_GUIDE.md` for detailed setup instructions.
 
+## ESPHome Configuration (Recommended)
+
+The `extras/ESPHome/DscAlarm.yaml` configuration provides:
+- **Automatic MQTT Discovery** - No YAML configuration needed in Home Assistant
+- **Complete Device Integration** - All sensors grouped under one device
+- **Enhanced Diagnostics** - WiFi signal, uptime, free memory, connection status
+- **Emergency Controls** - Fire, Aux, and Panic alarm buttons
+- **Zone Monitoring** - Individual sensors for doors, windows, motion detectors
+- **System Status** - Partition states, trouble indicators, fire alarms
+- **Over-the-Air Updates** - Update firmware wirelessly
+
+See `ESPHOME_MIGRATION_GUIDE.md` for step-by-step setup instructions.
+
 ## Files
 
 - `HA_Yaml.YAML` - ⚠️ **UPDATED**: Now contains migration guide and template examples (MQTT entities removed)
@@ -38,7 +51,7 @@ All sensitive information (MQTT credentials, alarm codes, IP addresses) is now m
 - `MQTT_STRUCTURE_GUIDE.md` - Important guidance on correct MQTT configuration structure
 - `MQTT_CONFIGURATION_TROUBLESHOOTING.md` - Troubleshooting guide for common configuration errors
 - `validate_config.py` - Configuration validation tool
-- `extras/ESPHome/DscAlarm.yaml` - **RECOMMENDED**: ESPHome configuration for MQTT Discovery
+- `extras/ESPHome/DscAlarm.yaml` - **RECOMMENDED**: Enhanced ESPHome configuration for MQTT Discovery with diagnostic sensors
 
 ## What Changed
 
