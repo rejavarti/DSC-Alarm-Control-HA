@@ -33,7 +33,7 @@ The `extras/ESPHome/DscAlarm.yaml` configuration provides:
 - **Automatic MQTT Discovery** - No YAML configuration needed in Home Assistant
 - **Complete Device Integration** - All sensors grouped under one device
 - **Enhanced Diagnostics** - WiFi signal, uptime, free memory, connection status
-- **DSC Series Support** - Both PowerSeries AND Classic series panels supported
+- **DSC Series Support** - Both PowerSeries AND Classic series panels fully supported with automatic PC-16 pin configuration
 - **Emergency Controls** - Fire, Aux, and Panic alarm buttons
 - **Zone Monitoring** - Individual sensors for doors, windows, motion detectors
 - **System Status** - Partition states, trouble indicators, fire alarms

@@ -20,7 +20,9 @@ build_flags:
 ```
 
 ## 🔧 Additional Requirements for Classic Series
-- Extra 1kΩ resistor for PC-16 connection to GPIO 17 (D5 on NodeMCU)
+- Extra 1kΩ resistor for PC-16 connection:
+  - **ESP8266**: Connect to D5 (GPIO 14)
+  - **ESP32**: Connect to GPIO 17  
 - PGM output configuration in DSC panel
 - All standard PowerSeries wiring (33kΩ and 10kΩ resistors)
 
