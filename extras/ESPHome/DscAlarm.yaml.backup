@@ -1,33 +1,19 @@
-# DSC Keybus Interface for ESPHome
-# Supports both DSC PowerSeries AND Classic series panels
-# Uses local dscKeybusInterface implementation (NOT the external Dilbert66/esphome-dsckeybus)
-# 
-# Classic Series Support: PC1500, PC1550, PC1832, PC1864, PC1616, etc.
-# PowerSeries Support: PC1555MX, PC5015, PC1616, PC1832, PC1864, etc.
-#
-# ===== IMPORTANT FOR DSC CLASSIC SERIES =====
-# If you have a DSC Classic series panel, you MUST:
-# 1. Uncomment the build_flags section below
-# 2. Ensure PC-16 wiring (additional 1kΩ resistor to GPIO 17)
-# 3. Configure PGM output in your DSC panel for PC-16
-
+# For documentation see project at https://github.com/Dilbert66/esphome-dsckeybus
 substitutions:
   accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
-
-esphome:
+ 
+ esphome:
   name: dscalarm
   platform: ESP8266
   board: nodemcuv2
+  
   includes:
     - dscKeybusInterface/
-  # ===== DSC CLASSIC SERIES ONLY =====
-  # Uncomment these 2 lines ONLY if you have a DSC Classic series panel:
-  # build_flags:
-  #   - -DdscClassicSeries
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+
   ap:
     ssid: "DSCalarm"
     password: !secret wifi_password
@@ -37,7 +23,7 @@ logger:
   level: verbose
 
 api:
-  password: !secret api_password  
+   password: !secret api_password  
 
 mqtt:
   broker: !secret mqtt_broker
@@ -46,10 +32,11 @@ mqtt:
   discovery: true
   discovery_prefix: homeassistant
   topic_prefix: esphome/dscalarm
+      
    
 ota:
-  password: !secret ota_password
-  safe_mode: True
+   password: !secret ota_password
+   safe_mode: True
    
 status_led:
   pin:
@@ -119,7 +106,7 @@ custom_component:
     return {DSCkeybus};
 
 binary_sensor:
-  # Zone status sensors
+    #zone status
   - platform: template
     id: z1
     name: "Zone Front door"
@@ -165,53 +152,52 @@ binary_sensor:
     name: "Zone Main floor motion"
     device_class: motion
     
-  # Zone alarm status sensors
+    #zone alarm status
   - platform: template
     id: za1
     name: "Zone Front door alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za2
     name: "Zone Garage door alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za3
     name: "Zone Back door alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za4
     name: "Zone Living room window alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za5
     name: "Zone Dining room window alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za6
     name: "Zone Family room window LF alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za7
     name: "Zone Family room window RF alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za8
     name: "Zone Basement windows alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za9
     name: "Zone Upstairs motion alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za10
     name: "Zone Basement motion alarm"
-    device_class: safety
+    #device_class: safety
   - platform: template
     id: za11
     name: "Zone Main floor motion alarm"
-    device_class: safety
+    #device_class: safety
     
-  # System status sensors
   - platform: template
     id: t1
     name: "DSCAlarm Trouble Status"
@@ -226,8 +212,16 @@ binary_sensor:
   - platform: status
     name: "DSCAlarm System Status"
     id: system_status_sensor
-    device_class: connectivity
-
+    device_class: "connectivity"
+    
+  - platform: template
+    name: "DSCAlarm Keybus Connected"
+    id: keybus_connected
+    device_class: "connectivity"
+    lambda: |-
+      return dsc.keybusConnected;
+    icon: "mdi:connection"
+  
 text_sensor:
   - platform: template
     id: system_status
@@ -235,19 +229,19 @@ text_sensor:
     icon: "mdi:shield"
   - platform: template
     id: p1
-    name: "DSCAlarm Partition 1 Status"
+    name: "DSCAlarm Partition 1 Status "
     icon: "mdi:shield"
   - platform: template
     id: p2
-    name: "DSCAlarm Partition 2 Status"
+    name: "DSCAlarm Partition 2 Status "
     icon: "mdi:shield"  
   - platform: template
     id: m1
-    name: "DSCAlarm Partition 1 Msg"
+    name: "DSCAlarm Partition 1 Msg "
     icon: "mdi:alert-box"
   - platform: template
     id: m2
-    name: "DSCAlarm Partition 2 Msg"
+    name: "DSCAlarm Partition 2 Msg "
     icon: "mdi:alert-box"
   # System version and build info
   - platform: version
@@ -270,8 +264,8 @@ sensor:
     update_interval: 60s
     icon: "mdi:timer-outline"
     unit_of_measurement: s
-    device_class: duration
-    state_class: total_increasing
+    device_class: "duration"
+    state_class: "total_increasing"
   
   # WiFi signal strength  
   - platform: wifi_signal
@@ -279,12 +273,80 @@ sensor:
     id: wifi_signal_db
     update_interval: 60s
     unit_of_measurement: dBm
-    device_class: signal_strength
-    state_class: measurement
+    device_class: "signal_strength"
+    state_class: "measurement"
     icon: "mdi:wifi-strength-2"
+    
+  # Free heap memory
+  - platform: template
+    name: "DSCAlarm Free Heap"
+    lambda: |-
+      return heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    unit_of_measurement: "bytes"
+    update_interval: 60s
+    icon: "mdi:memory"
+    state_class: "measurement"
+    
+  # System health metrics
+  - platform: template
+    name: "DSCAlarm WiFi Reconnects"
+    lambda: |-
+      return wifi_reconnects_counter;
+    update_interval: 60s
+    icon: "mdi:wifi-refresh"
+    state_class: "total_increasing"
+     
+switch:
+  - platform: template
+    name: "DSCAlarm Connection"
+    id: connection_status_switch
+    lambda: |-
+      return dsc.keybusConnected;
+    icon: "mdi:shield-link-variant"
+    turn_on_action:
+      - switch.toggle: restart_switch
+    turn_off_action:
+      - lambda: |-
+          disconnectKeybus();
+  - platform: restart
+    id: restart_switch
 
+# Alarm Control Panel for DSC System
+alarm_control_panel:
+  - platform: template
+    name: "DSC Alarm Panel"
+    id: dsc_alarm_panel
+    codes:
+      - !secret access_code
+    requires_code_to_arm: true
+    requires_code_to_disarm: true
+    
+    # Use partition 1 status to determine current state
+    lambda: |-
+      std::string status = id(p1).state;
+      if (status == "Ready") return ALARM_STATE_DISARMED;
+      if (status == "Armed Away") return ALARM_STATE_ARMED_AWAY;
+      if (status == "Armed Stay") return ALARM_STATE_ARMED_HOME;
+      if (status == "Armed Night") return ALARM_STATE_ARMED_NIGHT;
+      if (status.find("Alarm") != std::string::npos) return ALARM_STATE_TRIGGERED;
+      if (status.find("Entry Delay") != std::string::npos) return ALARM_STATE_PENDING;
+      return ALARM_STATE_DISARMED;
+      
+    arm_away_action:
+      - lambda: |-
+          dsc.write("1A" + code);
+    arm_home_action:
+      - lambda: |-
+          dsc.write("1S" + code);
+    arm_night_action:
+      - lambda: |-
+          dsc.write("1N" + code);
+    disarm_action:
+      - lambda: |-
+          dsc.write("1D" + code);
+
+# Emergency buttons
 button:
-  # Emergency buttons
   - platform: template
     name: "Fire Alarm"
     id: fire_alarm_button
@@ -309,17 +371,3 @@ button:
       - lambda: |-
           dsc.write("p");
 
-switch:
-  - platform: template
-    name: "DSCAlarm Connection"
-    id: connection_status_switch
-    lambda: |-
-      return dsc.keybusConnected;
-    icon: "mdi:shield-link-variant"
-    turn_on_action:
-      - switch.toggle: restart_switch
-    turn_off_action:
-      - lambda: |-
-          disconnectKeybus();
-  - platform: restart
-    id: restart_switch

@@ -1,0 +1,290 @@
+# ⚠️  LEGACY CONFIGURATION - FOR OLD HOME ASSISTANT VERSIONS ONLY ⚠️
+#
+# 🚨 CRITICAL WARNING: 🚨
+# This file contains MQTT entity configurations that are DEPRECATED and will NOT work
+# in Home Assistant 2023.8 and newer versions!
+#
+# ✅ ONLY use this if you are running Home Assistant 2022.x or older
+# ❌ DO NOT use this with Home Assistant 2023.8+ (will cause errors)
+#
+# RECOMMENDED: Upgrade to current Home Assistant and use MQTT Discovery instead
+# See: extras/ESPHome/DscAlarm.yaml and MQTT_ENTITY_MIGRATION_GUIDE.md
+#
+# ============================================================================
+
+# Original DSC Alarm Control Panel Configuration
+# This worked in Home Assistant versions before 2023.8
+alarm_control_panel:
+  - name: "DSC 1500 Alarm Panel"
+    unique_id: dscPartition1
+    state_topic: "dsc/Get/Partition1"
+    code: !secret dsc_alarm_code
+    command_template: >
+      {% if action == "1D" %}
+        1!{{ code }}
+      {% else %}
+        {{ action }}
+      {% endif %}
+    payload_disarm: "1D"
+    payload_arm_home: "1S"
+    payload_arm_away: "1A"
+    payload_arm_night: "1N"
+    availability_topic: "dsc/Status"
+    command_topic: "dsc/Set"
+    supported_features:
+      - arm_home
+      - arm_away
+      - arm_night
+    code_arm_required: true
+    code_disarm_required: true
+    code_trigger_required: true
+
+# Enhanced Partition Status Sensor with Attributes (from Enhanced YAML)
+sensor:
+  - name: "Security Partition 1 Status"
+    unique_id: dsc_partition_1_status
+    state_topic: "dsc/Get/Partition1/Message"
+    availability_topic: "dsc/Status"
+    icon: "mdi:shield-check"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+    json_attributes_topic: "dsc/Get/Partition1/Attributes"
+    
+  # System Health and Diagnostics
+  - name: "DSC System Uptime"
+    unique_id: dsc_system_uptime
+    state_topic: "dsc/Diagnostics/Uptime"
+    availability_topic: "dsc/Status"
+    unit_of_measurement: "s"
+    device_class: "duration"
+    icon: "mdi:timer-outline"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC Free Memory"
+    unique_id: dsc_free_memory
+    state_topic: "dsc/Diagnostics/FreeHeap"
+    availability_topic: "dsc/Status"
+    unit_of_measurement: "bytes"
+    icon: "mdi:memory"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC WiFi Signal Strength"
+    unique_id: dsc_wifi_rssi
+    state_topic: "dsc/Diagnostics/WiFiRSSI"
+    availability_topic: "dsc/Status"
+    unit_of_measurement: "dBm"
+    device_class: "signal_strength"
+    icon: "mdi:wifi-strength-2"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # Original basic sensor  
+  - name: "Security Partition 1"
+    unique_id: dscPartitionMessage1
+    state_topic: "dsc/Get/Partition1/Message"
+    icon: "mdi:shield"
+    availability_topic: "dsc/Status"
+
+# Enhanced Binary Sensors with Better Device Classes
+binary_sensor:
+  # System Health Monitoring
+  - name: "DSC System Health"
+    unique_id: dsc_system_health
+    state_topic: "dsc/Diagnostics/SystemHealthy"
+    availability_topic: "dsc/Status"
+    device_class: "problem"
+    payload_on: "false"  # Inverted - problem when not healthy
+    payload_off: "true"
+    icon: "mdi:heart-pulse"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC Keybus Connected"
+    unique_id: dsc_keybus_connected
+    state_topic: "dsc/Diagnostics/KeybusConnected"
+    availability_topic: "dsc/Status"
+    device_class: "connectivity"
+    payload_on: "true"
+    payload_off: "false"
+    icon: "mdi:connection"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+      
+  - name: "DSC Buffer Overflow"
+    unique_id: dsc_buffer_overflow
+    state_topic: "dsc/Diagnostics/BufferOverflow"
+    availability_topic: "dsc/Status"
+    device_class: "problem"
+    payload_on: "true"
+    payload_off: "false"
+    icon: "mdi:buffer"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # Security System Status
+  - name: "Security System Trouble"
+    unique_id: dsc_trouble
+    state_topic: "dsc/Get/Trouble"
+    availability_topic: "dsc/Status"
+    device_class: "problem"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:alert-circle"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # Fire Alarms
+  - name: "Downstairs Smoke Alarm"
+    unique_id: dsc_fire_1
+    state_topic: "dsc/Get/Fire1"
+    availability_topic: "dsc/Status"
+    device_class: "smoke"
+    payload_on: "1"
+    payload_off: "0"
+    icon: "mdi:smoke-detector"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # Zone Sensors (Doors and Motion)
+  - name: "Back Door"
+    unique_id: dscZone1
+    state_topic: "dsc/Get/Zone1"
+    device_class: "door"
+    payload_on: "1"
+    payload_off: "0"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Front Door"
+    unique_id: dscZone2
+    state_topic: "dsc/Get/Zone2"
+    device_class: "door"
+    payload_on: "1"
+    payload_off: "0"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Upper Patio Door"
+    unique_id: dscZone3
+    state_topic: "dsc/Get/Zone3"
+    device_class: "door"
+    payload_on: "1"
+    payload_off: "0"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Downstairs Motion"
+    unique_id: dscZone4
+    state_topic: "dsc/Get/Zone4"
+    device_class: "motion"
+    payload_on: "1"
+    payload_off: "0"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Kitchen Glass Break"
+    unique_id: dscZone5
+    state_topic: "dsc/Get/Zone5"
+    device_class: "tamper"
+    payload_on: "1"
+    payload_off: "0"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  # PGM Outputs
+  - name: "PGM 1"
+    unique_id: dscPGM1
+    state_topic: "dsc/Get/PGM1"
+    payload_on: "1"
+    payload_off: "0"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "PGM 8"
+    unique_id: dscPGM8
+    state_topic: "dsc/Get/PGM8"
+    payload_on: "1"
+    payload_off: "0"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+# ⚠️ EMERGENCY BUTTONS - USE WITH EXTREME CAUTION ⚠️
+# These trigger actual emergency responses! Secure these entities properly!
+button:
+  - name: "Fire Alarm"
+    unique_id: dscFire
+    command_topic: "dsc/Set"
+    payload_press: "f"
+    icon: "mdi:fire"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Aux Alarm"
+    unique_id: dscAux
+    command_topic: "dsc/Set"
+    payload_press: "a"
+    icon: "mdi:hospital-box"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+  - name: "Panic Alarm"
+    unique_id: dscPanic
+    command_topic: "dsc/Set"
+    payload_press: "p"
+    icon: "mdi:police-badge"
+    availability_topic: "dsc/Status"
+    device:
+      identifiers: ["dsc_keybus_interface"]
+
+# ============================================================================
+# MIGRATION INSTRUCTIONS:
+# ============================================================================
+#
+# If you're using Home Assistant 2023.8+, you MUST migrate to one of these approaches:
+#
+# 1. MQTT Discovery (Recommended):
+#    - Use the ESPHome configuration in extras/ESPHome/DscAlarm.yaml
+#    - Flash it to your ESP32/ESP8266 device
+#    - Entities will automatically appear in Home Assistant
+#    - Provides better device grouping and management
+#
+# 2. Manual UI Configuration:
+#    - Go to Settings > Devices & Services > MQTT
+#    - Click "Configure" and then "Add Entity"  
+#    - Manually recreate each entity using the topics and settings above
+#
+# 3. Custom Discovery Script:
+#    - Create a script that publishes MQTT discovery messages
+#    - Format: homeassistant/<component>/<unique_id>/config
+#    - See MQTT_ENTITY_MIGRATION_GUIDE.md for examples
+#
+# ============================================================================
+# WHAT TO DO WITH THIS FILE:
+# ============================================================================
+#
+# FOR CURRENT HOME ASSISTANT (2023.8+):
+# - DO NOT include this file in your configuration
+# - Use the migration approaches above instead
+# - This file is for reference only
+#
+# FOR LEGACY HOME ASSISTANT (2022.x and older):
+# - You can use this file, but plan to upgrade soon
+# - Copy sections to your configuration.yaml
+# - Make sure you have the secrets configured properly
+#
+# SECURITY REMINDERS:
+# - Set up secrets.yaml with your actual values (see secrets.yaml.example)
+# - Use MQTT authentication and TLS in production
+# - Be extremely careful with emergency buttons - consider removing them
+# - Regularly monitor for Home Assistant updates and migration requirements
