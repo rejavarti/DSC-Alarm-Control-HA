@@ -21,14 +21,14 @@
 #define dscKeybus_h
 
 #include <cstdint>
-#ifdef ESP_IDF_VERSION
-  // ESP-IDF framework includes
+#if defined(USE_ARDUINO_VERSION_CODE) || defined(ESP_IDF_VERSION)
+  // ESPHome or ESP-IDF framework includes
   #include <esp_attr.h>
   #include <esp_timer.h>
   #include <freertos/portmacro.h>
   #include <stdio.h>
   
-  // Arduino compatibility for ESP-IDF
+  // Arduino compatibility for ESP-IDF/ESPHome
   #define F(str) (str)
   
   // Minimal Stream class for compatibility
