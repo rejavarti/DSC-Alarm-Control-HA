@@ -26,7 +26,7 @@ esphome:
     - dscKeybusInterface/
   # ===== DSC CLASSIC SERIES ONLY =====
   # Uncomment these 2 lines ONLY if you have a DSC Classic series panel:
-  # NOTE: build_flags must be under esphome: section, NOT under esp32: section
+  # NOTE: build_flags must be under esp32: section, NOT under esphome: section
   # build_flags:
   #   - -DdscClassicSeries
 
@@ -34,6 +34,14 @@ esp32:
   board: esp32dev
   framework:
     type: esp-idf
+  # ===== DSC CLASSIC SERIES ONLY =====
+  # Uncomment these lines ONLY if you have a DSC Classic series panel:
+  # (Note: you should use DscAlarm_Classic_ESP32.yaml instead for pre-configured setup)
+  #
+  # esphome:
+  #   platformio_options:
+  #     build_flags:
+  #       - -DdscClassicSeries
 
 wifi:
   ssid: !secret wifi_ssid
@@ -58,8 +66,11 @@ mqtt:
   topic_prefix: esphome/dscalarm
    
 ota:
-  password: !secret ota_password
-  safe_mode: True
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
    
 status_led:
   pin:

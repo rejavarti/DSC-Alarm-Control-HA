@@ -16,14 +16,19 @@ substitutions:
 
 esphome:
   name: dscalarm
-  platform: ESP8266
-  board: nodemcuv2
   includes:
     - dscKeybusInterface/
+
+esp8266:
+  board: nodemcuv2
   # ===== DSC CLASSIC SERIES ONLY =====
-  # Uncomment these 2 lines ONLY if you have a DSC Classic series panel:
-  # build_flags:
-  #   - -DdscClassicSeries
+  # Uncomment these lines ONLY if you have a DSC Classic series panel:
+  # (Note: you should use DscAlarm_Classic.yaml instead for pre-configured setup)
+  #
+  # esphome:
+  #   platformio_options:
+  #     build_flags:
+  #       - -DdscClassicSeries
 
 wifi:
   ssid: !secret wifi_ssid
@@ -48,8 +53,11 @@ mqtt:
   topic_prefix: esphome/dscalarm
    
 ota:
-  password: !secret ota_password
-  safe_mode: True
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
    
 status_led:
   pin:

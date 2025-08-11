@@ -26,9 +26,10 @@ esphome:
   includes:
     - dscKeybusInterface/
   # DSC Classic series build flag - REQUIRED for Classic panels
-  # NOTE: build_flags must be under esphome: section, NOT under esp32: section
-  build_flags:
-    - -DdscClassicSeries
+  # NOTE: build_flags must be under esphome: section using platformio_options
+  platformio_options:
+    build_flags:
+      - -DdscClassicSeries
 
 esp32:
   board: esp32dev
@@ -58,8 +59,11 @@ mqtt:
   topic_prefix: esphome/dscalarm
    
 ota:
-  password: !secret ota_password
-  safe_mode: True
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
    
 status_led:
   pin:
