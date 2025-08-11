@@ -21,6 +21,7 @@
 #define dscKeybus_h
 
 #include <cstdint>
+#include <cstring>
 #if defined(ESP_IDF_VERSION) || defined(USE_ARDUINO_VERSION_CODE) || defined(USE_ESP_IDF) || defined(USE_ARDUINO)
   // ESPHome or ESP-IDF framework includes
   #include <esp_attr.h>
@@ -38,11 +39,24 @@
     virtual void println(const char* str) { printf("%s\n", str); }
   };
   
-  // Arduino compatibility functions
+  // Arduino compatibility functions and constants
   inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
+  inline void bitWrite(uint8_t &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
   inline void pinMode(uint8_t pin, uint8_t mode) { /* stub */ }
+  inline void digitalWrite(uint8_t pin, uint8_t value) { /* stub */ }
+  inline uint8_t digitalRead(uint8_t pin) { return 0; /* stub */ }
+  inline void attachInterrupt(uint8_t interrupt, void (*callback)(), uint8_t mode) { /* stub */ }
+  inline void detachInterrupt(uint8_t interrupt) { /* stub */ }
+  inline uint8_t digitalPinToInterrupt(uint8_t pin) { return pin; /* stub */ }
+  inline unsigned long millis() { return esp_timer_get_time() / 1000; }
+  inline void noInterrupts() { /* stub */ }
+  inline void interrupts() { /* stub */ }
+  
   #define INPUT 0
   #define OUTPUT 1
+  #define LOW 0
+  #define HIGH 1
+  #define CHANGE 1
   
   // Global Serial object
   extern Stream Serial;
