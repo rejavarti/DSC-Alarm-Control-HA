@@ -22,12 +22,17 @@ substitutions:
 
 esphome:
   name: dscalarm
-  includes:
-    - dscKeybusInterface/
   # ===== DSC CLASSIC SERIES ONLY =====
   # Uncomment these 2 lines ONLY if you have a DSC Classic series panel:
   # NOTE: build_flags must be under esp32: section, NOT under esphome: section
   # build_flags:
+  #   - -DdscClassicSeries
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
   #   - -DdscClassicSeries
 
 esp32:
@@ -77,67 +82,72 @@ status_led:
     number: GPIO2
     inverted: yes
 
-custom_component:
-- lambda: |-
-    auto DSCkeybus = new DSCkeybushome();
-    
-    DSCkeybus->accessCode="$accessCode";
-    DSCkeybus->debug=0; // 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
-    
-    DSCkeybus->onSystemStatusChange([&](std::string statusCode) {
-       id(system_status).publish_state(statusCode);
-    });
-    DSCkeybus->onPartitionStatusChange([&](uint8_t partition,std::string statusCode) {
-       switch(partition) {
-         case 1: id(p1).publish_state(statusCode); break;
-         case 2: id(p2).publish_state(statusCode); break;
-      }
-    });
-    DSCkeybus->onPartitionMsgChange([&](uint8_t partition,std::string msg) {
-       switch(partition) {
-         case 1: id(m1).publish_state(msg); break;
-         case 2: id(m2).publish_state(msg); break;
-      }
-    });
-    DSCkeybus->onTroubleStatusChange([&](bool open) {
-        id(t1).publish_state(open);
-    });
-    DSCkeybus->onFireStatusChange([&](uint8_t partition, bool open) {
-      switch (partition) {
-          case 1: id(f1).publish_state(open); break;
-      }
-    });
-    DSCkeybus->onZoneStatusChange([&](uint8_t zone, bool open) {
-      switch (zone) {
-        case 1: id(z1).publish_state(open); break;
-        case 2: id(z2).publish_state(open); break;
-        case 3: id(z3).publish_state(open); break;
-        case 4: id(z4).publish_state(open); break;
-        case 5: id(z5).publish_state(open); break;
-        case 6: id(z6).publish_state(open); break;
-        case 7: id(z7).publish_state(open); break;
-        case 8: id(z8).publish_state(open); break;
-        case 9: id(z9).publish_state(open); break;
-        case 10: id(z10).publish_state(open); break;
-        case 11: id(z11).publish_state(open); break;
-      }
-    });
-    DSCkeybus->onZoneAlarmChange([&](uint8_t zone, bool open) {
-      switch (zone) {
-        case 1: id(za1).publish_state(open); break;
-        case 2: id(za2).publish_state(open); break;
-        case 3: id(za3).publish_state(open); break;
-        case 4: id(za4).publish_state(open); break;
-        case 5: id(za5).publish_state(open); break;
-        case 6: id(za6).publish_state(open); break;
-        case 7: id(za7).publish_state(open); break;
-        case 8: id(za8).publish_state(open); break;
-        case 9: id(za9).publish_state(open); break;
-        case 10: id(za10).publish_state(open); break;
-        case 11: id(za11).publish_state(open); break;
-      }
-    });
-    return {DSCkeybus};
+dsc_keybus:
+  id: dsc_interface
+  access_code: "$accessCode"
+  debug: 0  # 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
+  on_system_status_change:
+    then:
+      - text_sensor.template.publish:
+          id: system_status
+          state: !lambda 'return status;'
+  on_partition_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(p1).publish_state(status); break;
+            case 2: id(p2).publish_state(status); break;
+          }
+  on_partition_msg_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(m1).publish_state(msg); break;
+            case 2: id(m2).publish_state(msg); break;
+          }
+  on_trouble_status_change:
+    then:
+      - binary_sensor.template.publish:
+          id: t1
+          state: !lambda 'return trouble;'
+  on_fire_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(f1).publish_state(fire); break;
+          }
+  on_zone_status_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(z1).publish_state(open); break;
+            case 2: id(z2).publish_state(open); break;
+            case 3: id(z3).publish_state(open); break;
+            case 4: id(z4).publish_state(open); break;
+            case 5: id(z5).publish_state(open); break;
+            case 6: id(z6).publish_state(open); break;
+            case 7: id(z7).publish_state(open); break;
+            case 8: id(z8).publish_state(open); break;
+            case 9: id(z9).publish_state(open); break;
+            case 10: id(z10).publish_state(open); break;
+            case 11: id(z11).publish_state(open); break;
+          }
+  on_zone_alarm_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(za1).publish_state(open); break;
+            case 2: id(za2).publish_state(open); break;
+            case 3: id(za3).publish_state(open); break;
+            case 4: id(za4).publish_state(open); break;
+            case 5: id(za5).publish_state(open); break;
+            case 6: id(za6).publish_state(open); break;
+            case 7: id(za7).publish_state(open); break;
+            case 8: id(za8).publish_state(open); break;
+            case 9: id(za9).publish_state(open); break;
+            case 10: id(za10).publish_state(open); break;
+            case 11: id(za11).publish_state(open); break;
+          }
 
 binary_sensor:
   # Zone status sensors

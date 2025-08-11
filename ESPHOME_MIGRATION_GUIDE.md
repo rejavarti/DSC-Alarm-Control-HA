@@ -4,6 +4,22 @@
 
 This guide helps you migrate from MQTT YAML entities (deprecated in Home Assistant 2023.8+) to ESPHome with automatic MQTT Discovery. Your current diagnostic data and functionality will be preserved and enhanced.
 
+## ⚠️ IMPORTANT: Custom Component Migration
+
+**ESPHome has deprecated the `custom_component:` configuration.** All configurations in this repository have been updated to use the new **external component** architecture for better maintainability and compatibility.
+
+### What Changed:
+- ✅ **External Component Structure**: DSC Keybus Interface is now a proper ESPHome external component
+- ✅ **Trigger-Based Architecture**: Uses modern ESPHome triggers instead of deprecated callback functions
+- ✅ **Improved Maintainability**: Cleaner separation between DSC library code and ESPHome integration
+- ✅ **Future-Proof**: Follows ESPHome best practices for component development
+
+### Migration Benefits:
+- **Automatic Migration**: Existing functionality preserved with no configuration changes needed
+- **Better Performance**: More efficient event handling through ESPHome's trigger system
+- **Enhanced Reliability**: Improved error handling and component lifecycle management
+- **Easier Updates**: Simplified maintenance and future enhancements
+
 ## DSC Series Compatibility
 
 This ESPHome configuration supports **BOTH** DSC series:
