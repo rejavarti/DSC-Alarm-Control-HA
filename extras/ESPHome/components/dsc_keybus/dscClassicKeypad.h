@@ -20,63 +20,7 @@
 #ifndef dscClassicKeypad_h
 #define dscClassicKeypad_h
 
-#include <cstdint>
-#include <cstring>
-#if defined(ESP_IDF_VERSION)
-  // ESP-IDF framework (including ESPHome) - provide Arduino compatibility
-  #include <esp_attr.h>
-  #include <esp_timer.h>
-  #include <freertos/portmacro.h>
-  #include <stdio.h>
-  
-  // Arduino compatibility for ESP-IDF
-  #define F(str) (str)
-  
-  // Minimal Stream class for compatibility
-  class Stream {
-  public:
-    virtual void print(const char* str) { printf("%s", str); }
-    virtual void println(const char* str) { printf("%s\n", str); }
-  };
-  
-  // Arduino compatibility functions and constants
-  inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
-  template<typename T>
-  inline uint8_t bitRead(T value, uint8_t bit) { return (value >> bit) & 1; }
-  inline void bitWrite(uint8_t &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
-  template<typename T>
-  inline void bitWrite(T &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
-  inline void pinMode(uint8_t pin, uint8_t mode) { /* stub */ }
-  inline void digitalWrite(uint8_t pin, uint8_t value) { /* stub */ }
-  inline uint8_t digitalRead(uint8_t pin) { return 0; /* stub */ }
-  inline void attachInterrupt(uint8_t interrupt, void (*callback)(), uint8_t mode) { /* stub */ }
-  inline void detachInterrupt(uint8_t interrupt) { /* stub */ }
-  inline uint8_t digitalPinToInterrupt(uint8_t pin) { return pin; /* stub */ }
-  inline unsigned long millis() { return esp_timer_get_time() / 1000; }
-  inline void noInterrupts() { /* stub */ }
-  inline void interrupts() { /* stub */ }
-  
-  #define INPUT 0
-  #define OUTPUT 1
-  #define LOW 0
-  #define HIGH 1
-  #define CHANGE 1
-  
-  // Global Serial object
-  extern Stream Serial;
-#elif defined(ARDUINO)
-  // Pure Arduino framework
-  #include <Arduino.h>
-#else
-  // Fallback for unknown environments
-  #include <cstdint>
-  typedef uint8_t byte;
-  #define INPUT 0
-  #define OUTPUT 1
-  #define LOW 0
-  #define HIGH 1
-  #define CHANGE 1
-#endif
+#include "dsc_arduino_compatibility.h"
 
 // ESPHome compatible type definitions
 #ifndef byte
