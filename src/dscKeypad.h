@@ -20,11 +20,105 @@
 #ifndef dscKeypad_h
 #define dscKeypad_h
 
-#include <Arduino.h>
+#include <cstdint>
+#if defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ESP32) && !defined(ESP8266) && !defined(__AVR__))
+  // ESP-IDF framework includes or native build (not Arduino platforms)
+  #ifdef ESP_IDF_VERSION
+    #include <esp_attr.h>
+    #include <esp_timer.h>
+    #include <freertos/portmacro.h>
+  #endif
+  #include <stdio.h>
+  #include <cstring>
+  #include <chrono>
+  #include <thread>
+  
+  // Arduino compatibility
+  #define F(str) (str)
+  
+  // Minimal Stream class for compatibility
+  class Stream {
+  public:
+    virtual void print(const char* str) { printf("%s", str); }
+    virtual void print(int value) { printf("%d", value); }
+    virtual void print(int value, int format) { 
+      if (format == 16) printf("%X", value); 
+      else printf("%d", value); 
+    }
+    virtual void print(unsigned int value) { printf("%u", value); }
+    virtual void print(unsigned int value, int format) { 
+      if (format == 16) printf("%X", value); 
+      else printf("%u", value); 
+    }
+    virtual void print(long value) { printf("%ld", value); }
+    virtual void print(unsigned long value) { printf("%lu", value); }
+    virtual void println(const char* str) { printf("%s\n", str); }
+    virtual void println(int value) { printf("%d\n", value); }
+  };
+  
+  // Arduino compatibility functions and constants
+  inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
+  inline void bitWrite(uint8_t &value, uint8_t bit, uint8_t bitvalue) { 
+    if (bitvalue) value |= (1 << bit); 
+    else value &= ~(1 << bit); 
+  }
+  inline void pinMode(uint8_t pin, uint8_t mode) { /* stub */ }
+  inline void digitalWrite(uint8_t pin, uint8_t value) { /* stub */ }
+  inline int digitalRead(uint8_t pin) { return 0; /* stub */ }
+  inline void attachInterrupt(int pin, void (*isr)(), int mode) { /* stub */ }
+  inline void detachInterrupt(int pin) { /* stub */ }
+  inline int digitalPinToInterrupt(int pin) { return pin; /* stub */ }
+  inline void noInterrupts() { /* stub */ }
+  inline void interrupts() { /* stub */ }
+  inline void delay(unsigned long ms) { 
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+  }
+  inline char* itoa(int value, char* str, int base) {
+    sprintf(str, (base == 16) ? "%X" : "%d", value);
+    return str;
+  }
+  
+  // Time functions
+  inline unsigned long millis() { 
+    static auto start = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+  }
+  inline unsigned long micros() { 
+    static auto start = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::microseconds>(now - start).count();
+  }
+  
+  // Constants
+  #define INPUT 0
+  #define OUTPUT 1
+  #define HIGH 1
+  #define LOW 0
+  #define CHANGE 1
+  #define RISING 2
+  #define FALLING 3
+  #define HEX 16
+  #define DEC 10
+  
+  // Global Serial object
+  extern Stream Serial;
+#else
+  // Arduino framework include
+  #include <Arduino.h>
+#endif
+
+// Compatible type definitions
+#ifndef byte
+typedef uint8_t byte;
+#endif
 
 #if defined(__AVR__)
 const byte dscBufferSize = 10;  // Number of keys to buffer if the sketch is busy
 #elif defined(ESP8266) || defined (ESP32)
+const byte dscBufferSize = 50;
+#else
+// Native/test environment default
 const byte dscBufferSize = 50;
 #endif
 const byte dscReadSize = 16;    // Maximum bytes of a Keybus command

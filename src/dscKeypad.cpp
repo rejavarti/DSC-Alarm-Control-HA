@@ -403,6 +403,9 @@ void dscKeypadInterface::dscClockInterrupt() {
 void ICACHE_RAM_ATTR dscKeypadInterface::dscClockInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscKeypadInterface::dscClockInterrupt() {
+#else
+// Native/test environment
+void dscKeypadInterface::dscClockInterrupt() {
 #endif
 
   // Toggles the clock pin for the length of a panel command
