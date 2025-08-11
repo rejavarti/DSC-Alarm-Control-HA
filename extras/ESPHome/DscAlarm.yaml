@@ -1,4 +1,13 @@
-# For documentation see project at https://github.com/Dilbert66/esphome-dsckeybus
+# DSC Keybus Interface for ESPHome
+# Supports both DSC PowerSeries AND Classic series panels
+# Uses local dscKeybusInterface implementation (NOT the external Dilbert66/esphome-dsckeybus)
+# 
+# Classic Series Support: PC1500, PC1550, PC1832, PC1864, PC1616, etc.
+# PowerSeries Support: PC1555MX, PC5015, PC1616, PC1832, PC1864, etc.
+#
+# For Classic series panels, uncomment the dscClassicSeries define below
+# and ensure proper PC-16 wiring configuration
+
 substitutions:
   accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
 
@@ -8,6 +17,9 @@ esphome:
   board: nodemcuv2
   includes:
     - dscKeybusInterface/
+  # Uncomment the next 3 lines for DSC Classic series panels
+  # build_flags:
+  #   - -DdscClassicSeries
 
 wifi:
   ssid: !secret wifi_ssid

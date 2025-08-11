@@ -4,6 +4,21 @@
 
 This guide helps you migrate from MQTT YAML entities (deprecated in Home Assistant 2023.8+) to ESPHome with automatic MQTT Discovery. Your current diagnostic data and functionality will be preserved and enhanced.
 
+## DSC Series Compatibility
+
+This ESPHome configuration supports **BOTH** DSC series:
+
+### ✅ DSC PowerSeries
+- PC1555MX, PC5015, PC1616, PC1832, PC1864, etc.
+- Default configuration (no changes needed)
+
+### ✅ DSC Classic Series  
+- PC1500, PC1550, PC1832, PC1864, PC1616, etc.
+- Requires uncommenting `classic_series_define` in the configuration
+- Requires PC-16 wiring configuration
+
+**Note**: This uses a LOCAL dscKeybusInterface implementation, not the external Dilbert66/esphome-dsckeybus project (which doesn't support Classic series).
+
 ## Your Current Setup
 
 Based on your MQTT diagnostics, you have:
@@ -33,6 +48,15 @@ Based on your MQTT diagnostics, you have:
 3. Choose **"Continue"** and name it `dscalarm`
 4. Select your device type (ESP8266/ESP32)
 5. Replace the generated configuration with the enhanced `extras/ESPHome/DscAlarm.yaml`
+
+#### For DSC Classic Series Users:
+If you have a Classic series panel (PC1500, PC1550, etc.), you need to:
+1. Uncomment the `build_flags: - -DdscClassicSeries` lines in the esphome section
+2. Ensure you have the PC-16 wiring configuration connected
+3. Verify your panel model is compatible with Classic series protocol
+
+#### For DSC PowerSeries Users:
+- No additional configuration needed - the default settings work for PowerSeries panels
 
 ### Step 4: Configure Secrets
 
@@ -109,6 +133,31 @@ Once ESPHome is working:
 - **State Classes** - Better long-term statistics
 - **Version Tracking** - Know your firmware version
 
+## Wiring Information
+
+### DSC PowerSeries Wiring (Default)
+```
+DSC Aux(+) --- 5v voltage regulator --- ESP32/ESP8266 5v pin
+DSC Aux(-) --- ESP32/ESP8266 Ground
+
+DSC Yellow --- 33k ohm resistor ---|--- dscClockPin (GPIO 18)
+                                   +--- 10k ohm resistor --- Ground
+
+DSC Green ---- 33k ohm resistor ---|--- dscReadPin (GPIO 19)  
+                                   +--- 10k ohm resistor --- Ground
+```
+
+### DSC Classic Series Wiring (Additional Requirements)
+For Classic series panels, you also need PC-16 configuration:
+```
+DSC PGM ---+-- 1k ohm resistor --- DSC Aux(+)
+           |
+           +-- 33k ohm resistor ---|--- dscPC16Pin (GPIO 17)
+                                   +--- 10k ohm resistor --- Ground
+```
+
+**Note**: Classic series requires PGM configured for PC-16 output in your panel programming.
+
 ## Troubleshooting
 
 ### Device Not Connecting
@@ -125,6 +174,12 @@ Once ESPHome is working:
 1. Check ESPHome device logs
 2. Verify MQTT discovery is enabled (`discovery: true`)
 3. Restart Home Assistant if needed
+
+### Classic Series Not Connecting
+1. Verify you uncommented the `build_flags: - -DdscClassicSeries` lines
+2. Check PC-16 wiring is correctly connected to GPIO 17
+3. Ensure your panel's PGM is programmed for PC-16 output
+4. Verify panel model is actually Classic series (PC1500, PC1550, etc.)
 
 ### Old Entities Still Visible
 1. Go to **Settings** → **Devices & Services** → **Entities**
