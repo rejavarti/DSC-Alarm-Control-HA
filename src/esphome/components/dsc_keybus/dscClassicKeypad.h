@@ -22,14 +22,14 @@
 
 #include <cstdint>
 #include <cstring>
-#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
-  // Pure ESP-IDF framework includes (without Arduino)
+#if defined(ESP_IDF_VERSION)
+  // ESP-IDF framework (including ESPHome) - provide Arduino compatibility
   #include <esp_attr.h>
   #include <esp_timer.h>
   #include <freertos/portmacro.h>
   #include <stdio.h>
   
-  // Arduino compatibility for pure ESP-IDF
+  // Arduino compatibility for ESP-IDF
   #define F(str) (str)
   
   // Minimal Stream class for compatibility
@@ -61,9 +61,18 @@
   
   // Global Serial object
   extern Stream Serial;
-#else
-  // Arduino framework include (default for most cases)
+#elif defined(ARDUINO)
+  // Pure Arduino framework
   #include <Arduino.h>
+#else
+  // Fallback for unknown environments
+  #include <cstdint>
+  typedef uint8_t byte;
+  #define INPUT 0
+  #define OUTPUT 1
+  #define LOW 0
+  #define HIGH 1
+  #define CHANGE 1
 #endif
 
 // ESPHome compatible type definitions
