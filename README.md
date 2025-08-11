@@ -29,15 +29,19 @@ All sensitive information (MQTT credentials, alarm codes, IP addresses) is now m
 ## ESPHome Configuration (Recommended)
 
 The `extras/ESPHome/DscAlarm.yaml` configuration provides:
+- **Single ESP32/ESP8266 Device** - Complete integration with just one device
 - **Automatic MQTT Discovery** - No YAML configuration needed in Home Assistant
 - **Complete Device Integration** - All sensors grouped under one device
 - **Enhanced Diagnostics** - WiFi signal, uptime, free memory, connection status
+- **DSC Series Support** - Both PowerSeries AND Classic series panels supported
 - **Emergency Controls** - Fire, Aux, and Panic alarm buttons
 - **Zone Monitoring** - Individual sensors for doors, windows, motion detectors
 - **System Status** - Partition states, trouble indicators, fire alarms
 - **Over-the-Air Updates** - Update firmware wirelessly
 
-See `ESPHOME_MIGRATION_GUIDE.md` for step-by-step setup instructions.
+**📋 Complete Setup Documentation:**
+- **`ESPHOME_COMPLETE_SETUP_GUIDE.md`** - **NEW**: Comprehensive hardware and software setup guide
+- **`ESPHOME_MIGRATION_GUIDE.md`** - Step-by-step migration from MQTT YAML
 
 ## Files
 
@@ -52,6 +56,8 @@ See `ESPHOME_MIGRATION_GUIDE.md` for step-by-step setup instructions.
 - `MQTT_CONFIGURATION_TROUBLESHOOTING.md` - Troubleshooting guide for common configuration errors
 - `validate_config.py` - Configuration validation tool
 - `extras/ESPHome/DscAlarm.yaml` - **RECOMMENDED**: Enhanced ESPHome configuration for MQTT Discovery with diagnostic sensors
+- `ESPHOME_COMPLETE_SETUP_GUIDE.md` - **NEW**: Complete hardware and software setup documentation (answers hardware requirements, wiring, step-by-step process)
+- `ESPHOME_MIGRATION_GUIDE.md` - **UPDATED**: Migration guide from deprecated MQTT YAML entities
 
 ## What Changed
 
