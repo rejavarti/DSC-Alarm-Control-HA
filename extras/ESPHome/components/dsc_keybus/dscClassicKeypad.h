@@ -20,6 +20,8 @@
 #ifndef dscClassicKeypad_h
 #define dscClassicKeypad_h
 
+#include <cstdint>
+#include <cstring>
 #if defined(ESP_IDF_VERSION)
   // ESP-IDF framework (including ESPHome) - provide Arduino compatibility
   #include <esp_attr.h>
@@ -39,8 +41,11 @@
   
   // Arduino compatibility functions and constants
   inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
+  template<typename T>
+  inline uint8_t bitRead(T value, uint8_t bit) { return (value >> bit) & 1; }
   inline void bitWrite(uint8_t &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
-  inline void bitWrite(volatile uint8_t &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
+  template<typename T>
+  inline void bitWrite(T &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
   inline void pinMode(uint8_t pin, uint8_t mode) { /* stub */ }
   inline void digitalWrite(uint8_t pin, uint8_t value) { /* stub */ }
   inline uint8_t digitalRead(uint8_t pin) { return 0; /* stub */ }
@@ -73,12 +78,34 @@
   #define CHANGE 1
 #endif
 
-#if defined(__AVR__)
-const byte dscBufferSize = 10;  // Number of keys to buffer if the sketch is busy
-#elif defined(ESP8266) || defined (ESP32)
-const byte dscBufferSize = 50;
+// ESPHome compatible type definitions
+#ifndef byte
+typedef uint8_t byte;
 #endif
-const byte dscReadSize = 2;    // Maximum bytes of a Keybus command
+
+// DSC Keybus constants - aligned with dscKeybus.h
+#if defined(__AVR__)
+const byte dscPartitions = 4;   // Maximum number of partitions - requires 19 bytes of memory per partition
+const byte dscZones = 4;        // Maximum number of zone groups, 8 zones per group - requires 6 bytes of memory per zone group
+const byte dscBufferSize = 10;  // Number of commands to buffer if the sketch is busy - requires dscReadSize + 2 bytes of memory per command
+const byte dscReadSize = 16;    // Maximum bytes of a Keybus command
+#elif defined(ESP8266)
+const byte dscPartitions = 8;
+const byte dscZones = 8;
+const byte dscBufferSize = 50;
+const byte dscReadSize = 16;
+#elif defined(ESP32)
+const byte dscPartitions = 8;
+const byte dscZones = 8;
+const DRAM_ATTR byte dscBufferSize = 50;
+const DRAM_ATTR byte dscReadSize = 16;
+#else
+// Default fallback for ESPHome/ESP-IDF and other platforms
+const byte dscPartitions = 8;
+const byte dscZones = 8;
+const byte dscBufferSize = 50;
+const byte dscReadSize = 16;
+#endif
 
 enum Light {off, on, blink};    // Custom values for keypad lights status
 
