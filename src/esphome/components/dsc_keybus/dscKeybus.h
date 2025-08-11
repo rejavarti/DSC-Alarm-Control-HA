@@ -20,7 +20,7 @@
 #ifndef dscKeybus_h
 #define dscKeybus_h
 
-// ESPHome compatible type definitions
+// ESPHome compatible type definitions  
 #ifndef byte
 typedef uint8_t byte;
 #endif
