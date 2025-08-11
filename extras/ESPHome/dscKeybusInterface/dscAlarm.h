@@ -1,9 +1,15 @@
 #include "esphome.h"
 //for documentation see project at https://github.com/Dilbert66/esphome-dsckeybus
 
+#ifdef ESP8266
 #define dscClockPin D1  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
 #define dscReadPin D2   // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
 #define dscWritePin D8  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
+#else
+#define dscClockPin 18  // ESP32
+#define dscReadPin 19   // ESP32
+#define dscWritePin 21  // ESP32
+#endif
 
 // DSC Classic Series PC-16 pin (required for Classic series panels)
 // For ESP8266: Use D5 (GPIO 14) with 1kΩ and 33kΩ resistors - see wiring guide
