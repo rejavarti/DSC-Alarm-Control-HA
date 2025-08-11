@@ -4,7 +4,10 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/core/automation.h"
-#include "esphome/components/api/custom_api_device.h"
+// Note: API component is optional
+#ifdef USE_API
+  #include "esphome/components/api/custom_api_device.h"
+#endif
 
 #ifdef ESP8266
 #define DSC_DEFAULT_CLOCK_PIN D1  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
@@ -26,6 +29,11 @@
 #endif
 
 namespace esphome {
+#ifdef USE_API
+namespace api {
+  class CustomAPIDevice; // Forward declaration
+}
+#endif
 namespace dsc_keybus {
 
 // Forward declarations
@@ -88,7 +96,11 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   DSCKeybusComponent *parent_;
 };
 
-class DSCKeybusComponent : public Component, public api::CustomAPIDevice {
+#ifdef USE_API
+  class DSCKeybusComponent : public Component, public api::CustomAPIDevice {
+#else
+  class DSCKeybusComponent : public Component {
+#endif
  public:
   DSCKeybusComponent() = default;
 

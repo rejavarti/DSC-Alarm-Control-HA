@@ -22,12 +22,17 @@
 
 #include <cstdint>
 #include <cstring>
-#if defined(ESP_IDF_VERSION)
-  // ESP-IDF framework (including ESPHome) - provide Arduino compatibility
-  #include <esp_attr.h>
-  #include <esp_timer.h>
-  #include <freertos/portmacro.h>
+#if defined(ARDUINO)
+  // Pure Arduino framework
+  #include <Arduino.h>
+#else
+  // ESPHome/ESP-IDF or other non-Arduino environments - provide Arduino compatibility
   #include <stdio.h>
+  #ifdef ESP32
+    #include <esp_attr.h>
+    #include <esp_timer.h>
+    #include <freertos/portmacro.h>
+  #endif
   
   // Arduino compatibility for ESP-IDF
   #define F(str) (str)
@@ -36,6 +41,12 @@
   class Stream {
   public:
     virtual void print(const char* str) { printf("%s", str); }
+    virtual void print(int value) { printf("%d", value); }
+    virtual void print(int value, int base) { 
+      if (base == 16) printf("%X", value);
+      else if (base == 8) printf("%o", value);
+      else printf("%d", value);
+    }
     virtual void println(const char* str) { printf("%s\n", str); }
   };
   
@@ -52,7 +63,23 @@
   inline void attachInterrupt(uint8_t interrupt, void (*callback)(), uint8_t mode) { /* stub */ }
   inline void detachInterrupt(uint8_t interrupt) { /* stub */ }
   inline uint8_t digitalPinToInterrupt(uint8_t pin) { return pin; /* stub */ }
-  inline unsigned long millis() { return esp_timer_get_time() / 1000; }
+  #ifdef ESP32
+    inline unsigned long millis() { return esp_timer_get_time() / 1000; }
+    inline unsigned long micros() { return esp_timer_get_time(); }
+  #else
+    // ESP8266 or other platforms
+    #include <sys/time.h>
+    inline unsigned long millis() { 
+      struct timeval tv;
+      gettimeofday(&tv, NULL);
+      return (tv.tv_sec * 1000UL) + (tv.tv_usec / 1000UL);
+    }
+    inline unsigned long micros() { 
+      struct timeval tv;
+      gettimeofday(&tv, NULL);
+      return (tv.tv_sec * 1000000UL) + tv.tv_usec;
+    }
+  #endif
   inline void noInterrupts() { /* stub */ }
   inline void interrupts() { /* stub */ }
   
@@ -61,21 +88,11 @@
   #define LOW 0
   #define HIGH 1
   #define CHANGE 1
+  #define HEX 16
   
   // Global Serial object
-  extern Stream Serial;
-#elif defined(ARDUINO)
-  // Pure Arduino framework
-  #include <Arduino.h>
-#else
-  // Fallback for unknown environments
-  #include <cstdint>
-  typedef uint8_t byte;
-  #define INPUT 0
-  #define OUTPUT 1
-  #define LOW 0
-  #define HIGH 1
-  #define CHANGE 1
+  static Stream _serial_instance;
+  static Stream& Serial = _serial_instance;
 #endif
 
 // ESPHome compatible type definitions

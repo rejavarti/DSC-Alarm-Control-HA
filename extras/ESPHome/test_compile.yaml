@@ -1,0 +1,20 @@
+esphome:
+  name: test-dsc-alarm
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp8266:
+  board: nodemcuv2
+
+logger:
+
+wifi:
+  ssid: "test"
+  password: "password"
+
+dsc_keybus:
+  access_code: "1234"
