@@ -21,7 +21,7 @@
 #define dscClassic_h
 
 #include <cstdint>
-#if defined(ESP_IDF_VERSION) || defined(USE_ARDUINO_VERSION_CODE)
+#if defined(ESP_IDF_VERSION) || defined(USE_ARDUINO_VERSION_CODE) || defined(USE_ESP_IDF) || defined(USE_ARDUINO)
   // ESPHome or ESP-IDF framework includes
   #include <esp_attr.h>
   #include <esp_timer.h>
