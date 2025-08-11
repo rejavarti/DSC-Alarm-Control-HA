@@ -21,7 +21,7 @@
 #define dscKeypad_h
 
 #include <cstdint>
-#if defined(USE_ARDUINO_VERSION_CODE) || defined(ESP_IDF_VERSION)
+#if defined(ESP_IDF_VERSION) || defined(USE_ARDUINO_VERSION_CODE)
   // ESPHome or ESP-IDF framework includes
   #include <esp_attr.h>
   #include <esp_timer.h>
