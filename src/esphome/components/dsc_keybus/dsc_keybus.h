@@ -7,28 +7,26 @@
 #include "esphome/components/api/custom_api_device.h"
 
 #ifdef ESP8266
-#define dscClockPin D1  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
-#define dscReadPin D2   // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
-#define dscWritePin D8  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
+#define DSC_DEFAULT_CLOCK_PIN D1  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
+#define DSC_DEFAULT_READ_PIN D2   // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
+#define DSC_DEFAULT_WRITE_PIN D8  // esp8266: D1, D2, D8 (GPIO 5, 4, 15)
 #else
-#define dscClockPin 18  // ESP32
-#define dscReadPin 19   // ESP32
-#define dscWritePin 21  // ESP32
+#define DSC_DEFAULT_CLOCK_PIN 18  // ESP32
+#define DSC_DEFAULT_READ_PIN 19   // ESP32
+#define DSC_DEFAULT_WRITE_PIN 21  // ESP32
 #endif
 
 // DSC Classic Series PC-16 pin (required for Classic series panels)
 // For ESP8266: Use D5 (GPIO 14) with 1kΩ and 33kΩ resistors - see wiring guide
 // For ESP32: Use GPIO 17 with same resistor configuration
 #ifdef ESP8266
-#define dscPC16Pin D5   // NodeMCU D5 = GPIO 14
+#define DSC_DEFAULT_PC16_PIN D5   // NodeMCU D5 = GPIO 14
 #else
-#define dscPC16Pin 17   // ESP32 GPIO 17
+#define DSC_DEFAULT_PC16_PIN 17   // ESP32 GPIO 17
 #endif
 
 namespace esphome {
 namespace dsc_keybus {
-
-static const char *const TAG = "dsc_keybus";
 
 // Forward declarations
 class DSCKeybusComponent;

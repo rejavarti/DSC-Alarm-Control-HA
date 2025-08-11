@@ -17,23 +17,23 @@ static const char *const TAG = "dsc_keybus";
 // Global DSC interface instance
 // Classic series requires PC-16 pin, PowerSeries uses 255 to disable
 #if defined(dscClassicSeries)
-dscKeybusInterface dsc(dscClockPin, dscReadPin, dscPC16Pin, dscWritePin);
+dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_PC16_PIN, DSC_DEFAULT_WRITE_PIN);
 #else  
-dscKeybusInterface dsc(dscClockPin, dscReadPin, dscWritePin);
+dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
 #endif
 
 void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
   
-  // Register API services
-  register_service(&DSCKeybusComponent::set_alarm_state, "set_alarm_state", {"partition", "state", "code"});
-  register_service(&DSCKeybusComponent::alarm_disarm, "alarm_disarm", {"code"});
-  register_service(&DSCKeybusComponent::alarm_arm_home, "alarm_arm_home");
-  register_service(&DSCKeybusComponent::alarm_arm_night, "alarm_arm_night", {"code"});
-  register_service(&DSCKeybusComponent::alarm_arm_away, "alarm_arm_away");
-  register_service(&DSCKeybusComponent::alarm_trigger_panic, "alarm_trigger_panic");
-  register_service(&DSCKeybusComponent::alarm_trigger_fire, "alarm_trigger_fire");
-  register_service(&DSCKeybusComponent::alarm_keypress, "alarm_keypress", {"keys"});
+  // TODO: Register API services (requires USE_API_SERVICES)
+  // this->register_service(&DSCKeybusComponent::set_alarm_state, "set_alarm_state", {"partition", "state", "code"});
+  // this->register_service(&DSCKeybusComponent::alarm_disarm, "alarm_disarm", {"code"});
+  // this->register_service(&DSCKeybusComponent::alarm_arm_home, "alarm_arm_home");
+  // this->register_service(&DSCKeybusComponent::alarm_arm_night, "alarm_arm_night", {"code"});
+  // this->register_service(&DSCKeybusComponent::alarm_arm_away, "alarm_arm_away");
+  // this->register_service(&DSCKeybusComponent::alarm_trigger_panic, "alarm_trigger_panic");
+  // this->register_service(&DSCKeybusComponent::alarm_trigger_fire, "alarm_trigger_fire");
+  // this->register_service(&DSCKeybusComponent::alarm_keypress, "alarm_keypress", {"keys"});
   
   // Initialize system state
   for (auto *trigger : this->system_status_triggers_) {
