@@ -18,269 +18,114 @@ mqtt:
     topic: "homeassistant/status" 
     payload: "offline"
 
-# Enhanced Alarm Control Panel with Robust Features
-alarm_control_panel:
-  - name: "DSC 1500 Alarm Panel"
-    unique_id: dsc_partition_1
-    state_topic: "dsc/Get/Partition1"
-    availability_topic: "dsc/Status"
-    command_topic: "dsc/Set"
-    code: !secret dsc_alarm_code
-    
-    # Enhanced command template with better error handling
-    command_template: >
-      {% if action == "disarm" %}
-        {% if code is defined and code != "" %}
-          1!{{ code }}
-        {% else %}
-          1D
-        {% endif %}
-      {% elif action == "arm_home" %}
-        1S
-      {% elif action == "arm_away" %}  
-        1A
-      {% elif action == "arm_night" %}
-        1N
-      {% else %}
-        {{ action }}
-      {% endif %}
-    
-    # Payload mappings
-    payload_disarm: "disarm"
-    payload_arm_home: "arm_home"
-    payload_arm_away: "arm_away"
-    payload_arm_night: "arm_night"
-    
-    # Enhanced supported features
-    supported_features:
-      - arm_home
-      - arm_away
-      - arm_night
-      - trigger
-    
-    # Security settings
-    code_arm_required: false  # Set to true if panel requires code for arming
-    code_disarm_required: true
-    code_trigger_required: true
-    
-    # Device information for better HA integration
-    device:
-      identifiers: ["dsc_keybus_interface"]
-      name: "DSC Security System"
-      model: "PC1500/PC1550 Series"
-      manufacturer: "DSC"
-      sw_version: "Enhanced v1.5"
-      configuration_url: !secret esp32_ip
+# ⚠️  MQTT ENTITIES REMOVED - Use MQTT Discovery or UI instead
+# 
+# The alarm_control_panel section has been removed because Home Assistant 
+# no longer supports YAML configuration for MQTT entities.
+#
+# To configure the DSC alarm panel:
+# 1. Use ESPHome configuration (see extras/ESPHome/DscAlarm.yaml)
+# 2. Or manually add via Settings > Devices & Services > MQTT > Add Entity
+#
+# Previous configuration details for reference:
+# - Name: "DSC 1500 Alarm Panel"
+# - unique_id: dsc_partition_1
+# - state_topic: "dsc/Get/Partition1"
+# - command_topic: "dsc/Set"
+# - availability_topic: "dsc/Status"
 
-# Enhanced Partition Status Sensor with Attributes  
+# ⚠️  MQTT ENTITIES REMOVED - Use MQTT Discovery or UI instead
+# 
+# The sensor section has been removed because Home Assistant 
+# no longer supports YAML configuration for MQTT entities.
+#
+# To configure DSC sensors:
+# 1. Use ESPHome configuration (see extras/ESPHome/DscAlarm.yaml) 
+# 2. Or manually add via Settings > Devices & Services > MQTT > Add Entity
+#
+# Previous sensor configurations for reference:
+# - Security Partition 1 Status (unique_id: dsc_partition_1_status)
+# - DSC System Uptime (unique_id: dsc_system_uptime)  
+# - DSC Free Memory (unique_id: dsc_free_memory)
+# - DSC WiFi Signal Strength (unique_id: dsc_wifi_rssi)
+# All with availability_topic: "dsc/Status"
+
+# Template sensors are still supported in YAML
 sensor:
-  - name: "Security Partition 1 Status"
-    unique_id: dsc_partition_1_status
-    state_topic: "dsc/Get/Partition1/Message"
-    availability_topic: "dsc/Status"
-    icon: "mdi:shield-check"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-    json_attributes_topic: "dsc/Get/Partition1/Attributes"
-    
-  # System Health and Diagnostics
-  - name: "DSC System Uptime"
-    unique_id: dsc_system_uptime
-    state_topic: "dsc/Diagnostics/Uptime"
-    availability_topic: "dsc/Status"
-    unit_of_measurement: "s"
-    device_class: "duration"
-    icon: "mdi:timer-outline"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-      
-  - name: "DSC Free Memory"
-    unique_id: dsc_free_memory
-    state_topic: "dsc/Diagnostics/FreeHeap"
-    availability_topic: "dsc/Status"
-    unit_of_measurement: "bytes"
-    icon: "mdi:memory"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-      
-  - name: "DSC WiFi Signal Strength"
-    unique_id: dsc_wifi_rssi
-    state_topic: "dsc/Diagnostics/WiFiRSSI"
-    availability_topic: "dsc/Status"
-    unit_of_measurement: "dBm"
-    device_class: "signal_strength"
-    icon: "mdi:wifi-strength-2"
-    device:
-      identifiers: ["dsc_keybus_interface"]
+  # Example template sensor that can reference MQTT entities set up via Discovery/UI
+  - platform: template
+    sensors:
+      dsc_system_summary:
+        friendly_name: "DSC System Summary"
+        value_template: >
+          {% if is_state('binary_sensor.dsc_system_health', 'on') %}
+            System Healthy
+          {% elif is_state('binary_sensor.security_system_trouble', 'on') %}
+            Trouble Detected
+          {% else %}
+            Unknown Status
+          {% endif %}
+        icon_template: >
+          {% if is_state('binary_sensor.dsc_system_health', 'on') %}
+            mdi:shield-check
+          {% else %}
+            mdi:shield-alert
+          {% endif %}
 
-# Enhanced Binary Sensors with Better Device Classes
+# ⚠️  MQTT ENTITIES REMOVED - Use MQTT Discovery or UI instead
+# 
+# The binary_sensor section has been removed because Home Assistant 
+# no longer supports YAML configuration for MQTT entities.
+#
+# To configure DSC binary sensors:
+# 1. Use ESPHome configuration (see extras/ESPHome/DscAlarm.yaml)
+# 2. Or manually add via Settings > Devices & Services > MQTT > Add Entity
+#
+# Previous binary sensor configurations for reference:
+# - DSC System Health (unique_id: dsc_system_health)
+# - DSC Keybus Connected (unique_id: dsc_keybus_connected) 
+# - DSC Buffer Overflow (unique_id: dsc_buffer_overflow)
+# - Security System Trouble (unique_id: dsc_trouble)
+# - Downstairs Smoke Alarm (unique_id: dsc_fire_1)
+# - Zone sensors: Back Door, Front Door, Upper Patio Door, etc.
+# - PGM outputs: DSC PGM 1, DSC PGM 8
+# All with availability_topic: "dsc/Status"
+
+# Template binary sensors are still supported in YAML
 binary_sensor:
-  # System Health Monitoring
-  - name: "DSC System Health"
-    unique_id: dsc_system_health
-    state_topic: "dsc/Diagnostics/SystemHealthy"
-    availability_topic: "dsc/Status"
-    device_class: "problem"
-    payload_on: "false"  # Inverted - problem when not healthy
-    payload_off: "true"
-    icon: "mdi:heart-pulse"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-      
-  - name: "DSC Keybus Connected"
-    unique_id: dsc_keybus_connected
-    state_topic: "dsc/Diagnostics/KeybusConnected"
-    availability_topic: "dsc/Status"
-    device_class: "connectivity"
-    payload_on: "true"
-    payload_off: "false"
-    icon: "mdi:connection"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-      
-  - name: "DSC Buffer Overflow"
-    unique_id: dsc_buffer_overflow
-    state_topic: "dsc/Diagnostics/BufferOverflow"
-    availability_topic: "dsc/Status"
-    device_class: "problem"
-    payload_on: "true"
-    payload_off: "false"
-    icon: "mdi:buffer"
-    device:
-      identifiers: ["dsc_keybus_interface"]
+  # Example template binary sensor that can reference MQTT entities
+  - platform: template  
+    sensors:
+      any_door_open:
+        friendly_name: "Any Door Open"
+        value_template: >
+          {{ is_state('binary_sensor.back_door', 'on') or 
+             is_state('binary_sensor.front_door', 'on') or
+             is_state('binary_sensor.upper_patio_door', 'on') }}
+        device_class: door
+        icon_template: >
+          {% if is_state('binary_sensor.any_door_open', 'on') %}
+            mdi:door-open
+          {% else %}
+            mdi:door-closed
+          {% endif %}
 
-  # Security System Status
-  - name: "Security System Trouble"
-    unique_id: dsc_trouble
-    state_topic: "dsc/Get/Trouble"
-    availability_topic: "dsc/Status"
-    device_class: "problem"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:alert-circle"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  # Fire Alarms
-  - name: "Downstairs Smoke Alarm"
-    unique_id: dsc_fire_1
-    state_topic: "dsc/Get/Fire1"
-    availability_topic: "dsc/Status"
-    device_class: "smoke"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:smoke-detector"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  # Zone Sensors with Enhanced Device Classes
-  - name: "Back Door"
-    unique_id: dsc_zone_1
-    state_topic: "dsc/Get/Zone1"
-    availability_topic: "dsc/Status"
-    device_class: "door"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:door"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  - name: "Front Door"
-    unique_id: dsc_zone_2
-    state_topic: "dsc/Get/Zone2"
-    availability_topic: "dsc/Status"
-    device_class: "door"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:door-open"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  - name: "Upper Patio Door"
-    unique_id: dsc_zone_3
-    state_topic: "dsc/Get/Zone3"
-    availability_topic: "dsc/Status"
-    device_class: "door"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:door-sliding"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  - name: "Downstairs Motion"
-    unique_id: dsc_zone_4
-    state_topic: "dsc/Get/Zone4"
-    availability_topic: "dsc/Status"
-    device_class: "motion"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:motion-sensor"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  - name: "Kitchen Glass Break"
-    unique_id: dsc_zone_5
-    state_topic: "dsc/Get/Zone5"
-    availability_topic: "dsc/Status"
-    device_class: "vibration"  # More appropriate than "tamper"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:glass-fragile"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  # PGM Outputs
-  - name: "DSC PGM 1"
-    unique_id: dsc_pgm_1
-    state_topic: "dsc/Get/PGM1"
-    availability_topic: "dsc/Status"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:electric-switch"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-  - name: "DSC PGM 8"
-    unique_id: dsc_pgm_8
-    state_topic: "dsc/Get/PGM8"
-    availability_topic: "dsc/Status"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:electric-switch"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-# Enhanced Emergency Buttons with Better Safety Features
-button:
-  - name: "Fire Alarm"
-    unique_id: dsc_fire_button
-    command_topic: "dsc/Set"
-    payload_press: "f"
-    icon: "mdi:fire"
-    availability_topic: "dsc/Status"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-    # Note: Consider removing or securing this for safety
-
-  - name: "Medical Alarm"
-    unique_id: dsc_aux_button
-    command_topic: "dsc/Set"
-    payload_press: "a"
-    icon: "mdi:hospital-box"
-    availability_topic: "dsc/Status"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-    # Note: Consider removing or securing this for safety
-
-  - name: "Panic Alarm"
-    unique_id: dsc_panic_button
-    command_topic: "dsc/Set"
-    payload_press: "p"
-    icon: "mdi:police-badge"
-    availability_topic: "dsc/Status"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-    # Note: Consider removing or securing this for safety
+# ⚠️  MQTT ENTITIES REMOVED - Use MQTT Discovery or UI instead
+# 
+# The button section has been removed because Home Assistant 
+# no longer supports YAML configuration for MQTT entities.
+#
+# To configure DSC buttons:
+# 1. Use ESPHome configuration (see extras/ESPHome/DscAlarm.yaml)
+# 2. Or manually add via Settings > Devices & Services > MQTT > Add Entity
+#
+# Previous button configurations for reference:
+# - Fire Alarm (unique_id: dsc_fire_button)
+# - Medical Alarm (unique_id: dsc_aux_button) 
+# - Panic Alarm (unique_id: dsc_panic_button)
+# All with command_topic: "dsc/Set" and availability_topic: "dsc/Status"
+#
+# ⚠️  WARNING: These are emergency buttons - secure them properly if re-enabled
 
 # Enhanced Automations for Better System Management
 automation:

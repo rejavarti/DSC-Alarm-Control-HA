@@ -24,134 +24,102 @@ mqtt:
     topic: "homeassistant/status" 
     payload: "offline"
 
-# Alarm Control Panel Configuration - TOP LEVEL SECTION
-# This section defines MQTT-based alarm control panels
-alarm_control_panel:
-  - name: "DSC 1500 Alarm Panel"
-    unique_id: dsc_partition_1
-    state_topic: "dsc/Get/Partition1"
-    availability_topic: "dsc/Status"
-    command_topic: "dsc/Set"
-    code: !secret dsc_alarm_code
-    
-    # Enhanced command template with better error handling
-    command_template: >
-      {% if action == "disarm" %}
-        {% if code is defined and code != "" %}
-          1!{{ code }}
-        {% else %}
-          1D
-        {% endif %}
-      {% elif action == "arm_home" %}
-        1S
-      {% elif action == "arm_away" %}  
-        1A
-      {% elif action == "arm_night" %}
-        1N
-      {% else %}
-        {{ action }}
-      {% endif %}
-    
-    # Payload mappings
-    payload_disarm: "disarm"
-    payload_arm_home: "arm_home"
-    payload_arm_away: "arm_away"
-    payload_arm_night: "arm_night"
-    
-    # Enhanced supported features
-    supported_features:
-      - arm_home
-      - arm_away
-      - arm_night
-      - trigger
-    
-    # Security settings
-    code_arm_required: false  # Set to true if panel requires code for arming
-    code_disarm_required: true
-    code_trigger_required: true
-    
-    # Device information for better HA integration
-    device:
-      identifiers: ["dsc_keybus_interface"]
-      name: "DSC Security System"
-      model: "PC1500/PC1550 Series"
-      manufacturer: "DSC"
-      sw_version: "Enhanced v1.5"
-      configuration_url: !secret esp32_ip
+# ⚠️  IMPORTANT: MQTT Entity Configuration Deprecated
+# 
+# Alarm Control Panel, Sensor, Binary Sensor, and Button MQTT entities are no longer 
+# configured via YAML. Use MQTT Discovery or the Home Assistant UI instead.
+#
+# This example shows only the supported YAML configurations:
+# - MQTT broker setup (still required)
+# - Automations (fully supported)
+# - Template sensors/binary_sensors (fully supported)
+# - Input helpers and other non-MQTT platforms
+#
+# For MQTT entities, use one of these methods:
+# 1. ESPHome with MQTT Discovery (recommended - see extras/ESPHome/DscAlarm.yaml)
+# 2. Manual configuration via Settings > Devices & Services > MQTT
 
-# Sensor Configuration - TOP LEVEL SECTION  
-# This section defines MQTT-based sensors
+# Template sensors are still supported in YAML
 sensor:
-  - name: "Security Partition 1 Status"
-    unique_id: dsc_partition_1_status
-    state_topic: "dsc/Get/Partition1/Message"
-    availability_topic: "dsc/Status"
-    icon: "mdi:shield-check"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-    json_attributes_topic: "dsc/Get/Partition1/Attributes"
-    
-  # System Health and Diagnostics
-  - name: "DSC System Uptime"
-    unique_id: dsc_system_uptime
-    state_topic: "dsc/Diagnostics/Uptime"
-    availability_topic: "dsc/Status"
-    unit_of_measurement: "s"
-    device_class: "duration"
-    icon: "mdi:timer-outline"
-    device:
-      identifiers: ["dsc_keybus_interface"]
+  # Time/Date sensors are still supported  
+  - platform: time_date
+    display_options:
+      - 'time'
+      - 'date'
+      - 'date_time'
+      
+  # Template sensors are still supported
+  - platform: template
+    sensors:
+      dsc_system_status_summary:
+        friendly_name: "DSC System Status Summary"
+        value_template: >
+          {% if is_state('alarm_control_panel.dsc_1500_alarm_panel', 'armed_away') %}
+            Armed Away
+          {% elif is_state('alarm_control_panel.dsc_1500_alarm_panel', 'armed_home') %}
+            Armed Home
+          {% elif is_state('alarm_control_panel.dsc_1500_alarm_panel', 'disarmed') %}
+            Disarmed
+          {% else %}
+            Unknown
+          {% endif %}
+        icon_template: >
+          {% if is_state('alarm_control_panel.dsc_1500_alarm_panel', 'armed_away') %}
+            mdi:shield-lock
+          {% elif is_state('alarm_control_panel.dsc_1500_alarm_panel', 'armed_home') %}
+            mdi:shield-home
+          {% elif is_state('alarm_control_panel.dsc_1500_alarm_panel', 'disarmed') %}
+            mdi:shield-off
+          {% else %}
+            mdi:shield-alert
+          {% endif %}
 
-# Binary Sensor Configuration - TOP LEVEL SECTION
-# This section defines MQTT-based binary sensors
+# Template binary sensors are still supported in YAML
 binary_sensor:
-  # System Health Monitoring
-  - name: "DSC System Health"
-    unique_id: dsc_system_health
-    state_topic: "dsc/Diagnostics/SystemHealthy"
-    availability_topic: "dsc/Status"
-    device_class: "problem"
-    payload_on: "false"  # Inverted - problem when not healthy
-    payload_off: "true"
-    icon: "mdi:heart-pulse"
-    device:
-      identifiers: ["dsc_keybus_interface"]
+  - platform: template
+    sensors:
+      any_door_open:
+        friendly_name: "Any DSC Door Open"
+        value_template: >
+          {{ is_state('binary_sensor.back_door', 'on') or 
+             is_state('binary_sensor.front_door', 'on') or
+             is_state('binary_sensor.upper_patio_door', 'on') }}
+        device_class: door
+        icon_template: >
+          {% if is_state('binary_sensor.any_door_open', 'on') %}
+            mdi:door-open
+          {% else %}
+            mdi:door-closed
+          {% endif %}
 
-  # Security System Status
-  - name: "Security System Trouble"
-    unique_id: dsc_trouble
-    state_topic: "dsc/Get/Trouble"
-    availability_topic: "dsc/Status"
-    device_class: "problem"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:alert-circle"
-    device:
-      identifiers: ["dsc_keybus_interface"]
+# Input helpers are still supported in YAML
+input_boolean:
+  dsc_maintenance_mode:
+    name: "DSC Maintenance Mode"
+    icon: mdi:wrench
+    
+input_number:
+  dsc_arm_delay:
+    name: "DSC Arm Delay"
+    min: 0
+    max: 300
+    step: 10
+    unit_of_measurement: seconds
+    icon: mdi:timer
 
-  # Zone Sensors
-  - name: "Back Door"
-    unique_id: dsc_zone_1
-    state_topic: "dsc/Get/Zone1"
-    availability_topic: "dsc/Status"
-    device_class: "door"
-    payload_on: "1"
-    payload_off: "0"
-    icon: "mdi:door"
-    device:
-      identifiers: ["dsc_keybus_interface"]
-
-# Button Configuration - TOP LEVEL SECTION
-# This section defines MQTT-based buttons (use with caution)
-button:
-  - name: "Fire Alarm"
-    unique_id: dsc_fire_button
-    command_topic: "dsc/Set"
-    payload_press: "f"
-    icon: "mdi:fire"
-    availability_topic: "dsc/Status"
-    device:
-      identifiers: ["dsc_keybus_interface"]
+# Scripts are still supported in YAML
+script:
+  dsc_arm_away_with_delay:
+    alias: "Arm DSC Away (with delay)"
+    description: "Arm the DSC system in away mode with configurable delay"
+    sequence:
+      - delay: 
+          seconds: "{{ states('input_number.dsc_arm_delay') | int }}"
+      - service: alarm_control_panel.alarm_arm_away
+        target:
+          entity_id: alarm_control_panel.dsc_1500_alarm_panel
+        data:
+          code: !secret dsc_alarm_code
 
 # Automation Configuration - TOP LEVEL SECTION
 # This section defines automations (NOT nested under mqtt!)

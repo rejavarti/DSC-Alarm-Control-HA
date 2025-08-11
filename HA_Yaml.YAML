@@ -1,129 +1,168 @@
-# https://www.home-assistant.io/integrations/alarm_control_panel.mqtt/
-alarm_control_panel:
-    - name: "DSC 1500 Alarm Panel"
-      unique_id: dscPartition1
-      state_topic: "dsc/Get/Partition1"
-      code: !secret dsc_alarm_code
-      command_template: >
-        {% if action == "1D" %}
-          1!{{ code }}
-        {% else %}
-          {{ action }}
-        {% endif %}
-      payload_disarm: "1D"
-      payload_arm_home: "1S"
-      payload_arm_away: "1A"
-      payload_arm_night: "1N"
-      availability_topic: "dsc/Status"
-      command_topic: "dsc/Set"
-      supported_features:
-        - arm_home
-        - arm_away
-        - arm_night
-      code_arm_required: true
-      code_disarm_required: true
-      code_trigger_required: true
+# DSC Alarm System - Home Assistant Configuration
+# 
+# ⚠️  IMPORTANT NOTICE: Home Assistant has deprecated YAML configuration for MQTT entities
+# 
+# MQTT entities (alarm_control_panel, sensor, binary_sensor, button) can no longer be 
+# configured via YAML. They must be set up using one of these methods:
+#
+# 1. MQTT Discovery (Recommended - Automatic):
+#    - Use ESPHome configuration (see extras/ESPHome/DscAlarm.yaml)
+#    - ESPHome will automatically publish discovery messages
+#    - Entities will appear automatically in Home Assistant
+#
+# 2. Home Assistant UI (Manual):
+#    - Go to Settings > Devices & Services > MQTT
+#    - Click "Configure" on MQTT integration
+#    - Add entities manually through the UI
+#
+# 3. MQTT Discovery Messages (Advanced):
+#    - Publish discovery config messages to appropriate topics
+#    - Format: homeassistant/<component>/<unique_id>/config
+#    - See Home Assistant MQTT Discovery documentation
+#
+# ============================================================================
+# MQTT ENTITIES REMOVED FROM THIS FILE (now deprecated):
+# ============================================================================
+# 
+# The following entities were previously configured in this YAML file but
+# have been removed due to Home Assistant's deprecation of YAML MQTT entities:
+#
+# Alarm Control Panel:
+#   - DSC 1500 Alarm Panel (unique_id: dscPartition1)
+#     Topics: dsc/Get/Partition1, dsc/Set, dsc/Status
+#
+# Sensors:
+#   - Security Partition 1 (unique_id: dscPartitionMessage1)
+#     Topics: dsc/Get/Partition1/Message, dsc/Status
+#
+# Binary Sensors:
+#   - Security Trouble (unique_id: dscTrouble)
+#   - Downstairs Smoke Alarm (unique_id: dscFire1)  
+#   - Back Door (unique_id: dscZone1)
+#   - Front Door (unique_id: dscZone2)
+#   - Upper Patio Door (unique_id: dscZone3)
+#   - Downstairs Motion (unique_id: dscZone4)
+#   - Kitchen Glass Break (unique_id: dscZone5)
+#   - PGM 1 (unique_id: dscPGM1)
+#   - PGM 8 (unique_id: dscPGM8)
+#
+# Buttons:
+#   - Fire Alarm (unique_id: dscFire)
+#   - Aux Alarm (unique_id: dscAux)
+#   - Panic Alarm (unique_id: dscPanic)
+#
+# ============================================================================
+# MIGRATION PATH:
+# ============================================================================
+#
+# 1. Use ESPHome Configuration (Recommended):
+#    - The ESPHome configuration in extras/ESPHome/DscAlarm.yaml already uses
+#      the correct "template" platform approach
+#    - ESPHome automatically handles MQTT Discovery
+#    - Flash this configuration to your ESP device
+#
+# 2. Manual UI Configuration:
+#    - After removing this YAML configuration, use the Home Assistant UI
+#    - Go to Settings > Devices & Services > MQTT > Add Entity
+#    - Configure each entity with the topics and settings shown above
+#
+# 3. Custom Discovery Script:
+#    - Create a script to publish MQTT discovery messages
+#    - Use the entity configurations above as reference for topics and settings
+#
+# ============================================================================
+# WHAT REMAINS IN YAML (Still Supported):
+# ============================================================================
 
+# Non-MQTT platforms are still supported in YAML:
+# - template sensors/binary_sensors
+# - time_date sensors  
+# - automations
+# - scripts
+# - scenes
+# - input_* helpers
 
-# https://www.home-assistant.io/integrations/sensor.mqtt/
+# Example of still-supported YAML configurations:
 sensor:
-    - name: "Security Partition 1"
-      unique_id: dscPartitionMessage1
-      state_topic: "dsc/Get/Partition1/Message"
-      icon: "mdi:shield"
-      availability_topic: "dsc/Status"
+  # Time and date sensors are still supported
+  - platform: time_date
+    display_options:
+      - 'time'
+      - 'date'
+      - 'date_time'
+      
+  # Template sensors are still supported  
+  - platform: template
+    sensors:
+      dsc_system_status_template:
+        friendly_name: "DSC System Status (Template)"
+        value_template: "{{ states('sensor.security_partition_1') | default('Unknown') }}"
+        icon_template: "mdi:shield-check"
 
-# https://www.home-assistant.io/integrations/binary_sensor.mqtt/
 binary_sensor:
-    - name: "Security Trouble"
-      unique_id: dscTrouble
-      state_topic: "dsc/Get/Trouble"
-      device_class: "problem"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
+  # Template binary sensors are still supported
+  - platform: template
+    sensors:
+      dsc_any_door_open:
+        friendly_name: "Any Door Open"
+        value_template: >
+          {{ is_state('binary_sensor.back_door', 'on') or 
+             is_state('binary_sensor.front_door', 'on') or
+             is_state('binary_sensor.upper_patio_door', 'on') }}
+        device_class: door
 
-    - name: "Downstairs Smoke Alarm"
-      unique_id: dscFire1
-      state_topic: "dsc/Get/Fire1"
-      device_class: "smoke"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
+# Automations are still fully supported in YAML
+automation:
+  - alias: "DSC System Alert"
+    description: "Alert when DSC trouble is detected"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.security_trouble
+        to: "on"
+    action:
+      - service: notify.persistent_notification
+        data:
+          title: "DSC System Alert"
+          message: "DSC alarm system has detected a trouble condition"
 
-    - name: "Back Door"
-      unique_id: dscZone1
-      state_topic: "dsc/Get/Zone1"
-      device_class: "door"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
+# Scripts are still fully supported in YAML  
+script:
+  dsc_arm_away:
+    alias: "Arm DSC Away"
+    description: "Arm the DSC system in away mode"
+    sequence:
+      - service: alarm_control_panel.alarm_arm_away
+        target:
+          entity_id: alarm_control_panel.dsc_1500_alarm_panel
+        data:
+          code: !secret dsc_alarm_code
 
-    - name: "Front Door"
-      unique_id: dscZone2
-      state_topic: "dsc/Get/Zone2"
-      device_class: "door"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
+# Input helpers are still supported
+input_boolean:
+  dsc_maintenance_mode:
+    name: "DSC Maintenance Mode"
+    icon: mdi:wrench
 
-    - name: "Upper Patio Door"
-      unique_id: dscZone3
-      state_topic: "dsc/Get/Zone3"
-      device_class: "door"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
+input_number:
+  dsc_arm_delay:
+    name: "DSC Arm Delay"
+    min: 0
+    max: 300
+    step: 10
+    unit_of_measurement: seconds
+    icon: mdi:timer
 
-    - name: "Downstairs Motion"
-      unique_id: dscZone4
-      state_topic: "dsc/Get/Zone4"
-      device_class: "motion"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
-
-    - name: "Kitchen Glass Break"
-      unique_id: dscZone5
-      state_topic: "dsc/Get/Zone5"
-      device_class: "tamper"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
-
-    - name: "PGM 1"
-      unique_id: dscPGM1
-      state_topic: "dsc/Get/PGM1"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
-
-    - name: "PGM 8"
-      unique_id: dscPGM8
-      state_topic: "dsc/Get/PGM8"
-      payload_on: "1"
-      payload_off: "0"
-      availability_topic: "dsc/Status"
-
-# https://www.home-assistant.io/integrations/button.mqtt/
-button:
-    - name: "Fire Alarm"
-      unique_id: dscFire
-      command_topic: "dsc/Set"
-      payload_press: "f"
-      icon: "mdi:fire"
-      availability_topic: "dsc/Status"
-
-    - name: "Aux Alarm"
-      unique_id: dscAux
-      command_topic: "dsc/Set"
-      payload_press: "a"
-      icon: "mdi:hospital-box"
-      availability_topic: "dsc/Status"
-
-    - name: "Panic Alarm"
-      unique_id: dscPanic
-      command_topic: "dsc/Set"
-      payload_press: "p"
-      icon: "mdi:police-badge"
-      availability_topic: "dsc/Status"
+# ============================================================================
+# NEXT STEPS:
+# ============================================================================
+#
+# 1. Remove or rename this YAML file from your Home Assistant configuration
+# 2. Use ESPHome configuration (extras/ESPHome/DscAlarm.yaml) for automatic discovery
+# 3. Or manually configure entities through Home Assistant UI
+# 4. Keep any template sensors, automations, or scripts you need
+# 5. Test that your system works with the new configuration method
+#
+# For more information:
+# - Home Assistant MQTT Discovery: https://www.home-assistant.io/docs/mqtt/discovery/
+# - ESPHome MQTT Component: https://esphome.io/components/mqtt.html
+# - Migration Guide: See repository documentation

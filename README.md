@@ -2,12 +2,25 @@
 
 This repository provides Home Assistant integration for DSC alarm systems via MQTT.
 
+## ⚠️ CRITICAL NOTICE: YAML Configuration for MQTT Entities is Deprecated
+
+**Home Assistant has deprecated YAML configuration for MQTT entities.** The YAML files in this repository have been updated to remove deprecated MQTT entity configurations.
+
+**New approach required:**
+1. **Use ESPHome configuration** (recommended): `extras/ESPHome/DscAlarm.yaml`
+2. **Or configure entities manually** via Home Assistant UI (Settings > Devices & Services > MQTT)
+
+See `MQTT_ENTITY_MIGRATION_GUIDE.md` for complete migration instructions.
+
 ## Quick Start
 
 1. **Configure Secrets**: Copy `secrets.yaml.example` to `secrets.yaml` and edit with your actual values
-2. **Choose Configuration**: Use either `HA_Yaml.YAML` (basic) or `HA_Yaml_Enhanced.YAML` (recommended)
-3. **Validate**: Run `python3 validate_config.py` to check your configuration
-4. **Deploy**: Add the relevant sections to your Home Assistant `configuration.yaml`
+2. **Choose Your Path**:
+   - **Recommended**: Use ESPHome configuration (`extras/ESPHome/DscAlarm.yaml`) for automatic MQTT Discovery
+   - **Alternative**: Use Home Assistant UI to manually configure MQTT entities
+3. **YAML Configuration**: Only use the provided YAML files for template sensors, automations, and scripts (no longer for MQTT entities)
+4. **Validate**: Run `python3 validate_config.py` to check your configuration
+5. **Deploy**: Add supported sections (templates, automations) to your `configuration.yaml`
 
 ## Security
 
@@ -15,21 +28,41 @@ All sensitive information (MQTT credentials, alarm codes, IP addresses) is now m
 
 ## Files
 
-- `HA_Yaml.YAML` - Basic Home Assistant configuration
-- `HA_Yaml_Enhanced.YAML` - Enhanced configuration with diagnostics and better device integration
-- `configuration.yaml.example` - Complete working configuration template (recommended)
+- `HA_Yaml.YAML` - ⚠️ **UPDATED**: Now contains migration guide and template examples (MQTT entities removed)
+- `HA_Yaml_Enhanced.YAML` - ⚠️ **UPDATED**: MQTT broker config and automations only (MQTT entities removed)  
+- `configuration.yaml.example` - Template showing supported YAML configurations only
 - `secrets.yaml.example` - Template for secure credential storage
+- `MQTT_ENTITY_MIGRATION_GUIDE.md` - **NEW**: Complete migration guide for deprecated MQTT entities
 - `SECRETS_GUIDE.md` - Detailed secrets configuration guide
 - `MQTT_STRUCTURE_GUIDE.md` - Important guidance on correct MQTT configuration structure
 - `MQTT_CONFIGURATION_TROUBLESHOOTING.md` - Troubleshooting guide for common configuration errors
 - `validate_config.py` - Configuration validation tool
+- `extras/ESPHome/DscAlarm.yaml` - **RECOMMENDED**: ESPHome configuration for MQTT Discovery
+
+## What Changed
+
+**YAML files no longer contain MQTT entities** due to Home Assistant deprecation:
+- ❌ Removed: alarm_control_panel, sensor, binary_sensor, button MQTT configurations
+- ✅ Kept: MQTT broker settings, automations, scripts, template sensors
+- ✅ Added: Migration guidance and examples
+
+**Migration required** - see `MQTT_ENTITY_MIGRATION_GUIDE.md`
 
 ## ⚠️ Important Configuration Notes
 
-**MQTT Structure**: When copying configuration sections to your Home Assistant `configuration.yaml`, ensure each section (`alarm_control_panel:`, `sensor:`, `binary_sensor:`, `button:`, `automation:`) is at the **top level** of your configuration file. Do NOT nest them under the `mqtt:` section. See `MQTT_STRUCTURE_GUIDE.md` for detailed examples.
+**YAML Limitations**: MQTT entities (alarm panels, sensors, binary sensors, buttons) can no longer be configured in YAML. Use:
+1. ESPHome with MQTT Discovery (automatic)
+2. Home Assistant UI (manual)
 
-## Common Configuration Errors
+**Still Supported in YAML**: Template sensors, automations, scripts, input helpers, and other non-MQTT platforms.
 
+## Common Issues
+
+### MQTT Entities Not Working
+**Problem**: YAML MQTT entities are deprecated in Home Assistant.
+**Solution**: See `MQTT_ENTITY_MIGRATION_GUIDE.md` for migration to ESPHome or UI configuration.
+
+### Configuration Errors
 If you're getting errors like:
 - `'automation' is an invalid option for 'mqtt'`
 - `'mqtt' is an invalid option for 'mqtt'`
