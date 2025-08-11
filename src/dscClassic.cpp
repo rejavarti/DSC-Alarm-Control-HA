@@ -996,6 +996,9 @@ bool dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte c
 bool ICACHE_RAM_ATTR dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
 #elif defined(ESP32)
 bool IRAM_ATTR dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+#else
+// Native/test environment
+bool dscClassicInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
 #endif
 
   bool redundantData = true;
@@ -1021,6 +1024,9 @@ void dscClassicInterface::dscClockInterrupt() {
 void ICACHE_RAM_ATTR dscClassicInterface::dscClockInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscClassicInterface::dscClockInterrupt() {
+#else
+// Native/test environment
+void dscClassicInterface::dscClockInterrupt() {
 #endif
 
   // Data sent from the panel and keypads/modules has latency after a clock change (observed up to 160us for
@@ -1093,6 +1099,9 @@ void ICACHE_RAM_ATTR dscClassicInterface::dscDataInterrupt() {
 void IRAM_ATTR dscClassicInterface::dscDataInterrupt() {
   timerStop(timer1);
   portENTER_CRITICAL(&timer1Mux);
+#else
+// Native/test environment
+void dscClassicInterface::dscDataInterrupt() {
 #endif
 
   static bool skipData = false;

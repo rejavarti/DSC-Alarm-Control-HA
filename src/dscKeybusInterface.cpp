@@ -19,6 +19,10 @@
 
 #include "dscKeybus.h"
 
+// Define global Serial object for native/ESP-IDF builds
+#if defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ARDUINO))
+Stream Serial;
+#endif
 
 #if defined(ESP32)
 portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
@@ -421,6 +425,9 @@ bool dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte cu
 bool ICACHE_RAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
 #elif defined(ESP32)
 bool IRAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+#else
+// Native/test environment
+bool dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
 #endif
 
   bool redundantData = true;
@@ -457,6 +464,9 @@ void dscKeybusInterface::dscClockInterrupt() {
 void ICACHE_RAM_ATTR dscKeybusInterface::dscClockInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscKeybusInterface::dscClockInterrupt() {
+#else
+// Native/test environment
+void dscKeybusInterface::dscClockInterrupt() {
 #endif
 
   // Data sent from the panel and keypads/modules has latency after a clock change (observed up to 160us for
@@ -623,6 +633,9 @@ void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt() {
 void IRAM_ATTR dscKeybusInterface::dscDataInterrupt() {
   timerStop(timer1);
   portENTER_CRITICAL(&timer1Mux);
+#else
+// Native/test environment
+void dscKeybusInterface::dscDataInterrupt() {
 #endif
 
   // Panel sends data while the clock is high
