@@ -421,6 +421,10 @@ bool dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte cu
 bool ICACHE_RAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
 #elif defined(ESP32)
 bool IRAM_ATTR dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+#elif defined(ESP_IDF_VERSION)
+bool dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
+#else
+bool dscKeybusInterface::redundantPanelData(byte previousCmd[], volatile byte currentCmd[], byte checkedBytes) {
 #endif
 
   bool redundantData = true;
@@ -457,6 +461,10 @@ void dscKeybusInterface::dscClockInterrupt() {
 void ICACHE_RAM_ATTR dscKeybusInterface::dscClockInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscKeybusInterface::dscClockInterrupt() {
+#elif defined(ESP_IDF_VERSION)
+void dscKeybusInterface::dscClockInterrupt() {
+#else
+void dscKeybusInterface::dscClockInterrupt() {
 #endif
 
   // Data sent from the panel and keypads/modules has latency after a clock change (observed up to 160us for
@@ -623,6 +631,10 @@ void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt() {
 void IRAM_ATTR dscKeybusInterface::dscDataInterrupt() {
   timerStop(timer1);
   portENTER_CRITICAL(&timer1Mux);
+#elif defined(ESP_IDF_VERSION)
+void dscKeybusInterface::dscDataInterrupt() {
+#else
+void dscKeybusInterface::dscDataInterrupt() {
 #endif
 
   // Panel sends data while the clock is high
