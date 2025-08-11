@@ -35,12 +35,12 @@
 - PC1565, PC5010, PC5015, PC5020
 - And other keybus-compatible PowerSeries panels
 
-### ✅ DSC Classic Series (Requires Configuration Change)
+### ✅ DSC Classic Series (Now Fully Supported!)
 - PC1500, PC1550, PC1832, PC1864, PC1616
 - PC1500MX, PC1550MX
 - And other keybus-compatible Classic panels
 
-**Key Difference**: Classic series requires uncommenting build flags and additional PC-16 wiring.
+**Recent Update**: The ESPHome configuration now includes full PC-16 pin support for Classic series panels. The 4th pin is automatically configured when using the Classic series build flag.
 
 ## Complete Setup Process
 
@@ -146,11 +146,11 @@
 DSC Panel Connections:
 ┌─────────────────┐
 │ DSC Panel       │
-│ AUX (+) Red     │──── 5V ──── Voltage Regulator ──── ESP32 VIN (or 3.3V)
-│ AUX (-) Black   │──── GND ─── ESP32 GND
-│ DATA (Yellow)   │──── 33kΩ resistor ──┬── ESP32 GPIO 18 (Clock)
+│ AUX (+) Red     │──── 5V ──── Voltage Regulator ──── ESP VIN (or 3.3V)
+│ AUX (-) Black   │──── GND ─── ESP GND
+│ DATA (Yellow)   │──── 33kΩ resistor ──┬── ESP GPIO 5 (Clock)
 │                 │                     └── 10kΩ resistor ──── GND
-│ DATA (Green)    │──── 33kΩ resistor ──┬── ESP32 GPIO 19 (Data)
+│ DATA (Green)    │──── 33kΩ resistor ──┬── ESP GPIO 4 (Data)
 │                 │                     └── 10kΩ resistor ──── GND
 └─────────────────┘
 ```
@@ -161,22 +161,33 @@ DSC Panel Connections:
 DSC Classic Panel Connections:
 ┌─────────────────┐
 │ DSC Panel       │
-│ AUX (+) Red     │──── 5V ──── Voltage Regulator ──── ESP32 VIN (or 3.3V)
-│ AUX (-) Black   │──── GND ─── ESP32 GND
-│ DATA (Yellow)   │──── 33kΩ resistor ──┬── ESP32 GPIO 18 (Clock)
+│ AUX (+) Red     │──── 5V ──── Voltage Regulator ──── ESP VIN (or 3.3V)
+│ AUX (-) Black   │──── GND ─── ESP GND
+│ DATA (Yellow)   │──── 33kΩ resistor ──┬── ESP GPIO 5 (Clock)
 │                 │                     └── 10kΩ resistor ──── GND
-│ DATA (Green)    │──── 33kΩ resistor ──┬── ESP32 GPIO 19 (Data)
+│ DATA (Green)    │──── 33kΩ resistor ──┬── ESP GPIO 4 (Data)
 │                 │                     └── 10kΩ resistor ──── GND
 │ PGM Output      │──── 1kΩ resistor ───┬── DSC AUX (+)
-│                 │                     └── 33kΩ resistor ──┬── ESP32 GPIO 17 (PC-16)
+│                 │                     └── 33kΩ resistor ──┬── ESP GPIO 14/17 (PC-16)
 │                 │                                        └── 10kΩ resistor ──── GND
 └─────────────────┘
 ```
 
 #### Pin Assignments (Default in Configuration)
-- **GPIO 18**: DSC Clock line (Yellow wire)
-- **GPIO 19**: DSC Data line (Green wire)  
+
+**ESP8266 (NodeMCU):**
+- **D1 (GPIO 5)**: DSC Clock line (Yellow wire)
+- **D2 (GPIO 4)**: DSC Data line (Green wire)
+- **D8 (GPIO 15)**: DSC Write line
+- **D5 (GPIO 14)**: PC-16 line (Classic series only)
+
+**ESP32:**
+- **GPIO 5**: DSC Clock line (Yellow wire)
+- **GPIO 4**: DSC Data line (Green wire)
+- **GPIO 15**: DSC Write line
 - **GPIO 17**: PC-16 line (Classic series only)
+
+**Note**: The ESPHome configuration now automatically selects the correct pin configuration based on your DSC panel type and ESP platform.
 
 ### Step 7: Build and Flash Firmware
 
