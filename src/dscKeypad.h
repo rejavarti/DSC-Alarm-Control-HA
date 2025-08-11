@@ -21,8 +21,8 @@
 #define dscKeypad_h
 
 #include <cstdint>
-#if defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ARDUINO))
-  // ESP-IDF framework includes or native build (not Arduino)
+#if defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ESP32) && !defined(ESP8266) && !defined(__AVR__))
+  // ESP-IDF framework includes or native build (not Arduino platforms)
   #ifdef ESP_IDF_VERSION
     #include <esp_attr.h>
     #include <esp_timer.h>

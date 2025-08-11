@@ -21,8 +21,8 @@
 #define dscClassicKeypad_h
 
 #include <cstdint>
-#if defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ARDUINO))
-  // ESP-IDF framework includes or native build (not Arduino)
+#if defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ESP32) && !defined(ESP8266) && !defined(__AVR__))
+  // ESP-IDF framework includes or native build (not Arduino platforms)
   #ifdef ESP_IDF_VERSION
     #include <esp_attr.h>
     #include <esp_timer.h>
@@ -70,9 +70,7 @@
   inline int digitalPinToInterrupt(int pin) { return pin; /* stub */ }
   inline void noInterrupts() { /* stub */ }
   inline void interrupts() { /* stub */ }
-  inline void delay(unsigned long ms) { 
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-  }
+  // Note: delay() is not defined here to avoid conflicts with Arduino.h
   inline char* itoa(int value, char* str, int base) {
     sprintf(str, (base == 16) ? "%X" : "%d", value);
     return str;
