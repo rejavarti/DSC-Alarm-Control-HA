@@ -14,8 +14,8 @@ This ESPHome configuration supports **BOTH** DSC series:
 
 ### ✅ DSC Classic Series  
 - PC1500, PC1550, PC1832, PC1864, PC1616, etc.
-- Requires uncommenting `classic_series_define` in the configuration
-- Requires PC-16 wiring configuration
+- Requires uncommenting `classic_series_define` in the configuration OR using `DscAlarm_Classic.yaml`
+- Requires PC-16 wiring configuration (platform-specific GPIO pin assignments)
 
 **Note**: This uses a LOCAL dscKeybusInterface implementation, not the external Dilbert66/esphome-dsckeybus project (which doesn't support Classic series).
 
@@ -50,9 +50,17 @@ Based on your MQTT diagnostics, you have:
 5. Replace the generated configuration with the enhanced `extras/ESPHome/DscAlarm.yaml`
 
 #### For DSC Classic Series Users:
-If you have a Classic series panel (PC1500, PC1550, etc.), you need to:
+If you have a Classic series panel (PC1500, PC1550, etc.), you have two options:
+
+**Option 1 (Recommended):** Use the pre-configured `extras/ESPHome/DscAlarm_Classic.yaml` file
+- No manual editing required - build flags are already set
+- Just flash and go!
+
+**Option 2:** Modify the standard configuration:
 1. Uncomment the `build_flags: - -DdscClassicSeries` lines in the esphome section
-2. Ensure you have the PC-16 wiring configuration connected
+2. Ensure you have the PC-16 wiring configuration connected:
+   - ESP8266: Connect to D5 (GPIO 14) 
+   - ESP32: Connect to GPIO 17
 3. Verify your panel model is compatible with Classic series protocol
 
 #### For DSC PowerSeries Users:
@@ -140,10 +148,10 @@ Once ESPHome is working:
 DSC Aux(+) --- 5v voltage regulator --- ESP32/ESP8266 5v pin
 DSC Aux(-) --- ESP32/ESP8266 Ground
 
-DSC Yellow --- 33k ohm resistor ---|--- dscClockPin (GPIO 18)
+DSC Yellow --- 33k ohm resistor ---|--- dscClockPin (GPIO 5)
                                    +--- 10k ohm resistor --- Ground
 
-DSC Green ---- 33k ohm resistor ---|--- dscReadPin (GPIO 19)  
+DSC Green ---- 33k ohm resistor ---|--- dscReadPin (GPIO 4)  
                                    +--- 10k ohm resistor --- Ground
 ```
 
@@ -152,9 +160,13 @@ For Classic series panels, you also need PC-16 configuration:
 ```
 DSC PGM ---+-- 1k ohm resistor --- DSC Aux(+)
            |
-           +-- 33k ohm resistor ---|--- dscPC16Pin (GPIO 17)
+           +-- 33k ohm resistor ---|--- dscPC16Pin (GPIO 14 ESP8266 / GPIO 17 ESP32)
                                    +--- 10k ohm resistor --- Ground
 ```
+
+#### Platform-Specific PC-16 Pin Assignments:
+- **ESP8266 (NodeMCU)**: D5 = GPIO 14
+- **ESP32**: GPIO 17
 
 **Note**: Classic series requires PGM configured for PC-16 output in your panel programming.
 
@@ -176,8 +188,10 @@ DSC PGM ---+-- 1k ohm resistor --- DSC Aux(+)
 3. Restart Home Assistant if needed
 
 ### Classic Series Not Connecting
-1. Verify you uncommented the `build_flags: - -DdscClassicSeries` lines
-2. Check PC-16 wiring is correctly connected to GPIO 17
+1. Verify you uncommented the `build_flags: - -DdscClassicSeries` lines OR are using `DscAlarm_Classic.yaml`
+2. Check PC-16 wiring is correctly connected:
+   - ESP8266: Connected to D5 (GPIO 14)  
+   - ESP32: Connected to GPIO 17
 3. Ensure your panel's PGM is programmed for PC-16 output
 4. Verify panel model is actually Classic series (PC1500, PC1550, etc.)
 

@@ -7,7 +7,9 @@
 #
 # Classic Series Wiring Requirements:
 # - Standard keybus connections (Clock, Data) with 33kΩ and 10kΩ resistors
-# - Additional PC-16 connection with 1kΩ resistor to GPIO 17 (D5 on NodeMCU)
+# - Additional PC-16 connection with 1kΩ resistor:
+#   ESP8266: Connect to D5 (GPIO 14)
+#   ESP32: Connect to GPIO 17
 # - PGM output must be configured in DSC panel for PC-16
 
 substitutions:
