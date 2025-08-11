@@ -539,8 +539,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   
   // Null-terminate payload for safe string operations
   char safePayload[51];  // Max 50 chars + null terminator
-  memcpy(safePayload, payload, min(length, 50));
-  safePayload[min(length, 50)] = '\0';
+  memcpy(safePayload, payload, min(length, 50U));
+  safePayload[min(length, 50U)] = '\0';
   
   // Log command received
   logMessage("MQTT command received: " + String(safePayload));
