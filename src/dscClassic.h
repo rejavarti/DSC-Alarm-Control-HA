@@ -21,7 +21,8 @@
 #define dscClassic_h
 
 #include <cstdint>
-#if (defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ESP32) && !defined(ESP8266) && !defined(__AVR__))) && !defined(ARDUINO)
+#include <cstring>
+#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
   // ESP-IDF framework includes or native build (not Arduino platforms)
   #ifdef ESP_IDF_VERSION
     #include <esp_attr.h>
@@ -58,7 +59,14 @@
   
   // Arduino compatibility functions and constants
   inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
+  template<typename T>
+  inline uint8_t bitRead(T value, uint8_t bit) { return (value >> bit) & 1; }
   inline void bitWrite(uint8_t &value, uint8_t bit, uint8_t bitvalue) { 
+    if (bitvalue) value |= (1 << bit); 
+    else value &= ~(1 << bit); 
+  }
+  template<typename T>
+  inline void bitWrite(T &value, uint8_t bit, uint8_t bitvalue) { 
     if (bitvalue) value |= (1 << bit); 
     else value &= ~(1 << bit); 
   }
@@ -99,8 +107,10 @@
   #define HEX 16
   #define DEC 10
   
-  // Global Serial object
+  // Global Serial object - only declare if not already provided by Arduino framework
+  #ifndef Serial
   extern Stream Serial;
+  #endif
 #else
   // Arduino framework include
   #include <Arduino.h>

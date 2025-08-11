@@ -20,8 +20,10 @@
 #include "dscKeybus.h"
 
 // Define global Serial object for native/ESP-IDF builds (not Arduino)
-#if (defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ESP32) && !defined(ESP8266) && !defined(__AVR__))) && !defined(ARDUINO)
+#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
+#ifndef Serial
 Stream Serial;
+#endif
 #endif
 
 #if defined(ESP32)

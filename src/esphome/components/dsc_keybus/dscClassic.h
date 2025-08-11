@@ -41,8 +41,11 @@
   
   // Arduino compatibility functions and constants
   inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
+  template<typename T>
+  inline uint8_t bitRead(T value, uint8_t bit) { return (value >> bit) & 1; }
   inline void bitWrite(uint8_t &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
-  inline void bitWrite(volatile uint8_t &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
+  template<typename T>
+  inline void bitWrite(T &value, uint8_t bit, uint8_t bitValue) { if (bitValue) value |= (1 << bit); else value &= ~(1 << bit); }
   inline void pinMode(uint8_t pin, uint8_t mode) { /* stub */ }
   inline void digitalWrite(uint8_t pin, uint8_t value) { /* stub */ }
   inline uint8_t digitalRead(uint8_t pin) { return 0; /* stub */ }
