@@ -261,6 +261,7 @@ unsigned long wifiReconnectAttempts = 0;
 unsigned long mqttReconnectAttempts = 0;
 unsigned long lastStatusPublish = 0;
 unsigned long systemUptime = 0;
+unsigned long lastWifiRecoveryAttempt = 0;
 bool systemHealthy = true;
 String lastError = "";
 
@@ -293,25 +294,32 @@ void setup() {
   // Connect to WiFi with retry logic
   if (!connectWiFiWithRetry()) {
     handleSystemError("Failed to connect to WiFi after maximum attempts");
-    ESP.restart(); // Restart if WiFi fails completely
+    logMessage("Device will continue attempting connection in main loop", true);
+    // Don't restart here - let the main loop handle reconnection attempts
   }
 
-  // Connect to MQTT with retry logic  
+  // Connect to MQTT with retry logic (only if WiFi is connected)
   mqtt.setCallback(mqttCallback);
-  if (connectMQTTWithRetry()) {
+  if (WiFi.isConnected() && connectMQTTWithRetry()) {
     mqttPreviousTime = millis();
     logMessage("MQTT connected successfully");
   } else {
     mqttPreviousTime = 0;
-    logMessage("MQTT connection failed, will retry during operation", true);
+    if (WiFi.isConnected()) {
+      logMessage("MQTT connection failed, will retry during operation", true);
+    } else {
+      logMessage("WiFi not connected, skipping MQTT setup", true);
+    }
   }
 
   // Starts the Keybus interface and optionally specifies how to print data.
   dsc.begin();
   logMessage("DSC Keybus Interface is online");
   
-  // Publish initial system health
-  publishSystemHealth();
+  // Publish initial system health (only if MQTT is available)
+  if (WiFi.isConnected() && mqtt.connected()) {
+    publishSystemHealth();
+  }
 }
 
 
@@ -799,7 +807,17 @@ void publishMessage(const char* sourceTopic, byte partition) {
 // Enhanced WiFi connection with retry logic
 bool connectWiFiWithRetry() {
   logMessage("Connecting to WiFi: " + String(wifiSSID));
+  
+  // Ensure clean WiFi state before attempting connection
+  WiFi.disconnect(true);
+  delay(1000);
+  
+  // Configure WiFi for better connection stability
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
+  
+  // Start connection attempt
   WiFi.begin(wifiSSID, wifiPassword);
   
   wifiReconnectAttempts = 0;
@@ -810,11 +828,11 @@ bool connectWiFiWithRetry() {
       Serial.print(".");
     }
     
-    // Try reconnecting every 5 attempts
+    // Try reconnecting every 5 attempts with clean state
     if (wifiReconnectAttempts % 5 == 0) {
       logMessage("WiFi retry attempt " + String(wifiReconnectAttempts) + "/" + String(maxReconnectAttempts));
-      WiFi.disconnect();
-      delay(1000);
+      WiFi.disconnect(true);
+      delay(2000);  // Longer delay for stability
       WiFi.begin(wifiSSID, wifiPassword);
     }
   }
@@ -903,12 +921,26 @@ void handleSystemError(const String& error) {
     mqtt.publish("dsc/Diagnostics/SystemHealthy", "false", true);
   }
   
-  // Attempt recovery based on error type
+  // Attempt recovery based on error type with rate limiting
   if (error.indexOf("WiFi") >= 0) {
-    logMessage("Attempting WiFi recovery...");
-    WiFi.disconnect();
-    delay(5000);
-    connectWiFiWithRetry();
+    unsigned long currentTime = millis();
+    
+    // Implement exponential backoff for WiFi recovery attempts
+    unsigned long backoffDelay = min(30000UL, 5000UL * (wifiReconnectAttempts / 10 + 1));
+    
+    if (currentTime - lastWifiRecoveryAttempt > backoffDelay) {
+      logMessage("Attempting WiFi recovery (attempt " + String(wifiReconnectAttempts + 1) + ")...");
+      lastWifiRecoveryAttempt = currentTime;
+      
+      WiFi.disconnect(true);
+      delay(5000);
+      
+      if (connectWiFiWithRetry()) {
+        systemHealthy = true;
+        lastError = "";
+        logMessage("WiFi recovery successful");
+      }
+    }
   } else if (error.indexOf("MQTT") >= 0) {
     logMessage("Attempting MQTT recovery...");
     mqtt.disconnect();
