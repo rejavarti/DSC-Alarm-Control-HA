@@ -22,14 +22,14 @@
 
 #include <cstdint>
 #include <cstring>
-#if defined(ESP_IDF_VERSION) || defined(USE_ARDUINO_VERSION_CODE) || defined(USE_ESP_IDF) || defined(USE_ARDUINO)
-  // ESPHome or ESP-IDF framework includes
+#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
+  // Pure ESP-IDF framework includes (without Arduino)
   #include <esp_attr.h>
   #include <esp_timer.h>
   #include <freertos/portmacro.h>
   #include <stdio.h>
   
-  // Arduino compatibility for ESP-IDF/ESPHome
+  // Arduino compatibility for pure ESP-IDF
   #define F(str) (str)
   
   // Minimal Stream class for compatibility
@@ -62,7 +62,7 @@
   // Global Serial object
   extern Stream Serial;
 #else
-  // Arduino framework include
+  // Arduino framework include (default for most cases)
   #include <Arduino.h>
 #endif
 
@@ -87,6 +87,12 @@ const byte dscPartitions = 8;
 const byte dscZones = 8;
 const DRAM_ATTR byte dscBufferSize = 50;
 const DRAM_ATTR byte dscReadSize = 16;
+#else
+// Default fallback for ESPHome/ESP-IDF and other platforms
+const byte dscPartitions = 8;
+const byte dscZones = 8;
+const byte dscBufferSize = 50;
+const byte dscReadSize = 16;
 #endif
 
 enum Light {off, on, blink};    // Custom values for keypad lights status
