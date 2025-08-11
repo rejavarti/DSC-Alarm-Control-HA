@@ -21,7 +21,35 @@
 #define dscClassic_h
 
 #include <cstdint>
-#include <Arduino.h>
+#ifdef ESP_IDF_VERSION
+  // ESP-IDF framework includes
+  #include <esp_attr.h>
+  #include <esp_timer.h>
+  #include <freertos/portmacro.h>
+  #include <stdio.h>
+  
+  // Arduino compatibility for ESP-IDF
+  #define F(str) (str)
+  
+  // Minimal Stream class for compatibility
+  class Stream {
+  public:
+    virtual void print(const char* str) { printf("%s", str); }
+    virtual void println(const char* str) { printf("%s\n", str); }
+  };
+  
+  // Arduino compatibility functions
+  inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
+  inline void pinMode(uint8_t pin, uint8_t mode) { /* stub */ }
+  #define INPUT 0
+  #define OUTPUT 1
+  
+  // Global Serial object
+  extern Stream Serial;
+#else
+  // Arduino framework include
+  #include <Arduino.h>
+#endif
 
 // ESPHome compatible type definitions
 #ifndef byte
