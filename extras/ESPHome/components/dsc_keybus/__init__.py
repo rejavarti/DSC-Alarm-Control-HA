@@ -9,7 +9,7 @@ from esphome.const import (
 
 # Define the component namespace and classes
 dsc_keybus_ns = cg.esphome_ns.namespace("dsc_keybus")
-DSCKeybusComponent = dsc_keybus_ns.class_("DSCKeybusComponent", cg.Component, cg.Nameable)
+DSCKeybusComponent = dsc_keybus_ns.class_("DSCKeybusComponent", cg.Component)
 
 # Define trigger classes
 SystemStatusChangeTrigger = dsc_keybus_ns.class_(
