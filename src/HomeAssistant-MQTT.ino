@@ -210,13 +210,13 @@ entity: alarm_control_panel.security_partition_1
 
 // Configuration - CHANGE THESE VALUES FOR YOUR SETUP
 // Security Note: For production use, consider using WiFiManager or SPIFFS/LittleFS to store credentials
-const char* wifiSSID = "YOUR_WIFI_SSID";        // Change to your WiFi SSID
-const char* wifiPassword = "YOUR_WIFI_PASSWORD";  // Change to your WiFi password
-const char* accessCode = "YOUR_ACCESS_CODE";      // Change to your DSC access code (required for disarm/night arm)
-const char* mqttServer = "YOUR_MQTT_SERVER";      // Change to your MQTT server IP or hostname
-const int mqttPort = 1883;                       // MQTT server port (default 1883, 8883 for TLS)
-const char* mqttUsername = "YOUR_MQTT_USERNAME";  // Change to your MQTT username (leave empty if not required)
-const char* mqttPassword = "YOUR_MQTT_PASSWORD";  // Change to your MQTT password (leave empty if not required)
+const char* wifiSSID = "IoT_devices";
+const char* wifiPassword = "943Nelson8034";
+const char* accessCode = "7730";
+const char* mqttServer = "192.168.222.41";
+const int mqttPort = 1883;
+const char* mqttUsername = "homeassistant";
+const char* mqttPassword = "ofaibah2Luj3un7niezi3ooshieyaey1kahsooz3xeeJ9oobok8ishaesiephish";
 
 // System Configuration
 const unsigned long wifiReconnectInterval = 30000;     // WiFi reconnection attempt interval (30 seconds)
