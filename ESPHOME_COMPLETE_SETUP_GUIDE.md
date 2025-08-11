@@ -74,7 +74,8 @@
 2. **Locate ESPHome Files**:
    - Navigate to `extras/ESPHome/` folder
    - You'll need:
-     - `DscAlarm.yaml` - Main configuration file
+     - **DSC PowerSeries**: `DscAlarm.yaml` - Default configuration
+     - **DSC Classic Series**: `DscAlarm_Classic.yaml` - Pre-configured with `-DdscClassicSeries` flag
      - `dscKeybusInterface/` folder - Contains `dscAlarm.h`
 
 ### Step 3: Create New ESPHome Device
@@ -94,26 +95,23 @@
 
 ### Step 4: Upload Custom Configuration
 
-1. **Copy Configuration**:
+1. **Choose and Copy Configuration**:
+
+   **For DSC PowerSeries Panels**:
    - Copy the entire contents of `extras/ESPHome/DscAlarm.yaml`
-   - In ESPHome dashboard, click **"Edit"** on your new device
-   - **Replace all content** with the copied configuration
-
-2. **Copy Support Files**:
-   - Create folder `dscKeybusInterface` in your ESPHome device folder
-   - Copy `dscAlarm.h` from repository to this folder
-
-3. **Configure for Your DSC Series**:
-
-   **For DSC PowerSeries (Most Common)**:
    - No changes needed - default configuration works
    
-   **For DSC Classic Series**:
-   - Uncomment these lines in the `esphome:` section:
-   ```yaml
-   build_flags:
-     - -DdscClassicSeries
-   ```
+   **For DSC Classic Series Panels**:
+   - **Option A (Recommended)**: Copy the entire contents of `extras/ESPHome/DscAlarm_Classic.yaml` - Pre-configured with Classic series support
+   - **Option B**: Copy `DscAlarm.yaml` and manually uncomment the build_flags section
+
+2. **Upload Configuration**:
+   - In ESPHome dashboard, click **"Edit"** on your new device
+   - **Replace all content** with your chosen configuration file
+
+3. **Copy Support Files**:
+   - Create folder `dscKeybusInterface` in your ESPHome device folder
+   - Copy `dscAlarm.h` from repository to this folder
 
 ### Step 5: Configure Secrets
 
@@ -254,12 +252,15 @@ DSC Classic Panel Connections:
 
 ### Classic Series Specific Issues
 1. **Keybus not detected**:
-   - Verify build flags include `-DdscClassicSeries`
-   - Check PC-16 wiring to GPIO 17
-   - Ensure PGM output is configured in panel
+   - **Verify build flag**: Ensure you're using `DscAlarm_Classic.yaml` OR have uncommented `build_flags: - -DdscClassicSeries` in `DscAlarm.yaml`
+   - Check PC-16 wiring to GPIO 17 (D5 on NodeMCU)
+   - Ensure PGM output is configured in panel for PC-16
 2. **Intermittent connection**:
    - Classic series may have different timing requirements
-   - Check all resistor values are correct
+   - Check all resistor values are correct (33kΩ for data lines, 1kΩ for PC-16)
+3. **Build compilation errors**:
+   - Ensure `dscKeybusInterface/dscAlarm.h` file is properly uploaded to ESPHome
+   - Verify the build flag syntax is exactly: `- -DdscClassicSeries` (note the double dash)
    - Verify panel model is actually Classic series
 
 ## Hardware Assembly Options

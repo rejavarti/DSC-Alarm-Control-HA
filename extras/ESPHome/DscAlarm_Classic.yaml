@@ -1,15 +1,14 @@
-# DSC Keybus Interface for ESPHome
-# Supports both DSC PowerSeries AND Classic series panels
-# Uses local dscKeybusInterface implementation (NOT the external Dilbert66/esphome-dsckeybus)
+# DSC Keybus Interface for ESPHome - DSC CLASSIC SERIES VERSION
+# Pre-configured for DSC Classic series panels (PC1500, PC1550, PC1832, PC1864, PC1616, etc.)
+# Uses local dscKeybusInterface implementation with dscClassicSeries build flag enabled
 # 
-# Classic Series Support: PC1500, PC1550, PC1832, PC1864, PC1616, etc.
-# PowerSeries Support: PC1555MX, PC5015, PC1616, PC1832, PC1864, etc.
+# ===== THIS VERSION IS FOR DSC CLASSIC SERIES ONLY =====
+# If you have a DSC PowerSeries panel, use DscAlarm.yaml instead
 #
-# ===== IMPORTANT FOR DSC CLASSIC SERIES =====
-# If you have a DSC Classic series panel, you MUST:
-# 1. Uncomment the build_flags section below
-# 2. Ensure PC-16 wiring (additional 1kΩ resistor to GPIO 17)
-# 3. Configure PGM output in your DSC panel for PC-16
+# Classic Series Wiring Requirements:
+# - Standard keybus connections (Clock, Data) with 33kΩ and 10kΩ resistors
+# - Additional PC-16 connection with 1kΩ resistor to GPIO 17 (D5 on NodeMCU)
+# - PGM output must be configured in DSC panel for PC-16
 
 substitutions:
   accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
@@ -20,10 +19,9 @@ esphome:
   board: nodemcuv2
   includes:
     - dscKeybusInterface/
-  # ===== DSC CLASSIC SERIES ONLY =====
-  # Uncomment these 2 lines ONLY if you have a DSC Classic series panel:
-  # build_flags:
-  #   - -DdscClassicSeries
+  # DSC Classic series build flag - REQUIRED for Classic panels
+  build_flags:
+    - -DdscClassicSeries
 
 wifi:
   ssid: !secret wifi_ssid
