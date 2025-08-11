@@ -20,7 +20,12 @@
 #ifndef dscKeybus_h
 #define dscKeybus_h
 
-#include <Arduino.h>
+// ESPHome compatible type definitions
+#ifndef byte
+typedef uint8_t byte;
+#endif
+
+
 
 #if defined(__AVR__)
 const byte dscPartitions = 4;   // Maximum number of partitions - requires 19 bytes of memory per partition

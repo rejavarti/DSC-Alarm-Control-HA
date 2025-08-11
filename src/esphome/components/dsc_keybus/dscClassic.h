@@ -20,7 +20,12 @@
 #ifndef dscClassic_h
 #define dscClassic_h
 
-#include <Arduino.h>
+// ESPHome compatible type definitions
+#ifndef byte
+typedef uint8_t byte;
+#endif
+
+
 
 const byte dscPartitions = 1;   // Maximum number of partitions - requires 19 bytes of memory per partition
 const byte dscZones = 1;        // Maximum number of zone groups, 8 zones per group - requires 6 bytes of memory per zone group

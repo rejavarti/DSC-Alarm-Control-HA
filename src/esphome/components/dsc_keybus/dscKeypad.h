@@ -20,7 +20,12 @@
 #ifndef dscKeypad_h
 #define dscKeypad_h
 
-#include <Arduino.h>
+// ESPHome compatible type definitions
+#ifndef byte
+typedef uint8_t byte;
+#endif
+
+
 
 #if defined(__AVR__)
 const byte dscBufferSize = 10;  // Number of keys to buffer if the sketch is busy
