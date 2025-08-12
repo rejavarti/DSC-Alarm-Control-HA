@@ -17,9 +17,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "esphome/core/defines.h"
+#include "dsc_arduino_compatibility.h"
+
 #if defined(dscPowerSeries)
 
-#include "dsc_arduino_compatibility.h"
 #include "dscKeybus.h"
 
 #ifdef ESP32

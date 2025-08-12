@@ -13,13 +13,16 @@
   // Define the appropriate interface series based on configuration
   // Choose the appropriate DSC series based on configuration
   // If neither is explicitly defined, default to PowerSeries for better ESPHome compatibility
-  #ifndef dscClassicSeries
-    #ifndef dscPowerSeries
-      #ifndef DSC_SERIES_DEFINED
-        #define dscPowerSeries  // Default to PowerSeries for ESPHome
-        #define DSC_SERIES_DEFINED
-      #endif
+  #if defined(dscClassicSeries)
+    // Classic series is defined, make sure PowerSeries is not
+    #ifdef dscPowerSeries
+      #undef dscPowerSeries
     #endif
+    #define DSC_SERIES_DEFINED
+  #elif !defined(dscPowerSeries) && !defined(DSC_SERIES_DEFINED)
+    // Neither series is defined, default to PowerSeries
+    #define dscPowerSeries
+    #define DSC_SERIES_DEFINED
   #endif
   
   #if defined(ESP32) || defined(ESP_PLATFORM)
