@@ -1,7 +1,20 @@
 #include "dsc_keybus.h"
 #include "esphome/core/log.h"
 
-// Include the DSC Keybus Interface library
+// Ensure the correct series define is set before including the interface
+// ESPHome defines are set via build flags, but we need to make sure they're available here
+#ifdef dscClassicSeries
+  #define DSC_SERIES_CLASSIC
+  #pragma message "dsc_keybus.cpp: dscClassicSeries is defined"
+#elif defined(dscPowerSeries)
+  #define DSC_SERIES_POWERSERIES
+  #pragma message "dsc_keybus.cpp: dscPowerSeries is defined"
+#else
+  #pragma message "dsc_keybus.cpp: Neither dscClassicSeries nor dscPowerSeries is defined!"
+  #error "No DSC series type defined! Check __init__.py defines"
+#endif
+
+// Include the DSC Keybus Interface - this automatically selects based on defines
 #include "dscKeybusInterface.h"
 
 namespace esphome {
@@ -9,11 +22,51 @@ namespace dsc_keybus {
 
 static const char *const TAG = "dsc_keybus";
 
-// Global DSC interface instance
-// Classic series requires PC-16 pin, PowerSeries uses 255 to disable
-#if defined(dscClassicSeries)
-dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_PC16_PIN, DSC_DEFAULT_WRITE_PIN);
-#else  
+#ifdef dscClassicSeries
+// Simple Stream implementation for DSC Classic interface
+class DSCStream : public Stream {
+public:
+  virtual size_t write(uint8_t data) override {
+    // For DSC Classic, we don't actually write data via the stream
+    // This is just used for status output
+    return 1; // Always report success
+  }
+  
+  virtual int available() override { return 0; }
+  virtual int read() override { return -1; }
+  virtual int peek() override { return -1; }
+  
+  // Print methods for DSC output - these are not virtual in Arduino Stream
+  void print(const char* str) {
+    ESP_LOGD(TAG, "%s", str);
+  }
+  void print(int value) {
+    ESP_LOGD(TAG, "%d", value);
+  }
+  void print(int value, int base) {
+    if (base == 16) ESP_LOGD(TAG, "%X", value);
+    else if (base == 8) ESP_LOGD(TAG, "%o", value);
+    else ESP_LOGD(TAG, "%d", value);
+  }
+  void println(const char* str) {
+    ESP_LOGD(TAG, "%s", str);
+  }
+};
+
+// Stream instance for DSC Classic interface
+DSCStream dscStream;
+#endif
+
+// Global DSC interface instance - automatically selects based on defined series type
+#ifdef dscClassicSeries
+dscClassicInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, 
+                        #ifdef DSC_CLASSIC_PC16_PIN
+                        DSC_CLASSIC_PC16_PIN,
+                        #else
+                        DSC_DEFAULT_PC16_PIN,
+                        #endif
+                        DSC_DEFAULT_WRITE_PIN);
+#else
 dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
 #endif
 
@@ -37,9 +90,14 @@ void DSCKeybusComponent::setup() {
   
   this->force_disconnect_ = false;
   dsc.resetStatus();
-  dsc.begin();
   
-  ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete");
+  #ifdef dscClassicSeries
+  dsc.begin(dscStream);
+  ESP_LOGCONFIG(TAG, "DSC Keybus Interface (Classic Series) setup complete");
+  #else
+  dsc.begin();
+  ESP_LOGCONFIG(TAG, "DSC Keybus Interface (PowerSeries) setup complete");
+  #endif
 }
 
 void DSCKeybusComponent::loop() {

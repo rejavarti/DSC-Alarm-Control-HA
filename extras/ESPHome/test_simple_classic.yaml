@@ -1,0 +1,18 @@
+esphome:
+  name: dsc-simple-classic-test
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp8266:
+  board: nodemcuv2
+
+# Enable logging
+logger:
+
+dsc_keybus:
+  series_type: Classic
+  access_code: "1234"

@@ -1,0 +1,23 @@
+esphome:
+  name: test-dsc-alarm-esp32
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+
+logger:
+
+wifi:
+  ssid: "test"
+  password: "password"
+
+api:
+
+dsc_keybus:
+  access_code: "1234"
+  debug: 0

@@ -1,0 +1,61 @@
+esphome:
+  name: test-dsc-alarm-full
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp8266:
+  board: nodemcuv2
+
+logger:
+  level: INFO
+
+wifi:
+  ssid: "test"
+  password: "password"
+
+api:
+
+dsc_keybus:
+  id: dsc_interface
+  access_code: "1234"
+  debug: 1
+  enable_05_messages: true
+  on_system_status_change:
+    then:
+      - logger.log:
+          format: "System status changed: %s"
+          args: ['x.c_str()']
+  on_partition_status_change:
+    then:
+      - logger.log:
+          format: "Partition %d status: %s"
+          args: ['partition', 'status.c_str()']
+  on_partition_msg_change:
+    then:
+      - logger.log:
+          format: "Partition %d message: %s"
+          args: ['partition', 'msg.c_str()']
+  on_trouble_status_change:
+    then:
+      - logger.log:
+          format: "Trouble status: %s"
+          args: ['trouble ? "ON" : "OFF"']
+  on_fire_status_change:
+    then:
+      - logger.log:
+          format: "Fire status for partition %d: %s"
+          args: ['partition', 'fire ? "ON" : "OFF"']
+  on_zone_status_change:
+    then:
+      - logger.log:
+          format: "Zone %d status: %s"
+          args: ['zone', 'open ? "OPEN" : "CLOSED"']
+  on_zone_alarm_change:
+    then:
+      - logger.log:
+          format: "Zone %d alarm: %s"
+          args: ['zone', 'open ? "ALARM" : "NORMAL"']

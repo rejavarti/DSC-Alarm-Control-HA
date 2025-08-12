@@ -17,6 +17,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if defined(dscClassicSeries)
+
+#pragma message "dscClassic.cpp: dscClassicSeries is defined - compiling Classic interface"
+
+#include "dsc_arduino_compatibility.h"
 #include "dscClassic.h"
 
 #if defined(ESP32)
@@ -1233,3 +1238,5 @@ void dscClassicInterface::dscDataInterrupt() {
   portEXIT_CRITICAL(&timer1Mux);
   #endif
 }
+
+#endif // defined(dscClassicSeries)
