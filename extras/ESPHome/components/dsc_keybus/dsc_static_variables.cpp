@@ -12,163 +12,163 @@
 
 #include "dscClassic.h"
 
-// Static member definitions for dscClassicInterface
-byte dscClassicInterface::dscClockPin;
-byte dscClassicInterface::dscReadPin;
-byte dscClassicInterface::dscPC16Pin;
-byte dscClassicInterface::dscWritePin;
-char dscClassicInterface::writeKey;
-byte dscClassicInterface::writePartition;
-byte dscClassicInterface::writeByte;
-byte dscClassicInterface::writeBit;
-bool dscClassicInterface::virtualKeypad;
-bool dscClassicInterface::processModuleData;
-byte dscClassicInterface::panelData[dscReadSize];
-byte dscClassicInterface::pc16Data[dscReadSize];
-byte dscClassicInterface::panelByteCount;
-byte dscClassicInterface::panelBitCount;
-volatile bool dscClassicInterface::writeKeyPending;
-volatile bool dscClassicInterface::writeKeyWait;
-volatile byte dscClassicInterface::moduleData[dscReadSize];
-volatile bool dscClassicInterface::moduleDataCaptured;
-volatile byte dscClassicInterface::moduleByteCount;
-volatile byte dscClassicInterface::moduleBitCount;
-volatile bool dscClassicInterface::writeAlarm;
-volatile bool dscClassicInterface::starKeyDetected;
-volatile bool dscClassicInterface::starKeyCheck;
-volatile bool dscClassicInterface::starKeyWait;
-volatile bool dscClassicInterface::bufferOverflow;
-volatile byte dscClassicInterface::panelBufferLength;
-volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize];
-volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize];
-volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize];
-volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize];
-volatile byte dscClassicInterface::isrPanelData[dscReadSize];
-volatile byte dscClassicInterface::isrPC16Data[dscReadSize];
-volatile byte dscClassicInterface::isrPanelByteCount;
-volatile byte dscClassicInterface::isrPanelBitCount;
-volatile byte dscClassicInterface::isrPanelBitTotal;
-volatile byte dscClassicInterface::isrModuleData[dscReadSize];
-volatile byte dscClassicInterface::isrModuleByteCount;
-volatile byte dscClassicInterface::isrModuleBitCount;
-volatile byte dscClassicInterface::isrModuleBitTotal;
-volatile byte dscClassicInterface::moduleCmd;
-volatile bool dscClassicInterface::readyLight;
-volatile bool dscClassicInterface::lightBlink;
-volatile unsigned long dscClassicInterface::clockHighTime;
-volatile unsigned long dscClassicInterface::keybusTime;
-volatile unsigned long dscClassicInterface::writeCompleteTime;
+// Initialize static variables to prevent uninitialized access crashes (ESPHome LoadProhibited fix)
+byte dscClassicInterface::dscClockPin = 255;
+byte dscClassicInterface::dscReadPin = 255;
+byte dscClassicInterface::dscPC16Pin = 255;
+byte dscClassicInterface::dscWritePin = 255;
+char dscClassicInterface::writeKey = 0;
+byte dscClassicInterface::writePartition = 1;
+byte dscClassicInterface::writeByte = 0;
+byte dscClassicInterface::writeBit = 0;
+bool dscClassicInterface::virtualKeypad = false;
+bool dscClassicInterface::processModuleData = false;
+byte dscClassicInterface::panelData[dscReadSize] = {0};
+byte dscClassicInterface::pc16Data[dscReadSize] = {0};
+byte dscClassicInterface::panelByteCount = 0;
+byte dscClassicInterface::panelBitCount = 0;
+volatile bool dscClassicInterface::writeKeyPending = false;
+volatile bool dscClassicInterface::writeKeyWait = false;
+volatile byte dscClassicInterface::moduleData[dscReadSize] = {0};
+volatile bool dscClassicInterface::moduleDataCaptured = false;
+volatile byte dscClassicInterface::moduleByteCount = 0;
+volatile byte dscClassicInterface::moduleBitCount = 0;
+volatile bool dscClassicInterface::writeAlarm = false;
+volatile bool dscClassicInterface::starKeyDetected = false;
+volatile bool dscClassicInterface::starKeyCheck = false;
+volatile bool dscClassicInterface::starKeyWait = false;
+volatile bool dscClassicInterface::bufferOverflow = false;
+volatile byte dscClassicInterface::panelBufferLength = 0;
+volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize] = {0};
+volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize] = {0};
+volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize] = {0};
+volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize] = {0};
+volatile byte dscClassicInterface::isrPanelData[dscReadSize] = {0};
+volatile byte dscClassicInterface::isrPC16Data[dscReadSize] = {0};
+volatile byte dscClassicInterface::isrPanelByteCount = 0;
+volatile byte dscClassicInterface::isrPanelBitCount = 0;
+volatile byte dscClassicInterface::isrPanelBitTotal = 0;
+volatile byte dscClassicInterface::isrModuleData[dscReadSize] = {0};
+volatile byte dscClassicInterface::isrModuleByteCount = 0;
+volatile byte dscClassicInterface::isrModuleBitCount = 0;
+volatile byte dscClassicInterface::isrModuleBitTotal = 0;
+volatile byte dscClassicInterface::moduleCmd = 0;
+volatile bool dscClassicInterface::readyLight = false;
+volatile bool dscClassicInterface::lightBlink = false;
+volatile unsigned long dscClassicInterface::clockHighTime = 0;
+volatile unsigned long dscClassicInterface::keybusTime = 0;
+volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
 
 #elif defined(dscKeypad)
 
 #include "dsc_arduino_compatibility.h"
 #include "dscKeypad.h"
 
-// Static member definitions for dscKeypadInterface
-byte dscKeypadInterface::dscClockPin;
-byte dscKeypadInterface::dscReadPin;
-byte dscKeypadInterface::dscWritePin;
-int  dscKeypadInterface::clockInterval;
-volatile byte dscKeypadInterface::keyData;
-volatile byte dscKeypadInterface::keyBufferLength;
-volatile byte dscKeypadInterface::keyBuffer[dscBufferSize];
-volatile bool dscKeypadInterface::bufferOverflow;
-volatile bool dscKeypadInterface::commandReady;
-volatile bool dscKeypadInterface::moduleDataDetected;
-volatile bool dscKeypadInterface::alarmKeyDetected;
-volatile bool dscKeypadInterface::alarmKeyResponsePending;
-volatile byte dscKeypadInterface::clockCycleCount;
-volatile byte dscKeypadInterface::clockCycleTotal;
-volatile byte dscKeypadInterface::panelCommand[dscReadSize];
-volatile byte dscKeypadInterface::isrPanelBitTotal;
-volatile byte dscKeypadInterface::isrPanelBitCount;
-volatile byte dscKeypadInterface::panelCommandByteCount;
-volatile byte dscKeypadInterface::isrModuleData[dscReadSize];
-volatile byte dscKeypadInterface::isrModuleBitTotal;
-volatile byte dscKeypadInterface::isrModuleBitCount;
-volatile byte dscKeypadInterface::isrModuleByteCount;
-volatile byte dscKeypadInterface::panelCommandByteTotal;
-volatile byte dscKeypadInterface::moduleData[dscReadSize];
+// Initialize static variables to prevent uninitialized access crashes (ESPHome LoadProhibited fix)
+byte dscKeypadInterface::dscClockPin = 255;
+byte dscKeypadInterface::dscReadPin = 255;
+byte dscKeypadInterface::dscWritePin = 255;
+int  dscKeypadInterface::clockInterval = 1000;  // Default safe interval
+volatile byte dscKeypadInterface::keyData = 0;
+volatile byte dscKeypadInterface::keyBufferLength = 0;
+volatile byte dscKeypadInterface::keyBuffer[dscBufferSize] = {0};
+volatile bool dscKeypadInterface::bufferOverflow = false;
+volatile bool dscKeypadInterface::commandReady = false;
+volatile bool dscKeypadInterface::moduleDataDetected = false;
+volatile bool dscKeypadInterface::alarmKeyDetected = false;
+volatile bool dscKeypadInterface::alarmKeyResponsePending = false;
+volatile byte dscKeypadInterface::clockCycleCount = 0;
+volatile byte dscKeypadInterface::clockCycleTotal = 0;
+volatile byte dscKeypadInterface::panelCommand[dscReadSize] = {0};
+volatile byte dscKeypadInterface::isrPanelBitTotal = 0;
+volatile byte dscKeypadInterface::isrPanelBitCount = 0;
+volatile byte dscKeypadInterface::panelCommandByteCount = 0;
+volatile byte dscKeypadInterface::isrModuleData[dscReadSize] = {0};
+volatile byte dscKeypadInterface::isrModuleBitTotal = 0;
+volatile byte dscKeypadInterface::isrModuleBitCount = 0;
+volatile byte dscKeypadInterface::isrModuleByteCount = 0;
+volatile byte dscKeypadInterface::panelCommandByteTotal = 0;
+volatile byte dscKeypadInterface::moduleData[dscReadSize] = {0};
 
 #elif defined(dscClassicKeypad)
 
 #include "dsc_arduino_compatibility.h"
 #include "dscClassicKeypad.h"
 
-// Static member definitions for dscClassicKeypadInterface  
-byte dscClassicKeypadInterface::dscClockPin;
-byte dscClassicKeypadInterface::dscReadPin;
-byte dscClassicKeypadInterface::dscWritePin;
-int  dscClassicKeypadInterface::clockInterval;
-volatile byte dscClassicKeypadInterface::keyData;
-volatile byte dscClassicKeypadInterface::keyBufferLength;
-volatile byte dscClassicKeypadInterface::keyBuffer[dscBufferSize];
-volatile bool dscClassicKeypadInterface::bufferOverflow;
-volatile bool dscClassicKeypadInterface::commandReady;
-volatile bool dscClassicKeypadInterface::moduleDataDetected;
-volatile bool dscClassicKeypadInterface::alarmKeyDetected;
-volatile bool dscClassicKeypadInterface::alarmKeyResponsePending;
-volatile byte dscClassicKeypadInterface::clockCycleCount;
-volatile byte dscClassicKeypadInterface::clockCycleTotal;
-volatile byte dscClassicKeypadInterface::panelCommand[dscReadSize];
-volatile byte dscClassicKeypadInterface::isrPanelBitTotal;
-volatile byte dscClassicKeypadInterface::isrPanelBitCount;
-volatile byte dscClassicKeypadInterface::panelCommandByteCount;
-volatile byte dscClassicKeypadInterface::isrModuleData[dscReadSize];
-volatile byte dscClassicKeypadInterface::isrModuleBitTotal;
-volatile byte dscClassicKeypadInterface::isrModuleBitCount;
-volatile byte dscClassicKeypadInterface::isrModuleByteCount;
-volatile byte dscClassicKeypadInterface::panelCommandByteTotal;
-volatile byte dscClassicKeypadInterface::moduleData[dscReadSize];
-volatile unsigned long dscClassicKeypadInterface::intervalStart;
-volatile unsigned long dscClassicKeypadInterface::beepInterval;
-volatile unsigned long dscClassicKeypadInterface::repeatInterval;
-volatile unsigned long dscClassicKeypadInterface::keyInterval;
-volatile unsigned long dscClassicKeypadInterface::alarmKeyTime;
-volatile unsigned long dscClassicKeypadInterface::alarmKeyInterval;
+// Initialize static variables to prevent uninitialized access crashes (ESPHome LoadProhibited fix)
+byte dscClassicKeypadInterface::dscClockPin = 255;
+byte dscClassicKeypadInterface::dscReadPin = 255;
+byte dscClassicKeypadInterface::dscWritePin = 255;
+int  dscClassicKeypadInterface::clockInterval = 1000;  // Default safe interval
+volatile byte dscClassicKeypadInterface::keyData = 0;
+volatile byte dscClassicKeypadInterface::keyBufferLength = 0;
+volatile byte dscClassicKeypadInterface::keyBuffer[dscBufferSize] = {0};
+volatile bool dscClassicKeypadInterface::bufferOverflow = false;
+volatile bool dscClassicKeypadInterface::commandReady = false;
+volatile bool dscClassicKeypadInterface::moduleDataDetected = false;
+volatile bool dscClassicKeypadInterface::alarmKeyDetected = false;
+volatile bool dscClassicKeypadInterface::alarmKeyResponsePending = false;
+volatile byte dscClassicKeypadInterface::clockCycleCount = 0;
+volatile byte dscClassicKeypadInterface::clockCycleTotal = 0;
+volatile byte dscClassicKeypadInterface::panelCommand[dscReadSize] = {0};
+volatile byte dscClassicKeypadInterface::isrPanelBitTotal = 0;
+volatile byte dscClassicKeypadInterface::isrPanelBitCount = 0;
+volatile byte dscClassicKeypadInterface::panelCommandByteCount = 0;
+volatile byte dscClassicKeypadInterface::isrModuleData[dscReadSize] = {0};
+volatile byte dscClassicKeypadInterface::isrModuleBitTotal = 0;
+volatile byte dscClassicKeypadInterface::isrModuleBitCount = 0;
+volatile byte dscClassicKeypadInterface::isrModuleByteCount = 0;
+volatile byte dscClassicKeypadInterface::panelCommandByteTotal = 0;
+volatile byte dscClassicKeypadInterface::moduleData[dscReadSize] = {0};
+volatile unsigned long dscClassicKeypadInterface::intervalStart = 0;
+volatile unsigned long dscClassicKeypadInterface::beepInterval = 0;
+volatile unsigned long dscClassicKeypadInterface::repeatInterval = 0;
+volatile unsigned long dscClassicKeypadInterface::keyInterval = 0;
+volatile unsigned long dscClassicKeypadInterface::alarmKeyTime = 0;
+volatile unsigned long dscClassicKeypadInterface::alarmKeyInterval = 0;
 
 #else // PowerSeries
 
 #include "dsc_arduino_compatibility.h"
 #include "dscKeybus.h"
 
-// Static member definitions for dscKeybusInterface
-byte dscKeybusInterface::dscClockPin;
-byte dscKeybusInterface::dscReadPin;
-byte dscKeybusInterface::dscWritePin;
-char dscKeybusInterface::writeKey;
-byte dscKeybusInterface::writePartition;
-byte dscKeybusInterface::writeByte;
-byte dscKeybusInterface::writeBit;
-bool dscKeybusInterface::virtualKeypad;
-bool dscKeybusInterface::processModuleData;
-byte dscKeybusInterface::panelData[dscReadSize];
-byte dscKeybusInterface::panelByteCount;
-byte dscKeybusInterface::panelBitCount;
-volatile bool dscKeybusInterface::writeKeyPending;
-volatile byte dscKeybusInterface::moduleData[dscReadSize];
-volatile bool dscKeybusInterface::moduleDataCaptured;
-volatile bool dscKeybusInterface::moduleDataDetected;
-volatile byte dscKeybusInterface::moduleByteCount;
-volatile byte dscKeybusInterface::moduleBitCount;
-volatile bool dscKeybusInterface::writeAlarm;
-volatile bool dscKeybusInterface::starKeyCheck;
-volatile bool dscKeybusInterface::starKeyWait[dscPartitions];
-volatile bool dscKeybusInterface::bufferOverflow;
-volatile byte dscKeybusInterface::panelBufferLength;
-volatile byte dscKeybusInterface::panelBuffer[dscBufferSize][dscReadSize];
-volatile byte dscKeybusInterface::panelBufferBitCount[dscBufferSize];
-volatile byte dscKeybusInterface::panelBufferByteCount[dscBufferSize];
-volatile byte dscKeybusInterface::isrPanelData[dscReadSize];
-volatile byte dscKeybusInterface::isrPanelByteCount;
-volatile byte dscKeybusInterface::isrPanelBitCount;
-volatile byte dscKeybusInterface::isrPanelBitTotal;
-volatile byte dscKeybusInterface::isrModuleData[dscReadSize];
-volatile byte dscKeybusInterface::currentCmd;
-volatile byte dscKeybusInterface::statusCmd;
-volatile byte dscKeybusInterface::moduleCmd;
-volatile byte dscKeybusInterface::moduleSubCmd;
-volatile unsigned long dscKeybusInterface::clockHighTime;
-volatile unsigned long dscKeybusInterface::keybusTime;
+// Initialize static variables to prevent uninitialized access crashes (ESPHome LoadProhibited fix)
+byte dscKeybusInterface::dscClockPin = 255;
+byte dscKeybusInterface::dscReadPin = 255;
+byte dscKeybusInterface::dscWritePin = 255;
+char dscKeybusInterface::writeKey = 0;
+byte dscKeybusInterface::writePartition = 1;
+byte dscKeybusInterface::writeByte = 0;
+byte dscKeybusInterface::writeBit = 0;
+bool dscKeybusInterface::virtualKeypad = false;
+bool dscKeybusInterface::processModuleData = false;
+byte dscKeybusInterface::panelData[dscReadSize] = {0};
+byte dscKeybusInterface::panelByteCount = 0;
+byte dscKeybusInterface::panelBitCount = 0;
+volatile bool dscKeybusInterface::writeKeyPending = false;
+volatile byte dscKeybusInterface::moduleData[dscReadSize] = {0};
+volatile bool dscKeybusInterface::moduleDataCaptured = false;
+volatile bool dscKeybusInterface::moduleDataDetected = false;
+volatile byte dscKeybusInterface::moduleByteCount = 0;
+volatile byte dscKeybusInterface::moduleBitCount = 0;
+volatile bool dscKeybusInterface::writeAlarm = false;
+volatile bool dscKeybusInterface::starKeyCheck = false;
+volatile bool dscKeybusInterface::starKeyWait[dscPartitions] = {false};
+volatile bool dscKeybusInterface::bufferOverflow = false;
+volatile byte dscKeybusInterface::panelBufferLength = 0;
+volatile byte dscKeybusInterface::panelBuffer[dscBufferSize][dscReadSize] = {0};
+volatile byte dscKeybusInterface::panelBufferBitCount[dscBufferSize] = {0};
+volatile byte dscKeybusInterface::panelBufferByteCount[dscBufferSize] = {0};
+volatile byte dscKeybusInterface::isrPanelData[dscReadSize] = {0};
+volatile byte dscKeybusInterface::isrPanelByteCount = 0;
+volatile byte dscKeybusInterface::isrPanelBitCount = 0;
+volatile byte dscKeybusInterface::isrPanelBitTotal = 0;
+volatile byte dscKeybusInterface::isrModuleData[dscReadSize] = {0};
+volatile byte dscKeybusInterface::currentCmd = 0;
+volatile byte dscKeybusInterface::statusCmd = 0;
+volatile byte dscKeybusInterface::moduleCmd = 0;
+volatile byte dscKeybusInterface::moduleSubCmd = 0;
+volatile unsigned long dscKeybusInterface::clockHighTime = 0;
+volatile unsigned long dscKeybusInterface::keybusTime = 0;
 
 #endif
