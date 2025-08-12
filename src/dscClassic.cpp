@@ -24,24 +24,204 @@ portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 hw_timer_t * dscClassicInterface::timer1 = NULL;
 #endif
 
+// Initialize static variables to prevent uninitialized access crashes
+byte dscClassicInterface::dscClockPin = 255;
+byte dscClassicInterface::dscReadPin = 255;  
+byte dscClassicInterface::dscPC16Pin = 255;
+byte dscClassicInterface::dscWritePin = 255;
+char dscClassicInterface::writeKey = 0;
+byte dscClassicInterface::writePartition = 1;
+byte dscClassicInterface::writeByte = 0;
+byte dscClassicInterface::writeBit = 0;
+bool dscClassicInterface::virtualKeypad = false;
+bool dscClassicInterface::processModuleData = false;
+byte dscClassicInterface::panelData[dscReadSize] = {0};
+byte dscClassicInterface::pc16Data[dscReadSize] = {0};
+byte dscClassicInterface::panelByteCount = 0;
+byte dscClassicInterface::panelBitCount = 0;
+volatile bool dscClassicInterface::writeKeyPending = false;
+volatile bool dscClassicInterface::writeKeyWait = false;
+volatile byte dscClassicInterface::moduleData[dscReadSize] = {0};
+volatile bool dscClassicInterface::moduleDataCaptured = false;
+volatile byte dscClassicInterface::moduleByteCount = 0;
+volatile byte dscClassicInterface::moduleBitCount = 0;
+volatile bool dscClassicInterface::writeAlarm = false;
+volatile bool dscClassicInterface::starKeyDetected = false;
+volatile bool dscClassicInterface::starKeyCheck = false;
+volatile bool dscClassicInterface::starKeyWait = false;
+volatile bool dscClassicInterface::bufferOverflow = false;
+volatile byte dscClassicInterface::panelBufferLength = 0;
+volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize] = {0};
+volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize] = {0};
+volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize] = {0};
+volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize] = {0};
+volatile byte dscClassicInterface::isrPanelData[dscReadSize] = {0};
+volatile byte dscClassicInterface::isrPC16Data[dscReadSize] = {0};
+volatile byte dscClassicInterface::isrPanelByteCount = 0;
+volatile byte dscClassicInterface::isrPanelBitCount = 0;
+volatile byte dscClassicInterface::isrPanelBitTotal = 0;
+volatile byte dscClassicInterface::isrModuleData[dscReadSize] = {0};
+volatile byte dscClassicInterface::isrModuleByteCount = 0;
+volatile byte dscClassicInterface::isrModuleBitCount = 0;
+volatile byte dscClassicInterface::isrModuleBitTotal = 0;
+volatile byte dscClassicInterface::moduleCmd = 0;
+volatile bool dscClassicInterface::readyLight = false;
+volatile bool dscClassicInterface::lightBlink = false;
+volatile unsigned long dscClassicInterface::clockHighTime = 0;
+volatile unsigned long dscClassicInterface::keybusTime = 0;
+volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
+
 dscClassicInterface::dscClassicInterface(byte setClockPin, byte setReadPin, byte setPC16Pin, byte setWritePin, const char * setAccessCode) {
+  // Validate pin assignments before proceeding
+  if (setClockPin == 255 || setReadPin == 255 || setPC16Pin == 255) {
+    // Invalid pin configuration - set safe defaults but don't proceed with initialization
+    return;
+  }
+  
   dscClockPin = setClockPin;
   dscReadPin = setReadPin;
   dscPC16Pin = setPC16Pin;
   dscWritePin = setWritePin;
   if (dscWritePin != 255) virtualKeypad = true;
+  else virtualKeypad = false;
+  
+  // Initialize object state
   writeReady = false;
   writePartition = 1;
   pauseStatus = false;
-  accessCodeStay = setAccessCode;
-  strcpy(accessCodeAway, accessCodeStay);
-  strcat(accessCodeAway, "*1");
-  strcpy(accessCodeNight, "*9");
-  strcat(accessCodeNight, accessCodeStay);
+  
+  // Initialize access codes safely
+  if (setAccessCode != nullptr && strlen(setAccessCode) > 0) {
+    accessCodeStay = setAccessCode;
+    strcpy(accessCodeAway, accessCodeStay);
+    strcat(accessCodeAway, "*1");
+    strcpy(accessCodeNight, "*9");
+    strcat(accessCodeNight, accessCodeStay);
+  } else {
+    // Set default access code if none provided
+    accessCodeStay = "1234";  // Default - should be changed in production
+    strcpy(accessCodeAway, "1234*1");
+    strcpy(accessCodeNight, "*91234");
+  }
+  
+  // Initialize all arrays to ensure no uninitialized access
+  for (byte i = 0; i < dscBufferSize; i++) {
+    for (byte j = 0; j < dscReadSize; j++) {
+      panelBuffer[i][j] = 0;
+      pc16Buffer[i][j] = 0;
+    }
+    panelBufferBitCount[i] = 0;
+    panelBufferByteCount[i] = 0;
+  }
+  
+  // Initialize data arrays
+  for (byte i = 0; i < dscReadSize; i++) {
+    panelData[i] = 0;
+    pc16Data[i] = 0;
+    moduleData[i] = 0;
+    isrPanelData[i] = 0;
+    isrPC16Data[i] = 0;
+    isrModuleData[i] = 0;
+  }
+  
+  // Initialize ISR counters
+  isrPanelByteCount = 0;
+  isrPanelBitCount = 0;
+  isrPanelBitTotal = 0;
+  isrModuleByteCount = 0;
+  isrModuleBitCount = 0;
+  isrModuleBitTotal = 0;
+  panelByteCount = 0;
+  panelBitCount = 0;
+  panelBufferLength = 0;
+  
+  // Initialize timing variables
+  clockHighTime = 0;
+  keybusTime = millis(); // Initialize to current time to prevent immediate timeout
+  writeCompleteTime = 0;
+  
+  // Initialize control flags
+  writeKeyPending = false;
+  writeKeyWait = false;
+  writeAlarm = false;
+  starKeyDetected = false;
+  starKeyCheck = false;
+  starKeyWait = false;
+  moduleDataCaptured = false;
+  bufferOverflow = false;
+  readyLight = false;
+  lightBlink = false;
+  
+  // Initialize command tracking
+  moduleCmd = 0;
 }
 
 
 void dscClassicInterface::begin(Stream &_stream) {
+  // Validate pins are properly configured
+  if (dscClockPin == 255 || dscReadPin == 255 || dscPC16Pin == 255) {
+    if (_stream) {
+      _stream.println(F("ERROR: Invalid pin configuration for DSC Classic interface"));
+    }
+    return;
+  }
+  
+  // Ensure all static variables are properly initialized before enabling interrupts
+  if (panelBufferLength != 0) {
+    // Reset all static variables to safe state
+    panelBufferLength = 0;
+    bufferOverflow = false;
+    writeKeyPending = false;
+    writeKeyWait = false;
+    writeAlarm = false;
+    starKeyDetected = false;
+    starKeyCheck = false;
+    starKeyWait = false;
+    moduleDataCaptured = false;
+    readyLight = false;
+    lightBlink = false;
+    
+    // Clear all buffers
+    for (byte i = 0; i < dscBufferSize; i++) {
+      for (byte j = 0; j < dscReadSize; j++) {
+        panelBuffer[i][j] = 0;
+        pc16Buffer[i][j] = 0;
+      }
+      panelBufferBitCount[i] = 0;
+      panelBufferByteCount[i] = 0;
+    }
+    
+    // Clear data arrays
+    for (byte i = 0; i < dscReadSize; i++) {
+      panelData[i] = 0;
+      pc16Data[i] = 0;
+      moduleData[i] = 0;
+      isrPanelData[i] = 0;
+      isrPC16Data[i] = 0;
+      isrModuleData[i] = 0;
+    }
+    
+    // Reset counters
+    isrPanelByteCount = 0;
+    isrPanelBitCount = 0;
+    isrPanelBitTotal = 0;
+    isrModuleByteCount = 0;
+    isrModuleBitCount = 0;
+    isrModuleBitTotal = 0;
+    panelByteCount = 0;
+    panelBitCount = 0;
+    moduleByteCount = 0;
+    moduleBitCount = 0;
+    
+    // Reset command tracking
+    moduleCmd = 0;
+    
+    // Initialize timing
+    clockHighTime = 0;
+    keybusTime = millis();
+    writeCompleteTime = 0;
+  }
+  
   pinMode(dscClockPin, INPUT);
   pinMode(dscReadPin, INPUT);
   pinMode(dscPC16Pin, INPUT);
@@ -65,14 +245,26 @@ void dscClassicInterface::begin(Stream &_stream) {
   // esp32 timer1 calls dscDataInterrupt() from dscClockInterrupt()
   #elif defined(ESP32)
   timer1 = timerBegin(1, 80, true);
-  timerStop(timer1);
-  timerAttachInterrupt(timer1, &dscDataInterrupt, true);
-  timerAlarmWrite(timer1, 250, true);
-  timerAlarmEnable(timer1);
+  if (timer1) {
+    timerStop(timer1);
+    timerAttachInterrupt(timer1, &dscDataInterrupt, true);
+    timerAlarmWrite(timer1, 250, true);
+    timerAlarmEnable(timer1);
+  } else {
+    if (_stream) {
+      _stream.println(F("ERROR: Failed to initialize ESP32 timer for DSC Classic"));
+    }
+    return;
+  }
   #endif
 
-  // Generates an interrupt when the Keybus clock rises or falls - requires a hardware interrupt pin on Arduino/AVR
+  // CRITICAL: Only attach interrupt AFTER all static variables are initialized
+  // This prevents the interrupt handler from accessing uninitialized memory
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
+  
+  if (_stream) {
+    _stream.println(F("DSC Classic Interface initialized successfully"));
+  }
 }
 
 
