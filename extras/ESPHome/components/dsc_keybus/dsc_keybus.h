@@ -1,5 +1,8 @@
 #pragma once
 
+// Prevent DSC library from defining static variables - we handle them separately
+#define DSC_STATIC_VARIABLES_DEFINED
+
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"

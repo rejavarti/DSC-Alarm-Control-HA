@@ -76,7 +76,7 @@ dsc_keybus:
     then:
       - text_sensor.template.publish:
           id: system_status
-          state: !lambda 'return x;'
+          state: !lambda 'return status;'
   on_partition_status_change:
     then:
       - lambda: |-
@@ -337,6 +337,6 @@ switch:
       - switch.toggle: restart_switch
     turn_off_action:
       - lambda: |-
-          id(dsc_interface).disconnect_keybus();
+          esphome::dsc_keybus::getDSC().stop();
   - platform: restart
     id: restart_switch

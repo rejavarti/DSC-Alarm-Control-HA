@@ -351,6 +351,6 @@ switch:
       - switch.toggle: restart_switch
     turn_off_action:
       - lambda: |-
-          id(dsc_interface).disconnect_keybus();
+          esphome::dsc_keybus::getDSC().stop();
   - platform: restart
     id: restart_switch
