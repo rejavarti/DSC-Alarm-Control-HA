@@ -17,6 +17,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if defined(dscClassicSeries)
+
 #include "dsc_arduino_compatibility.h"
 #include "dscClassicKeypad.h"
 
@@ -397,3 +399,5 @@ void dscClassicKeypadInterface::dscClockInterrupt() {
   TCNT1 = clockInterval;
   #endif
 }
+
+#endif // defined(dscClassicSeries)

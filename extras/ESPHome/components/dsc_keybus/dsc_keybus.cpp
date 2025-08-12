@@ -10,8 +10,38 @@ namespace dsc_keybus {
 static const char *const TAG = "dsc_keybus";
 
 #ifdef dscClassicSeries
+// Simple Stream implementation for DSC Classic interface
+class DSCStream : public Stream {
+public:
+  virtual size_t write(uint8_t data) override {
+    // For DSC Classic, we don't actually write data via the stream
+    // This is just used for status output
+    return 1; // Always report success
+  }
+  
+  virtual int available() override { return 0; }
+  virtual int read() override { return -1; }
+  virtual int peek() override { return -1; }
+  
+  // Print methods for DSC output - these are not virtual in Arduino Stream
+  void print(const char* str) {
+    ESP_LOGD(TAG, "%s", str);
+  }
+  void print(int value) {
+    ESP_LOGD(TAG, "%d", value);
+  }
+  void print(int value, int base) {
+    if (base == 16) ESP_LOGD(TAG, "%X", value);
+    else if (base == 8) ESP_LOGD(TAG, "%o", value);
+    else ESP_LOGD(TAG, "%d", value);
+  }
+  void println(const char* str) {
+    ESP_LOGD(TAG, "%s", str);
+  }
+};
+
 // Stream instance for DSC Classic interface
-Stream dscStream;
+DSCStream dscStream;
 #endif
 
 // Global DSC interface instance - automatically selects based on defined series type

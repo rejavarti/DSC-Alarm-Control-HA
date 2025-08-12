@@ -9,9 +9,12 @@ class dscClassicKeypadInterface {
     dscClassicKeypadInterface(byte setClockPin, byte setReadPin, byte setWritePin);
 
     // Interface control
-    void begin(Stream &_stream = Serial);
-    bool loop();
-    void stop();
+    void begin(Stream &_stream = Serial);                            // Initializes the stream output to Serial by default
+    bool loop();                                                     // Returns true if valid panel data is available
+    void stop();                                                     // Stops the keypad interface
+    void beep(byte beeps = 0);                                       // Keypad beep, 1-128 beeps
+    void tone(byte beep = 0, bool tone = false, byte interval = 0);  // Keypad tone pattern, 1-7 beeps at 1-15s interval, with optional constant tone
+    void buzzer(byte seconds = 0);                                   // Keypad buzzer, 1-255 seconds
 
     // Keypad key
     byte key, keyAvailable;
@@ -26,12 +29,36 @@ class dscClassicKeypadInterface {
     static volatile byte moduleData[dscReadSize];
     static volatile bool bufferOverflow;
 
+    // Timer interrupt function to capture data - declared as public for use by AVR Timer1
+    static void dscClockInterrupt();
+
   private:
+    void zoneLight(Light lightZone, byte zoneBit);
+    void panelLight(Light lightPanel, byte zoneBit);
+
     Stream* stream;
+    byte panelLights = 0x80, previousLights = 0x80;
+    byte panelBlink, previousBlink;
+    byte panelZones, previousZones;
+    byte panelZonesBlink, previousZonesBlink;
+    bool startupCycle = true;
+    bool setBeep, setTone, setBuzzer;
+    byte commandInterval = 26;   // Sets the milliseconds between panel commands
+    bool keyBeep, beepStart;
 
     static byte dscClockPin;
     static byte dscReadPin;
     static byte dscWritePin;
+    static volatile byte keyData;
+    static volatile byte keyBufferLength;
+    static volatile byte keyBuffer[dscBufferSize];
+    static volatile bool commandReady, moduleDataDetected;
+    static volatile bool alarmKeyDetected, alarmKeyResponsePending;
+    static volatile byte clockCycleCount, clockCycleTotal;
+    static volatile byte panelCommand[dscReadSize], panelCommandByteCount, panelCommandByteTotal;
+    static volatile byte isrPanelBitTotal, isrPanelBitCount;
+    static volatile byte isrModuleData[dscReadSize], isrModuleBitTotal, isrModuleBitCount, isrModuleByteCount;
+    static volatile unsigned long intervalStart, beepInterval, repeatInterval, keyInterval, alarmKeyTime, alarmKeyInterval;
     static volatile bool moduleDataCaptured;
     static volatile byte moduleByteCount;
     static volatile byte moduleBitCount;

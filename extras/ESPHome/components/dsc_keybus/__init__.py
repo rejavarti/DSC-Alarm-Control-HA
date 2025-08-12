@@ -51,7 +51,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional("access_code", default=""): cv.string,
     cv.Optional("debug", default=0): cv.int_range(0, 3),
     cv.Optional("enable_05_messages", default=True): cv.boolean,
-    cv.Optional(CONF_SERIES_TYPE, default="Classic"): cv.one_of("PowerSeries", "Classic", upper=True),
+    cv.Optional(CONF_SERIES_TYPE, default="Classic"): cv.one_of("PowerSeries", "Classic"),
     cv.Optional(CONF_PC16_PIN): cv.int_range(0, 40),  # Pin for Classic series PC-16 line
     cv.Optional(CONF_ON_SYSTEM_STATUS_CHANGE): automation.validate_automation(
         {
@@ -102,7 +102,7 @@ async def to_code(config):
     
     # Set series type and enable appropriate defines
     series_type = config[CONF_SERIES_TYPE]
-    if series_type == "CLASSIC":
+    if series_type.upper() == "CLASSIC":
         cg.add_define("dscClassicSeries")
         if CONF_PC16_PIN in config:
             cg.add_define("DSC_CLASSIC_PC16_PIN", config[CONF_PC16_PIN])

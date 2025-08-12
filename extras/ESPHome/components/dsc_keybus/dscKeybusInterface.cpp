@@ -17,6 +17,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if defined(dscPowerSeries)
+
 #include "dsc_arduino_compatibility.h"
 #include "dscKeybus.h"
 
@@ -709,3 +711,5 @@ void dscKeybusInterface::dscDataInterrupt() {
   portEXIT_CRITICAL(&timer1Mux);
   #endif
 }
+
+#endif // defined(dscPowerSeries)
