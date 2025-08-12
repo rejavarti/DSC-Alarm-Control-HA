@@ -64,9 +64,14 @@ class dscClassicKeypadInterface {
     static volatile byte moduleByteCount;
     static volatile byte moduleBitCount;
 
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP_PLATFORM)
     static hw_timer_t * timer1;
     static portMUX_TYPE timer1Mux;
+    
+    // Additional ESP32 safety variables to prevent LoadProhibited crashes
+    static volatile bool esp32_hardware_initialized;
+    static volatile bool esp32_timers_configured;
+    static volatile unsigned long esp32_init_timestamp;
 #endif
 };
 

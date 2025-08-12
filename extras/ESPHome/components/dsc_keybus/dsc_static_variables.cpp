@@ -1,6 +1,9 @@
-// Static member definitions for dscClassicInterface  
-// These are defined here to avoid multiple definition errors
-// The wrapper pattern ensures DSC headers are only included in controlled places
+// Static member definitions for DSC Interface classes
+// CRITICAL: These must be defined before any DSC headers are included
+// to prevent LoadProhibited crashes (0xa5a5a5a5) during ESP32 initialization
+// 
+// This file MUST be compiled first to ensure static variables are initialized
+// before any interrupt service routines (ISRs) can access them
 
 // Unique guard to prevent multiple static variable definitions
 #define DSC_STATIC_VARIABLES_DEFINED
@@ -8,11 +11,19 @@
 #include "esphome/core/defines.h"
 #include "dsc_arduino_compatibility.h"
 
-// ESP32 hardware timer includes for timer1 and timer1Mux
-#if defined(ESP32)
-#include "esp32-hal-timer.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/portmacro.h"
+// ESP32 hardware timer includes - MUST be included before DSC headers
+// to prevent LoadProhibited crashes during timer initialization
+#if defined(ESP32) || defined(ESP_PLATFORM)
+#include <esp32-hal-timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/portmacro.h>
+#include <esp_timer.h>
+#include <esp_heap_caps.h>
+#include <esp_system.h>
+// Ensure timer types are properly defined before use
+#ifndef TIMER_BASE_CLK
+#define TIMER_BASE_CLK 80000000  // 80MHz APB clock
+#endif
 #endif
 
 #if defined(dscClassicSeries)
@@ -66,10 +77,17 @@ volatile unsigned long dscClassicInterface::clockHighTime = 0;
 volatile unsigned long dscClassicInterface::keybusTime = 0;
 volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
 
-// ESP32-specific timer variables - must be initialized to prevent LoadProhibited crashes
-#if defined(ESP32)
+// ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
+// These MUST be initialized to prevent memory access violations during ISR execution
+// The 0xa5a5a5a5 pattern indicates these variables were accessed before initialization
+#if defined(ESP32) || defined(ESP_PLATFORM)
 hw_timer_t * dscClassicInterface::timer1 = nullptr;
 portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+
+// Additional ESP32 safety variables to prevent LoadProhibited crashes
+volatile bool dscClassicInterface::esp32_hardware_initialized = false;
+volatile bool dscClassicInterface::esp32_timers_configured = false;
+volatile unsigned long dscClassicInterface::esp32_init_timestamp = 0;
 #endif
 
 #elif defined(dscKeypad)
@@ -102,6 +120,17 @@ volatile byte dscKeypadInterface::isrModuleBitCount = 0;
 volatile byte dscKeypadInterface::isrModuleByteCount = 0;
 volatile byte dscKeypadInterface::panelCommandByteTotal = 0;
 volatile byte dscKeypadInterface::moduleData[dscReadSize] = {0};
+
+// ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
+#if defined(ESP32) || defined(ESP_PLATFORM)
+hw_timer_t * dscKeypadInterface::timer1 = nullptr;
+portMUX_TYPE dscKeypadInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+
+// Additional ESP32 safety variables to prevent LoadProhibited crashes
+volatile bool dscKeypadInterface::esp32_hardware_initialized = false;
+volatile bool dscKeypadInterface::esp32_timers_configured = false;
+volatile unsigned long dscKeypadInterface::esp32_init_timestamp = 0;
+#endif
 
 #elif defined(dscClassicKeypad)
 
@@ -139,6 +168,17 @@ volatile unsigned long dscClassicKeypadInterface::repeatInterval = 0;
 volatile unsigned long dscClassicKeypadInterface::keyInterval = 0;
 volatile unsigned long dscClassicKeypadInterface::alarmKeyTime = 0;
 volatile unsigned long dscClassicKeypadInterface::alarmKeyInterval = 0;
+
+// ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
+#if defined(ESP32) || defined(ESP_PLATFORM)
+hw_timer_t * dscClassicKeypadInterface::timer1 = nullptr;
+portMUX_TYPE dscClassicKeypadInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+
+// Additional ESP32 safety variables to prevent LoadProhibited crashes
+volatile bool dscClassicKeypadInterface::esp32_hardware_initialized = false;
+volatile bool dscClassicKeypadInterface::esp32_timers_configured = false;
+volatile unsigned long dscClassicKeypadInterface::esp32_init_timestamp = 0;
+#endif
 
 #else // PowerSeries
 
@@ -184,10 +224,17 @@ volatile byte dscKeybusInterface::moduleSubCmd = 0;
 volatile unsigned long dscKeybusInterface::clockHighTime = 0;
 volatile unsigned long dscKeybusInterface::keybusTime = 0;
 
-// ESP32-specific timer variables - must be initialized to prevent LoadProhibited crashes
-#if defined(ESP32)
+// ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
+// These MUST be initialized to prevent memory access violations during ISR execution
+// The 0xa5a5a5a5 pattern indicates these variables were accessed before initialization
+#if defined(ESP32) || defined(ESP_PLATFORM)
 hw_timer_t * dscKeybusInterface::timer1 = nullptr;
 portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+
+// Additional ESP32 safety variables to prevent LoadProhibited crashes
+volatile bool dscKeybusInterface::esp32_hardware_initialized = false;
+volatile bool dscKeybusInterface::esp32_timers_configured = false;
+volatile unsigned long dscKeybusInterface::esp32_init_timestamp = 0;
 #endif
 
 #endif

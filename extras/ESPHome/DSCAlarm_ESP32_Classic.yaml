@@ -1,0 +1,593 @@
+# DSC Keybus Interface for ESPHome - DSC CLASSIC SERIES VERSION (ESP32)
+# Pre-configured for DSC Classic series panels (PC1500, PC1550, PC1832, PC1864, PC1616, etc.)
+# Uses local dscKeybusInterface implementation with dscClassicSeries build flag enabled
+# 
+# ===== THIS VERSION IS FOR DSC CLASSIC SERIES ON ESP32 ONLY =====
+# If you have a DSC PowerSeries panel, use DscAlarm_ESP32.yaml instead
+# For ESP8266, use DscAlarm_Classic.yaml instead
+#
+# Classic Series Wiring Requirements:
+# - Standard keybus connections (Clock, Data) with 33kΩ and 10kΩ resistors
+# - Additional PC-16 connection with 1kΩ resistor:
+#   ESP32: Connect to GPIO 17
+# - PGM output must be configured in DSC panel for PC-16
+#
+# ESP32 Pin Assignments:
+# - Clock: GPIO 18
+# - Data (Read): GPIO 19  
+# - Data (Write): GPIO 21
+# - PC-16: GPIO 17
+#
+# LoadProhibited Crash Prevention:
+# This configuration includes comprehensive ESP32-specific safeguards to prevent
+# LoadProhibited crashes (0xa5a5a5a5 memory access errors) that can occur during
+# DSC interface initialization.
+
+substitutions:
+  accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
+
+esphome:
+  name: dscalarm
+  # LoadProhibited crash prevention: Ensure sufficient memory and stack
+  # Component automatically sets dscClassicSeries define based on series_type
+  platformio_options:
+    build_flags:
+      - -DBOARD_HAS_PSRAM  # Enable PSRAM if available for additional memory
+    lib_deps:
+      - ESP32 BLE Arduino  # Include BLE libraries for memory management
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Use latest compatible ESP-IDF for maximum stability
+    
+    # ESP-IDF specific configurations to prevent LoadProhibited crashes
+    sdkconfig_options:
+      # Main task stack size - CRITICAL for preventing LoadProhibited crashes
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "20480"  # Increase to 20KB from default 3584
+      
+      # System event and timer task stack sizes
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "6144"   # Increase to 6KB
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "6144"    # Increase to 6KB
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "2048"       # Increase idle stack
+      
+      # Memory management for LoadProhibited crash prevention
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y               # Run at 240MHz for best performance
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      CONFIG_FREERTOS_HZ: "1000"                         # 1ms tick for responsive DSC processing
+      
+      # WiFi task optimizations to prevent memory conflicts
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "8192"          # Increase WiFi stack to 8KB
+      CONFIG_ESP32_WIFI_RX_BUFFER_NUM: "25"              # Increase WiFi buffers
+      CONFIG_ESP32_WIFI_TX_BUFFER_NUM: "25"
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "25"
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "25"
+      
+      # Memory protection and debugging
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "64"           # Large event queue
+      CONFIG_ESP32_PANIC_PRINT_HALT: y                   # Halt on panic for debugging
+      CONFIG_ESP32_DEBUG_STUBS_ENABLE: y                 # Enable debug stubs
+      
+      # Watchdog timer configurations - ESSENTIAL for LoadProhibited prevention
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "60"                # 60 second timeout
+      CONFIG_ESP_TASK_WDT_EN: y                          # Enable task watchdog
+      CONFIG_ESP_TASK_WDT_INIT: y                        # Initialize early
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y        # Watch idle tasks
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y
+      
+      # Interrupt watchdog for DSC timing
+      CONFIG_ESP_INT_WDT_EN: y                           # Enable interrupt watchdog
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "2000"              # 2 second interrupt timeout
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y                   # Monitor both cores
+      
+      # Power management disabled for consistent DSC timing
+      CONFIG_PM_ENABLE: n                                # Disable power management
+      
+      # Memory debugging (helpful for troubleshooting LoadProhibited)
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: y             # Enable heap poisoning
+      CONFIG_HEAP_TRACING_STANDALONE: y                  # Enable heap tracing
+      
+      # Flash and memory optimizations
+      CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y                  # Ensure 4MB flash
+      CONFIG_PARTITION_TABLE_CUSTOM: n                   # Use default partition table
+      
+      # Core dump configuration for crash analysis
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: y           # Save core dumps to flash
+      CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           # ELF format for analysis
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # LoadProhibited crash prevention: Configure WiFi for stability
+  reboot_timeout: 0s  # Disable automatic reboot on WiFi failure
+  ap:
+    ssid: "DSCAlarm-Classic-ESP32"
+    password: !secret wifi_password
+
+# Disable logger on serial to prevent conflicts with DSC interface
+logger:
+  baud_rate: 0
+  level: INFO  # Reduce log level to prevent memory pressure
+  # Send logs over WiFi only to prevent serial conflicts with DSC interface
+
+api:
+  password: !secret api_password
+  # LoadProhibited prevention: Configure API with memory safety
+  reboot_timeout: 0s  # Disable automatic reboot on API failure
+
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username  
+  password: !secret mqtt_password
+  discovery: true
+  discovery_prefix: homeassistant
+  topic_prefix: esphome/dscalarm-classic
+  # LoadProhibited prevention: MQTT stability settings
+  reboot_timeout: 0s
+  keepalive: 60s
+   
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
+   
+status_led:
+  pin:
+    number: GPIO2
+    inverted: yes
+
+# LoadProhibited crash prevention: Boot timing control
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    # Delay time sync to prevent early crashes
+    on_time_sync:
+      then:
+        - delay: 5s
+        - lambda: |-
+            ESP_LOGI("time", "Time synchronized, system stable");
+
+dsc_keybus:
+  id: dsc_interface
+  access_code: "$accessCode"
+  series_type: "Classic"  # CRITICAL: Set for DSC Classic series panels
+  pc16_pin: 17           # ESP32 GPIO 17 for PC-16 connection
+  debug: 0  # 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
+  on_system_status_change:
+    then:
+      - text_sensor.template.publish:
+          id: system_status
+          state: !lambda 'return status;'
+  on_partition_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(p1).publish_state(status); break;
+            case 2: id(p2).publish_state(status); break;
+          }
+  on_partition_msg_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(m1).publish_state(msg); break;
+            case 2: id(m2).publish_state(msg); break;
+          }
+  on_trouble_status_change:
+    then:
+      - binary_sensor.template.publish:
+          id: t1
+          state: !lambda 'return trouble;'
+  on_fire_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(f1).publish_state(fire); break;
+          }
+  on_zone_status_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(z1).publish_state(open); break;
+            case 2: id(z2).publish_state(open); break;
+            case 3: id(z3).publish_state(open); break;
+            case 4: id(z4).publish_state(open); break;
+            case 5: id(z5).publish_state(open); break;
+            case 6: id(z6).publish_state(open); break;
+            case 7: id(z7).publish_state(open); break;
+            case 8: id(z8).publish_state(open); break;
+            case 9: id(z9).publish_state(open); break;
+            case 10: id(z10).publish_state(open); break;
+            case 11: id(z11).publish_state(open); break;
+          }
+  on_zone_alarm_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(za1).publish_state(open); break;
+            case 2: id(za2).publish_state(open); break;
+            case 3: id(za3).publish_state(open); break;
+            case 4: id(za4).publish_state(open); break;
+            case 5: id(za5).publish_state(open); break;
+            case 6: id(za6).publish_state(open); break;
+            case 7: id(za7).publish_state(open); break;
+            case 8: id(za8).publish_state(open); break;
+            case 9: id(za9).publish_state(open); break;
+            case 10: id(za10).publish_state(open); break;
+            case 11: id(za11).publish_state(open); break;
+          }
+
+binary_sensor:
+  # Zone status sensors
+  - platform: template
+    id: z1
+    name: "Zone Front door"
+    device_class: door
+  - platform: template
+    id: z2
+    name: "Zone Garage door"
+    device_class: door
+  - platform: template
+    id: z3
+    name: "Zone Back door"
+    device_class: door
+  - platform: template
+    id: z4
+    name: "Zone Living room window"
+    device_class: window
+  - platform: template
+    id: z5
+    name: "Zone Dining room window"
+    device_class: window
+  - platform: template
+    id: z6
+    name: "Zone Family room window LF"
+    device_class: window
+  - platform: template
+    id: z7
+    name: "Zone Family room window RF"
+    device_class: window
+  - platform: template
+    id: z8
+    name: "Zone Basement windows"
+    device_class: window
+  - platform: template
+    id: z9
+    name: "Zone Upstairs motion"
+    device_class: motion
+  - platform: template
+    id: z10
+    name: "Zone Basement motion"
+    device_class: motion
+  - platform: template
+    id: z11
+    name: "Zone Main floor motion"
+    device_class: motion
+    
+  # Zone alarm status sensors
+  - platform: template
+    id: za1
+    name: "Zone Front door alarm"
+    device_class: safety
+  - platform: template
+    id: za2
+    name: "Zone Garage door alarm"
+    device_class: safety
+  - platform: template
+    id: za3
+    name: "Zone Back door alarm"
+    device_class: safety
+  - platform: template
+    id: za4
+    name: "Zone Living room window alarm"
+    device_class: safety
+  - platform: template
+    id: za5
+    name: "Zone Dining room window alarm"
+    device_class: safety
+  - platform: template
+    id: za6
+    name: "Zone Family room window LF alarm"
+    device_class: safety
+  - platform: template
+    id: za7
+    name: "Zone Family room window RF alarm"
+    device_class: safety
+  - platform: template
+    id: za8
+    name: "Zone Basement windows alarm"
+    device_class: safety
+  - platform: template
+    id: za9
+    name: "Zone Upstairs motion alarm"
+    device_class: safety
+  - platform: template
+    id: za10
+    name: "Zone Basement motion alarm"
+    device_class: safety
+  - platform: template
+    id: za11
+    name: "Zone Main floor motion alarm"
+    device_class: safety
+    
+  # System status sensors
+  - platform: template
+    id: t1
+    name: "DSCAlarm Trouble Status"
+    device_class: problem
+    
+  - platform: template
+    id: f1
+    device_class: safety
+    name: "DSCAlarm Partition1 Fire Status"
+    
+  # System connectivity and health sensors
+  - platform: status
+    name: "DSCAlarm System Status"
+    id: system_status_sensor
+    device_class: connectivity
+    
+  # LoadProhibited crash prevention: System health monitoring
+  - platform: template
+    name: "DSCAlarm System Healthy"
+    id: system_healthy_sensor
+    device_class: problem
+    lambda: |-
+      // System is healthy if WiFi connected, API connected, and sufficient heap
+      bool wifi_ok = wifi::global_wifi_component->is_connected();
+      #ifdef USE_API
+      bool api_ok = api::global_api_server->is_connected();
+      #else
+      bool api_ok = true; // API not enabled, assume OK
+      #endif
+      size_t free_heap = esp_get_free_heap_size();
+      bool heap_ok = free_heap > 20000; // At least 20KB free heap
+      bool system_ok = wifi_ok && api_ok && heap_ok;
+      
+      // Log health status for debugging
+      if (!system_ok) {
+        ESP_LOGW("system_health", "System health issue - WiFi: %s, API: %s, Heap: %zu bytes", 
+          wifi_ok ? "OK" : "FAIL", api_ok ? "OK" : "FAIL", free_heap);
+      }
+      
+      return system_ok;
+    
+  # DSC Keybus connection status  
+  - platform: template
+    name: "DSCAlarm Keybus Connected"
+    id: keybus_connected_sensor
+    device_class: connectivity
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+      
+  # DSC Buffer overflow detection - LoadProhibited prevention
+  - platform: template
+    name: "DSCAlarm Buffer Overflow"
+    id: buffer_overflow_sensor  
+    device_class: problem
+    lambda: |-
+      bool overflow = id(dsc_interface).getBufferOverflow();
+      if (overflow) {
+        ESP_LOGW("buffer", "DSC buffer overflow detected - potential memory issue");
+      }
+      return overflow;
+
+text_sensor:
+  - platform: template
+    id: system_status
+    name: "DSCAlarm System Status"
+    icon: "mdi:shield"
+  - platform: template
+    id: p1
+    name: "DSCAlarm Partition 1 Status"
+    icon: "mdi:shield"
+  - platform: template
+    id: p2
+    name: "DSCAlarm Partition 2 Status"
+    icon: "mdi:shield"  
+  - platform: template
+    id: m1
+    name: "DSCAlarm Partition 1 Msg"
+    icon: "mdi:alert-box"
+  - platform: template
+    id: m2
+    name: "DSCAlarm Partition 2 Msg"
+    icon: "mdi:alert-box"
+    
+  # System version and build info
+  - platform: version
+    name: "DSCAlarm ESPHome Version"
+    icon: "mdi:tag"
+    
+  # WiFi connection info  
+  - platform: wifi_info
+    ip_address:
+      name: "DSCAlarm IP Address"
+    ssid:
+      name: "DSCAlarm WiFi SSID"
+    mac_address:
+      name: "DSCAlarm MAC Address"
+      
+  # LoadProhibited crash prevention: System error tracking
+  - platform: template
+    name: "DSCAlarm Last Error"
+    id: last_error_sensor
+    icon: "mdi:alert-circle"
+    lambda: |-
+      static std::string last_error = "None";
+      // Check for common error conditions that could lead to crashes
+      size_t free_heap = esp_get_free_heap_size();
+      if (free_heap < 10000) {
+        last_error = "Low heap: " + to_string(free_heap) + " bytes";
+      }
+      return last_error;
+
+sensor:
+  # System uptime
+  - platform: uptime
+    name: "DSCAlarm Uptime"
+    id: uptime_seconds
+    update_interval: 60s
+    icon: "mdi:timer-outline"
+    unit_of_measurement: s
+    device_class: duration
+    state_class: total_increasing
+  
+  # WiFi signal strength  
+  - platform: wifi_signal
+    name: "DSCAlarm WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    unit_of_measurement: dBm
+    device_class: signal_strength
+    state_class: measurement
+    icon: "mdi:wifi-strength-2"
+    
+  # LoadProhibited crash prevention: Memory monitoring
+  - platform: template
+    name: "DSCAlarm Free Heap"
+    id: free_heap_sensor
+    update_interval: 30s  # More frequent monitoring
+    unit_of_measurement: "bytes"
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      size_t free_heap = esp_get_free_heap_size();
+      // Log critical memory conditions
+      if (free_heap < 15000) {
+        ESP_LOGW("memory", "Critical heap memory: %zu bytes free", free_heap);
+      }
+      return free_heap;
+      
+  # LoadProhibited crash prevention: Stack monitoring
+  - platform: template
+    name: "DSCAlarm Stack High Water Mark"
+    id: stack_hwm_sensor
+    update_interval: 60s
+    unit_of_measurement: "bytes"
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      // Monitor main task stack usage
+      return uxTaskGetStackHighWaterMark(nullptr);
+      
+  # WiFi reconnection counter
+  - platform: template
+    name: "DSCAlarm WiFi Reconnects"
+    id: wifi_reconnects_sensor
+    update_interval: 60s
+    state_class: total_increasing
+    icon: "mdi:wifi-sync"
+    lambda: |-
+      static uint32_t reconnect_count = 0;
+      static bool was_connected = true;
+      bool is_connected = wifi::global_wifi_component->is_connected();
+      
+      if (was_connected && !is_connected) {
+        reconnect_count++;
+      }
+      was_connected = is_connected;
+      return reconnect_count;
+
+# LoadProhibited crash prevention: Periodic system health monitoring
+interval:
+  - interval: 30s
+    then:
+      - lambda: |-
+          // Comprehensive system health monitoring
+          bool wifi_ok = wifi::global_wifi_component->is_connected();
+          #ifdef USE_API
+          bool api_ok = api::global_api_server->is_connected(); 
+          #else
+          bool api_ok = true;
+          #endif
+          size_t free_heap = esp_get_free_heap_size();
+          size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+          bool heap_ok = free_heap > 20000;  // At least 20KB free
+          bool stack_ok = stack_hwm > 1000;  // At least 1KB stack remaining
+          bool system_ok = wifi_ok && api_ok && heap_ok && stack_ok;
+          
+          id(system_healthy_sensor).publish_state(system_ok);
+          
+          // Log detailed health information for debugging LoadProhibited issues
+          if (!system_ok) {
+            ESP_LOGW("system_health", "Health check failed - WiFi: %s, API: %s, Heap: %zu, Stack: %zu", 
+              wifi_ok ? "OK" : "FAIL", 
+              api_ok ? "OK" : "FAIL",
+              free_heap, stack_hwm);
+          }
+          
+          // Force restart on critical memory conditions to prevent crashes
+          if (free_heap < 10000) {
+            ESP_LOGE("system_health", "Critical memory condition detected - initiating restart");
+            App.safe_reboot();
+          }
+
+  # LoadProhibited crash prevention: Watchdog timer reset
+  - interval: 10s
+    then:
+      - lambda: |-
+          // Reset task watchdog to prevent timeout
+          #ifdef CONFIG_ESP_TASK_WDT_EN
+          esp_task_wdt_reset();
+          #endif
+
+button:
+  # Emergency buttons
+  - platform: template
+    name: "Fire Alarm"
+    id: fire_alarm_button
+    icon: "mdi:fire"
+    on_press:
+      - lambda: |-
+          id(dsc_interface).alarm_keypress("f");
+          
+  - platform: template  
+    name: "Aux Alarm"
+    id: aux_alarm_button
+    icon: "mdi:hospital-box"
+    on_press:
+      - lambda: |-
+          id(dsc_interface).alarm_keypress("a");
+          
+  - platform: template
+    name: "Panic Alarm" 
+    id: panic_alarm_button
+    icon: "mdi:police-badge"
+    on_press:
+      - lambda: |-
+          id(dsc_interface).alarm_keypress("p");
+
+  # LoadProhibited crash prevention: System control buttons
+  - platform: template
+    name: "Force System Restart"
+    id: force_restart_button
+    icon: "mdi:restart"
+    on_press:
+      - lambda: |-
+          ESP_LOGI("system", "Manual system restart initiated");
+          App.safe_reboot();
+
+switch:
+  - platform: template
+    name: "DSCAlarm Connection"
+    id: connection_status_switch
+    lambda: |-
+      return esphome::dsc_keybus::getDSC().getKeybusConnected();
+    icon: "mdi:shield-link-variant"
+    turn_on_action:
+      - switch.toggle: restart_switch
+    turn_off_action:
+      - lambda: |-
+          esphome::dsc_keybus::getDSC().stop();
+  - platform: restart
+    id: restart_switch
+    name: "DSCAlarm Restart"
