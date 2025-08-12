@@ -30,7 +30,7 @@ DSCWrapper& DSCWrapper::getInstance() {
     return instance;
 }
 
-DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false) {
+DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false), hardware_initialized_(false) {
 }
 
 DSCWrapper::~DSCWrapper() {
@@ -49,19 +49,21 @@ void DSCWrapper::init(uint8_t clockPin, uint8_t readPin, uint8_t writePin, uint8
 }
 
 void DSCWrapper::begin() {
-    if (dsc_interface_) {
+    if (dsc_interface_ && !hardware_initialized_) {
         dsc_interface_->begin();
+        hardware_initialized_ = true;
     }
 }
 
 void DSCWrapper::begin(Stream& stream) {
-    if (dsc_interface_) {
+    if (dsc_interface_ && !hardware_initialized_) {
         dsc_interface_->begin(stream);
+        hardware_initialized_ = true;
     }
 }
 
 bool DSCWrapper::loop() {
-    if (dsc_interface_) {
+    if (dsc_interface_ && hardware_initialized_) {
         return dsc_interface_->loop();
     }
     return false;
@@ -77,6 +79,10 @@ void DSCWrapper::stop() {
     if (dsc_interface_) {
         dsc_interface_->stop();
     }
+}
+
+bool DSCWrapper::isHardwareInitialized() const {
+    return hardware_initialized_;
 }
 
 void DSCWrapper::write(const char* keys) {

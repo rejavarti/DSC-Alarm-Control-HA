@@ -38,10 +38,13 @@ class DSCWrapper {
 public:
     static DSCWrapper& getInstance();
     
-    // Initialize the DSC interface
+    // Initialize the DSC interface (creates the interface object but doesn't start hardware)
     void init(uint8_t clockPin, uint8_t readPin, uint8_t writePin, uint8_t pc16Pin = 255);
+    // Start the hardware interface (timers, interrupts) - call only when system is ready
     void begin();
     void begin(Stream& stream);
+    // Check if hardware has been initialized
+    bool isHardwareInitialized() const;
     
     // Status methods
     bool loop();
@@ -86,6 +89,7 @@ private:
     dscKeybusInterface* dsc_interface_;
     #endif
     bool initialized_;
+    bool hardware_initialized_;
 };
 
 // Global accessor function
