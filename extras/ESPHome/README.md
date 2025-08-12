@@ -1,5 +1,17 @@
 # ESPHome Configuration Files - Quick Guide
 
+## 🛡️ NEW: ESP32 Watchdog Timer Improvements
+**Latest Update**: ESP32 ESPHome configurations now include comprehensive watchdog timer protection to prevent freezing during .bin installation and operation. This resolves installation hanging issues that were previously only fixed in the Arduino INO file.
+
+**Key Benefits:**
+- ✅ Prevents ESP32 freezing during ESPHome .bin installation  
+- ✅ Eliminates system hanging during heavy alarm traffic
+- ✅ Automatic recovery from DSC communication issues
+- ✅ Identical stability improvements as Arduino INO users
+- ✅ No configuration changes required - automatically active on ESP32
+
+📖 **[Read Full Details: ESPHOME_WATCHDOG_IMPROVEMENTS.md](../../ESPHOME_WATCHDOG_IMPROVEMENTS.md)**
+
 ## 📁 Choose Your Configuration File
 
 ### ESP8266 Configurations
