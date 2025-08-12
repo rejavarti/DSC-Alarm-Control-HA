@@ -21,7 +21,7 @@
     #endif
   #endif
   
-  #ifdef ESP32
+  #if defined(ESP32) || defined(ESP_PLATFORM)
     #include <esp_attr.h>
     #include <esp_timer.h>
     #include <freertos/portmacro.h>
@@ -100,7 +100,7 @@
     #define TIM_SINGLE 0
     #endif
   #endif
-  #ifdef ESP32
+  #if defined(ESP32) || defined(ESP_PLATFORM)
     inline unsigned long millis() { return esp_timer_get_time() / 1000; }
     inline unsigned long micros() { return esp_timer_get_time(); }
   #else
