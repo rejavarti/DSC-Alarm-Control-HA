@@ -32,7 +32,8 @@
     #ifndef DRAM_ATTR
     #define DRAM_ATTR
     #endif
-    #ifndef portMUX_TYPE
+    // Only define portMUX_TYPE if we're not on ESP32 and it hasn't been defined
+    #if !defined(ESP32) && !defined(portMUX_TYPE)
     typedef int portMUX_TYPE;
     #endif
     typedef void* hw_timer_t;
