@@ -14,12 +14,12 @@
 // ESP32 hardware timer includes - MUST be included before DSC headers
 // to prevent LoadProhibited crashes during timer initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
-#include <esp32-hal-timer.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/portmacro.h>
 #include <esp_timer.h>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
+#ifdef ARDUINO
+#include <esp32-hal-timer.h>
+#endif
 // Ensure timer types are properly defined before use
 #ifndef TIMER_BASE_CLK
 #define TIMER_BASE_CLK 80000000  // 80MHz APB clock

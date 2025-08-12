@@ -29,6 +29,10 @@
     #include <esp_attr.h>
     #include <esp_timer.h>
     #include <freertos/portmacro.h>
+    // For ESPHome/ESP-IDF, define hw_timer_t which is Arduino ESP32 framework specific
+    #ifndef ARDUINO
+      typedef esp_timer_handle_t hw_timer_t;
+    #endif
     // DRAM_ATTR, portMUX_TYPE, and related macros are already defined in ESP32 framework headers
     // Don't redefine them to avoid conflicts
   #else
