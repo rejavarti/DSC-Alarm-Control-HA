@@ -23,7 +23,6 @@
 #include "dsc_common_constants.h"
 
 class dscClassicInterface {
-class dscClassicInterface {
 
   public:
 

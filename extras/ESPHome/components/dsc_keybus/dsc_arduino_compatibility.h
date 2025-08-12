@@ -10,6 +10,11 @@
 #else
   // ESPHome/ESP-IDF or other non-Arduino environments - provide Arduino compatibility
   #include <stdio.h>
+  // Force PowerSeries only for ESPHome - disable Classic series
+  #ifdef ESPHOME  
+  #undef dscClassicSeries
+  #endif
+  
   #ifdef ESP32
     #include <esp_attr.h>
     #include <esp_timer.h>

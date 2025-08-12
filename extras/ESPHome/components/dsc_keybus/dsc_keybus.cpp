@@ -1,21 +1,16 @@
 #include "dsc_keybus.h"
 #include "esphome/core/log.h"
 
-// Include the DSC Keybus Interface library
-#include "dscKeybusInterface.h"
+// Use the minimal DSC Keybus Interface for ESPHome
+#include "dscKeybusInterface_minimal.h"
 
 namespace esphome {
 namespace dsc_keybus {
 
 static const char *const TAG = "dsc_keybus";
 
-// Global DSC interface instance
-// Classic series requires PC-16 pin, PowerSeries uses 255 to disable
-#if defined(dscClassicSeries)
-dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_PC16_PIN, DSC_DEFAULT_WRITE_PIN);
-#else  
-dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
-#endif
+// Global DSC interface instance using minimal interface
+dscKeybusInterfaceMinimal dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
 
 void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
