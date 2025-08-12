@@ -207,6 +207,7 @@ entity: alarm_control_panel.security_partition_1
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <dscKeybusInterface.h>
+#include <esp_task_wdt.h>  // For watchdog timer management
 
 // Configuration - CHANGE THESE VALUES FOR YOUR SETUP
 // Security Note: For production use, consider using WiFiManager or SPIFFS/LittleFS to store credentials
@@ -279,6 +280,12 @@ void logMessage(const String& message, bool isError = false);
 void setup() {
   Serial.begin(115200);
   delay(1000);
+  yield();  // Feed watchdog early
+  
+  // Configure watchdog timer for 30 seconds to prevent timeout during setup
+  esp_task_wdt_init(30, true);  // 30 second timeout, enable panic
+  esp_task_wdt_add(NULL);       // Add current task to watchdog
+  
   Serial.println();
   Serial.println(F("=== DSC Keybus Interface with Home Assistant Integration ==="));
   Serial.println(F("Version: 1.5 Enhanced - Improved Robustness"));
@@ -290,6 +297,8 @@ void setup() {
   for (byte i = 0; i < dscPartitions; i++) {
     previousStatus[i] = 0xFF;  // Initialize to invalid status to force initial publication
   }
+  
+  esp_task_wdt_reset();  // Reset watchdog after initialization
 
   // Connect to WiFi with retry logic
   if (!connectWiFiWithRetry()) {
@@ -297,6 +306,8 @@ void setup() {
     logMessage("Device will continue attempting connection in main loop", true);
     // Don't restart here - let the main loop handle reconnection attempts
   }
+  
+  esp_task_wdt_reset();  // Reset watchdog after WiFi attempt
 
   // Connect to MQTT with retry logic (only if WiFi is connected)
   mqtt.setCallback(mqttCallback);
@@ -311,24 +322,42 @@ void setup() {
       logMessage("WiFi not connected, skipping MQTT setup", true);
     }
   }
+  
+  esp_task_wdt_reset();  // Reset watchdog before DSC initialization
 
   // Starts the Keybus interface and optionally specifies how to print data.
+  logMessage("Initializing DSC Keybus Interface...");
   dsc.begin();
   logMessage("DSC Keybus Interface is online");
+  
+  esp_task_wdt_reset();  // Reset watchdog after DSC initialization
   
   // Publish initial system health (only if MQTT is available)
   if (WiFi.isConnected() && mqtt.connected()) {
     publishSystemHealth();
   }
+  
+  logMessage("Setup completed successfully");
+  
+  // Reconfigure watchdog for normal operation (8 seconds)
+  esp_task_wdt_delete(NULL);    // Remove current task from old watchdog
+  esp_task_wdt_init(8, true);   // 8 second timeout for main loop
+  esp_task_wdt_add(NULL);       // Re-add current task
+  
+  esp_task_wdt_reset();  // Final watchdog reset before entering main loop
 }
 
 
 void loop() {
+  // Reset watchdog at the start of each loop iteration
+  esp_task_wdt_reset();
+  
   // Check WiFi connection health
   if (!WiFi.isConnected()) {
     handleSystemError("WiFi connection lost");
     if (!connectWiFiWithRetry()) {
       delay(wifiReconnectInterval);
+      esp_task_wdt_reset();  // Reset watchdog after delay
       return;
     }
   }
@@ -804,13 +833,14 @@ void publishMessage(const char* sourceTopic, byte partition) {
 }
 
 
-// Enhanced WiFi connection with retry logic
+// Enhanced WiFi connection with retry logic and watchdog feeding
 bool connectWiFiWithRetry() {
   logMessage("Connecting to WiFi: " + String(wifiSSID));
   
   // Ensure clean WiFi state before attempting connection
   WiFi.disconnect(true);
-  delay(1000);
+  delay(500);  // Reduced delay
+  esp_task_wdt_reset();     // Reset watchdog
   
   // Configure WiFi for better connection stability
   WiFi.mode(WIFI_STA);
@@ -820,19 +850,32 @@ bool connectWiFiWithRetry() {
   // Start connection attempt
   WiFi.begin(wifiSSID, wifiPassword);
   
+  // Use reduced attempts during setup to prevent watchdog timeout
+  byte setupMaxAttempts = (millis() < 30000) ? 5 : maxReconnectAttempts;
+  
   wifiReconnectAttempts = 0;
-  while (WiFi.status() != WL_CONNECTED && wifiReconnectAttempts < maxReconnectAttempts) {
-    delay(1000);
+  while (WiFi.status() != WL_CONNECTED && wifiReconnectAttempts < setupMaxAttempts) {
+    // Use shorter delays and feed watchdog regularly
+    for (int i = 0; i < 10; i++) {
+      delay(100);
+      esp_task_wdt_reset();  // Reset watchdog every 100ms
+      if (WiFi.status() == WL_CONNECTED) break;
+    }
+    
     wifiReconnectAttempts++;
     if (enableDebugLogging) {
       Serial.print(".");
     }
     
-    // Try reconnecting every 5 attempts with clean state
-    if (wifiReconnectAttempts % 5 == 0) {
-      logMessage("WiFi retry attempt " + String(wifiReconnectAttempts) + "/" + String(maxReconnectAttempts));
+    // Reset watchdog before potentially long operations
+    esp_task_wdt_reset();
+    
+    // Try reconnecting every 3 attempts with clean state (reduced from 5)
+    if (wifiReconnectAttempts % 3 == 0) {
+      logMessage("WiFi retry attempt " + String(wifiReconnectAttempts) + "/" + String(setupMaxAttempts));
       WiFi.disconnect(true);
-      delay(2000);  // Longer delay for stability
+      delay(500);  // Reduced delay
+      esp_task_wdt_reset();     // Reset watchdog
       WiFi.begin(wifiSSID, wifiPassword);
     }
   }
@@ -842,23 +885,27 @@ bool connectWiFiWithRetry() {
     wifiReconnectAttempts = 0;
     return true;
   } else {
-    lastError = "WiFi connection failed after " + String(maxReconnectAttempts) + " attempts";
+    lastError = "WiFi connection failed after " + String(setupMaxAttempts) + " attempts";
     logMessage(lastError, true);
     return false;
   }
 }
 
 
-// Enhanced MQTT connection with retry logic
+// Enhanced MQTT connection with retry logic and watchdog feeding
 bool connectMQTTWithRetry() {
   if (!WiFi.isConnected()) {
     logMessage("WiFi not connected, cannot connect to MQTT", true);
     return false;
   }
   
+  // Use reduced attempts during setup to prevent watchdog timeout
+  byte setupMaxAttempts = (millis() < 30000) ? 3 : maxReconnectAttempts;
+  
   mqttReconnectAttempts = 0;
-  while (!mqtt.connected() && mqttReconnectAttempts < maxReconnectAttempts) {
+  while (!mqtt.connected() && mqttReconnectAttempts < setupMaxAttempts) {
     logMessage("Attempting MQTT connection...");
+    esp_task_wdt_reset();  // Reset watchdog
     
     String clientId = String(mqttClientName) + "-" + String(ESP.getEfuseMac(), HEX);
     
@@ -871,13 +918,18 @@ bool connectMQTTWithRetry() {
     } else {
       mqttReconnectAttempts++;
       String error = "MQTT connection failed, rc=" + String(mqtt.state()) + 
-                    " (attempt " + String(mqttReconnectAttempts) + "/" + String(maxReconnectAttempts) + ")";
+                    " (attempt " + String(mqttReconnectAttempts) + "/" + String(setupMaxAttempts) + ")";
       logMessage(error, true);
-      delay(2000);
+      
+      // Break down delay and reset watchdog
+      for (int i = 0; i < 20; i++) {
+        delay(100);
+        esp_task_wdt_reset();  // Reset watchdog every 100ms
+      }
     }
   }
   
-  lastError = "MQTT connection failed after " + String(maxReconnectAttempts) + " attempts";
+  lastError = "MQTT connection failed after " + String(setupMaxAttempts) + " attempts";
   logMessage(lastError, true);
   return false;
 }
