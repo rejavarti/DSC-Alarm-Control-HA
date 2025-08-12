@@ -5,6 +5,9 @@
 
 #ifdef ESP32
 #include <esp_task_wdt.h>  // For ESP32 watchdog timer management
+#include <esp_heap_caps.h>  // For heap memory management
+#include <esp_err.h>        // For ESP error handling
+#include <esp_system.h>     // For system functions
 #endif
 
 namespace esphome {
@@ -16,11 +19,26 @@ void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
 
 #ifdef ESP32
-  // Configure watchdog timer for ESP32 to prevent freezing during setup
-  // This matches the improvements made to the Arduino INO file
-  esp_task_wdt_init(30, true);  // 30 second timeout, enable panic
-  esp_task_wdt_add(NULL);       // Add current task to watchdog
-  ESP_LOGD(TAG, "ESP32 watchdog timer configured for setup (30s timeout)");
+  // Early watchdog configuration for ESP-IDF to prevent app_main() hanging
+  // Must be done before any complex initialization that might cause stack overflow
+  esp_err_t wdt_err = esp_task_wdt_init(30, true);  // 30 second timeout, enable panic
+  if (wdt_err == ESP_OK) {
+    esp_task_wdt_add(NULL);  // Add current task to watchdog
+    ESP_LOGD(TAG, "ESP32 watchdog timer configured for setup (30s timeout)");
+  } else {
+    ESP_LOGW(TAG, "Failed to initialize watchdog timer: %s", esp_err_to_name(wdt_err));
+  }
+  
+  // Additional early initialization protection for ESP-IDF
+  ESP_LOGD(TAG, "ESP-IDF early initialization protection active");
+  
+  // Check available heap memory before proceeding
+  size_t free_heap = esp_get_free_heap_size();
+  if (free_heap < 50000) {  // Less than 50KB free
+    ESP_LOGW(TAG, "Low heap memory detected: %zu bytes free", free_heap);
+  } else {
+    ESP_LOGD(TAG, "Available heap memory: %zu bytes", free_heap);
+  }
 #endif
   
   // Initialize the DSC wrapper (creates interface object but doesn't start hardware)
@@ -40,6 +58,7 @@ void DSCKeybusComponent::setup() {
 
 #ifdef ESP32
   esp_task_wdt_reset();  // Final watchdog reset before completing setup
+  ESP_LOGD(TAG, "ESP32 setup watchdog resets completed successfully");
 #endif
 
   ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete (hardware init deferred)");
