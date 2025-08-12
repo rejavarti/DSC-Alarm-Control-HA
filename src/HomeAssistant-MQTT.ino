@@ -339,11 +339,7 @@ void setup() {
   
   logMessage("Setup completed successfully");
   
-  // Reconfigure watchdog for normal operation (8 seconds)
-  esp_task_wdt_delete(NULL);    // Remove current task from old watchdog
-  esp_task_wdt_init(8, true);   // 8 second timeout for main loop
-  esp_task_wdt_add(NULL);       // Re-add current task
-  
+  // Keep watchdog configuration simple - just reset it for main loop operation
   esp_task_wdt_reset();  // Final watchdog reset before entering main loop
 }
 
@@ -358,7 +354,7 @@ void loop() {
     if (!connectWiFiWithRetry()) {
       delay(wifiReconnectInterval);
       esp_task_wdt_reset();  // Reset watchdog after delay
-      return;
+      // Continue loop instead of exiting - WiFi will retry on next iteration
     }
   }
   
@@ -563,6 +559,10 @@ void loop() {
       logMessage("System health status reset");
     }
   }
+  
+  // End of main loop - this should never be reached in normal operation
+  // If we get here, something went wrong, but the Arduino framework will
+  // automatically call loop() again, so the system will continue running
 }
 
 
