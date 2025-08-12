@@ -22,6 +22,10 @@
 #include "dsc_arduino_compatibility.h"
 #include "dscKeybus.h"
 
+#ifdef ESP32
+#include <esp_task_wdt.h>  // For ESP32 watchdog timer management to prevent freezing
+#endif
+
 
 #if defined(ESP32)
 portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
@@ -111,6 +115,11 @@ void dscKeybusInterface::stop() {
 
 bool dscKeybusInterface::loop() {
 
+#ifdef ESP32
+  // Reset watchdog at start of DSC processing to prevent timeout during heavy keybus traffic
+  esp_task_wdt_reset();
+#endif
+
   #if defined(ESP8266) || defined(ESP32)
   yield();
   #endif
@@ -137,6 +146,11 @@ bool dscKeybusInterface::loop() {
     if (!pauseStatus) statusChanged = true;
     if (!keybusConnected) return true;
   }
+
+#ifdef ESP32
+  // Reset watchdog during keybus processing to prevent timeout
+  esp_task_wdt_reset();
+#endif
 
   // Writes keys when multiple keys are sent as a char array
   if (writeKeysPending) writeKeys(writeKeysArray);

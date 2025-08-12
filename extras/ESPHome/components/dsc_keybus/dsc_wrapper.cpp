@@ -1,6 +1,10 @@
 #include "dsc_wrapper.h"
 #include "dsc_arduino_compatibility.h"
 
+#ifdef ESP32
+#include <esp_task_wdt.h>  // For ESP32 watchdog timer management
+#endif
+
 // Only include DSC headers here - nowhere else!
 // This prevents multiple definition issues
 #ifdef dscClassicSeries
@@ -50,21 +54,47 @@ void DSCWrapper::init(uint8_t clockPin, uint8_t readPin, uint8_t writePin, uint8
 
 void DSCWrapper::begin() {
     if (dsc_interface_ && !hardware_initialized_) {
+#ifdef ESP32
+        // Reset watchdog before hardware initialization to prevent timeout
+        esp_task_wdt_reset();
+#endif
         dsc_interface_->begin();
         hardware_initialized_ = true;
+#ifdef ESP32
+        // Reset watchdog after hardware initialization
+        esp_task_wdt_reset();
+#endif
     }
 }
 
 void DSCWrapper::begin(Stream& stream) {
     if (dsc_interface_ && !hardware_initialized_) {
+#ifdef ESP32
+        // Reset watchdog before hardware initialization to prevent timeout
+        esp_task_wdt_reset();
+#endif
         dsc_interface_->begin(stream);
         hardware_initialized_ = true;
+#ifdef ESP32
+        // Reset watchdog after hardware initialization
+        esp_task_wdt_reset();
+#endif
     }
 }
 
 bool DSCWrapper::loop() {
     if (dsc_interface_ && hardware_initialized_) {
-        return dsc_interface_->loop();
+#ifdef ESP32
+        // Reset watchdog during DSC processing to prevent timeout during heavy data processing
+        // This is especially important during alarm events when there's heavy keybus traffic
+        esp_task_wdt_reset();
+#endif
+        bool result = dsc_interface_->loop();
+#ifdef ESP32
+        // Reset watchdog after DSC processing completes
+        esp_task_wdt_reset();
+#endif
+        return result;
     }
     return false;
 }

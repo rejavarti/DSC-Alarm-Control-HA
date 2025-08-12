@@ -11,11 +11,12 @@
   // ESPHome/ESP-IDF or other non-Arduino environments - provide Arduino compatibility
   #include <stdio.h>
   // Define the appropriate interface series based on configuration
-  // Default to Classic series if neither is explicitly defined
+  // Choose the appropriate DSC series based on configuration
+  // If neither is explicitly defined, default to PowerSeries for better ESPHome compatibility
   #ifndef dscClassicSeries
     #ifndef dscPowerSeries
       #ifndef DSC_SERIES_DEFINED
-        #define dscClassicSeries
+        #define dscPowerSeries  // Default to PowerSeries for ESPHome
         #define DSC_SERIES_DEFINED
       #endif
     #endif
