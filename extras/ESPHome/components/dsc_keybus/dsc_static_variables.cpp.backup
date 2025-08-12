@@ -1,13 +1,24 @@
-// Static member definitions for dscClassicInterface  
+// Global DSC interface instances and static variable definitions
 // These are defined here to avoid multiple definition errors
-// The wrapper pattern ensures DSC headers are only included in controlled places
 
 #if defined(dscClassicSeries)
 
 #include "dsc_arduino_compatibility.h"
 #include "dscClassic.h"
+// Include the default pin definitions
+#include "dsc_keybus.h"
 
-// Static member definitions for dscClassicInterface
+// Global DSC interface instance definition
+dscClassicInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, 
+                        #ifdef DSC_CLASSIC_PC16_PIN
+                        DSC_CLASSIC_PC16_PIN,
+                        #else
+                        DSC_DEFAULT_PC16_PIN,
+                        #endif
+                        DSC_DEFAULT_WRITE_PIN);
+
+// Static variable definitions for dscClassicInterface
+
 byte dscClassicInterface::dscClockPin;
 byte dscClassicInterface::dscReadPin;
 byte dscClassicInterface::dscPC16Pin;
@@ -54,4 +65,16 @@ volatile unsigned long dscClassicInterface::clockHighTime;
 volatile unsigned long dscClassicInterface::keybusTime;
 volatile unsigned long dscClassicInterface::writeCompleteTime;
 
-#endif
+#elif defined(dscPowerSeries)
+
+#include "dsc_arduino_compatibility.h"
+#include "dscKeybus.h"
+#include "dsc_keybus.h"
+
+// Global DSC interface instance definition for PowerSeries
+dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
+
+// Static variable definitions for dscKeybusInterface (if needed)
+// Add any PowerSeries specific static variables here
+
+#endif // defined(dscClassicSeries) / defined(dscPowerSeries)

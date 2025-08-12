@@ -14,7 +14,10 @@
   // Default to Classic series if neither is explicitly defined
   #ifndef dscClassicSeries
     #ifndef dscPowerSeries
-      #define dscClassicSeries
+      #ifndef DSC_SERIES_DEFINED
+        #define dscClassicSeries
+        #define DSC_SERIES_DEFINED
+      #endif
     #endif
   #endif
   
@@ -22,16 +25,26 @@
     #include <esp_attr.h>
     #include <esp_timer.h>
     #include <freertos/portmacro.h>
-    // DRAM_ATTR is already defined in esp_attr.h
-    // portMUX_TYPE and hw_timer_t are defined in the ESP32 framework
+    // DRAM_ATTR, portMUX_TYPE, and related macros are already defined in ESP32 framework headers
+    // Don't redefine them to avoid conflicts
   #else
     // Define DRAM_ATTR and ESP32 types for other platforms
+    #ifndef DRAM_ATTR
     #define DRAM_ATTR
+    #endif
+    #ifndef portMUX_TYPE
     typedef int portMUX_TYPE;
+    #endif
     typedef void* hw_timer_t;
+    #ifndef portMUX_INITIALIZER_UNLOCKED
     #define portMUX_INITIALIZER_UNLOCKED 0
+    #endif
+    #ifndef portENTER_CRITICAL
     #define portENTER_CRITICAL(x)
+    #endif
+    #ifndef portEXIT_CRITICAL
     #define portEXIT_CRITICAL(x)
+    #endif
   #endif
   
   // Arduino compatibility for ESP-IDF
@@ -48,6 +61,12 @@
       else printf("%d", value);
     }
     virtual void println(const char* str) { printf("%s\n", str); }
+    
+    // Add virtual methods that DSCStream tries to override
+    virtual size_t write(uint8_t data) { return 1; }
+    virtual int available() { return 0; }
+    virtual int read() { return -1; }
+    virtual int peek() { return -1; }
   };
   
   // Global Stream instance for DSC interface
