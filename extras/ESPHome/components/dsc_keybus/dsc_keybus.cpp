@@ -29,13 +29,8 @@ void DSCKeybusComponent::loop() {
   // Initialize hardware on first loop iteration (system is fully ready)
   if (!getDSC().isHardwareInitialized()) {
     ESP_LOGD(TAG, "Initializing DSC Keybus hardware (timers, interrupts)...");
-    try {
-      getDSC().begin();
-      ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
-    } catch (...) {
-      ESP_LOGE(TAG, "Failed to initialize DSC Keybus hardware - will retry next loop");
-      return; // Retry on next loop iteration
-    }
+    getDSC().begin();
+    ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
   }
   
   // Process keybus data only if hardware is initialized
