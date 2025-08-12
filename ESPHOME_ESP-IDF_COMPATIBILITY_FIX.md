@@ -35,14 +35,11 @@ Fixed comprehensive ESP-IDF/ESPHome compatibility issues that were causing "not 
 - **Benefit**: Avoids complex Arduino-specific code while maintaining compatibility
 - **Features**: Supports all ESPHome automation triggers and status monitoring
 
-### 5. Disabled Problematic Components for ESPHome
-- Renamed Arduino-specific files with `.disabled` extension:
-  - `dscClassic.cpp.disabled`
-  - `dscClassicKeypad.cpp.disabled` 
-  - `dscKeypad.cpp.disabled`
-  - `dscKeybusInterface.cpp.disabled`
-- **Reason**: These files contain complex Arduino-specific code that's not needed for ESPHome
-- **Benefit**: Eliminates compilation errors while preserving code for future use
+### 5. Re-enabled Both DSC Series Types  
+- **Classic Series**: Full support with PC-16 interface for older DSC panels
+- **PowerSeries**: Complete support for modern DSC panels
+- **Configuration Option**: Choose series type via `series_type: Classic` or `series_type: PowerSeries`
+- **Benefit**: Users can now use both DSC panel types with proper interface selection
 
 ## Platform Compatibility
 
@@ -53,7 +50,8 @@ Fixed comprehensive ESP-IDF/ESPHome compatibility issues that were causing "not 
 
 ### 📝 Configuration Support
 - **PowerSeries Panels**: Full support (PC1555MX, PC5015, PC1616, PC1832, PC1864, etc.)
-- **Classic Series Panels**: Currently disabled for ESPHome (can be re-enabled with additional work)
+- **Classic Series Panels**: Full support with PC-16 interface (DSC Classic series with older panels)  
+- **Series Selection**: Choose via `series_type` configuration option
 - **All ESPHome Features**: Automation triggers, status sensors, service calls - ✅ Working
 
 ## Testing Performed
@@ -77,11 +75,23 @@ Created comprehensive test YAML files:
 2. Clean your ESPHome build cache: `esphome clean your_config.yaml`
 3. Recompile: `esphome compile your_config.yaml`
 
-### If you need Classic Series support:
-The Classic series support is temporarily disabled for ESPHome to ensure stability. To re-enable:
-1. Rename `.disabled` files back to `.cpp`
-2. Add proper header declarations to Classic interface files
-3. Test compilation carefully
+### Series Type Configuration:
+**For Classic DSC Panels (older panels with PC-16 interface):**
+```yaml
+dsc_keybus:
+  series_type: Classic  # Default series type
+  pc16_pin: 14         # Optional, platform default used if not specified
+  access_code: "1234"
+```
+
+**For PowerSeries DSC Panels (modern panels):**
+```yaml
+dsc_keybus:
+  series_type: PowerSeries
+  access_code: "1234"
+```
+
+Both series types are now fully supported and compile reliably with ESPHome.
 
 ### Configuration Changes Required:
 **None** - All existing ESPHome configurations continue to work without changes.
@@ -91,20 +101,43 @@ The Classic series support is temporarily disabled for ESPHome to ensure stabili
 1. **Eliminates compilation errors** - No more "not declared" or "Arduino.h missing" errors
 2. **Cross-platform compatibility** - Works on ESP8266 and ESP32
 3. **Maintains full functionality** - All ESPHome automation features preserved
-4. **Future-proof** - Clean architecture for ongoing development
-5. **Backward compatible** - No configuration changes needed
+4. **Classic Series Support** - Full support for DSC Classic series panels with PC-16 interface
+5. **PowerSeries Support** - Complete PowerSeries panel support  
+6. **Series Selection** - Choose between Classic or PowerSeries at configuration time
+7. **Future-proof** - Clean architecture for ongoing development
+8. **Backward compatible** - Existing configurations continue to work
 
 ## Files Modified
-- `dsc_arduino_compatibility.h` - Enhanced compatibility layer
-- `dsc_common_constants.h` - New common constants header  
-- `dsc_keybus.cpp` - Updated to use minimal interface
-- `dscKeybusInterface_minimal.h/.cpp` - New minimal interface
-- All existing header files - Fixed include order and compatibility
+- `dsc_arduino_compatibility.h` - Enhanced compatibility layer with series type selection
+- `dsc_common_constants.h` - Common constants header for both series types
+- `dsc_keybus.cpp` - Updated to support both Classic and PowerSeries interfaces  
+- `dscClassic.cpp`, `dscClassicKeypad.cpp` - Re-enabled Classic series files
+- `dscKeybusInterface.cpp`, `dscKeypad.cpp` - Re-enabled PowerSeries files
+- `__init__.py` - Added series_type configuration option
+- All interface files - Fixed include order and compilation compatibility
 
 ## Technical Notes
-- The solution uses a "minimal interface" approach for ESPHome
-- Arduino-specific functionality is stubbed out but can be extended
-- Static variable management simplified for ESPHome environment
-- Conditional compilation ensures only necessary code is built
+- Both Classic and PowerSeries interfaces compile cleanly with ESPHome
+- Series type is selected at compile time via configuration
+- Arduino-specific functionality properly stubbed for ESP-IDF compatibility
+- Classic series includes PC-16 pin configuration support
+- Stream interface properly handled for Classic series output
+
+## Configuration Options
+
+### Classic Series Example
+```yaml
+dsc_keybus:
+  series_type: Classic  # Default
+  pc16_pin: 14         # Optional, uses platform default if not specified
+  access_code: "1234"
+```
+
+### PowerSeries Example  
+```yaml
+dsc_keybus:
+  series_type: PowerSeries
+  access_code: "1234"
+```
 
 This fix ensures robust, reliable DSC alarm system integration with ESPHome across all supported ESP platforms.

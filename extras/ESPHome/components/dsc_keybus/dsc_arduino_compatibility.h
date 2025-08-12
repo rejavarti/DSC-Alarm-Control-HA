@@ -10,8 +10,11 @@
 #else
   // ESPHome/ESP-IDF or other non-Arduino environments - provide Arduino compatibility
   #include <stdio.h>
-  // Enable Classic Series support for ESPHome
-  #define dscClassicSeries
+  // Define the appropriate interface series based on configuration
+  // Default to Classic series if neither is explicitly defined
+  #if !defined(dscClassicSeries) && !defined(dscPowerSeries)
+    #define dscClassicSeries
+  #endif
   
   #ifdef ESP32
     #include <esp_attr.h>

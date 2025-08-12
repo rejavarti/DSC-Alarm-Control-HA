@@ -1,5 +1,5 @@
 esphome:
-  name: dsc-classic-test
+  name: dsc-powerseries-test
 
 esp8266:
   board: nodemcuv2
@@ -8,9 +8,9 @@ esp8266:
 logger:
 
 dsc_keybus:
-  series_type: Classic
+  series_type: PowerSeries
   access_code: "1234"
   debug: 1
   on_partition_status_change:
     then:
-      - logger.log: "Classic partition status changed"
+      - logger.log: "PowerSeries partition status changed"

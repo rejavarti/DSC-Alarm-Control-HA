@@ -35,6 +35,8 @@ ZoneAlarmChangeTrigger = dsc_keybus_ns.class_(
 )
 
 # Configuration keys
+CONF_SERIES_TYPE = "series_type"
+CONF_PC16_PIN = "pc16_pin"
 CONF_ON_SYSTEM_STATUS_CHANGE = "on_system_status_change"
 CONF_ON_PARTITION_STATUS_CHANGE = "on_partition_status_change"
 CONF_ON_PARTITION_MSG_CHANGE = "on_partition_msg_change"
@@ -49,6 +51,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional("access_code", default=""): cv.string,
     cv.Optional("debug", default=0): cv.int_range(0, 3),
     cv.Optional("enable_05_messages", default=True): cv.boolean,
+    cv.Optional(CONF_SERIES_TYPE, default="Classic"): cv.one_of("PowerSeries", "Classic", upper=True),
+    cv.Optional(CONF_PC16_PIN): cv.int_range(0, 40),  # Pin for Classic series PC-16 line
     cv.Optional(CONF_ON_SYSTEM_STATUS_CHANGE): automation.validate_automation(
         {
             cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(SystemStatusChangeTrigger),
@@ -95,6 +99,15 @@ async def to_code(config):
     cg.add(var.set_access_code(config["access_code"]))
     cg.add(var.set_debug_level(config["debug"]))
     cg.add(var.set_enable_05_messages(config["enable_05_messages"]))
+    
+    # Set series type and enable appropriate defines
+    series_type = config[CONF_SERIES_TYPE]
+    if series_type == "CLASSIC":
+        cg.add_define("dscClassicSeries")
+        if CONF_PC16_PIN in config:
+            cg.add_define("DSC_CLASSIC_PC16_PIN", config[CONF_PC16_PIN])
+    else:  # PowerSeries
+        cg.add_define("dscPowerSeries")
     
     # Set up triggers
     for conf in config.get(CONF_ON_SYSTEM_STATUS_CHANGE, []):
