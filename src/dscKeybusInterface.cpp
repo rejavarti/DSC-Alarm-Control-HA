@@ -31,22 +31,178 @@ portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 hw_timer_t * dscKeybusInterface::timer1 = NULL;
 #endif  // ESP32
 
+// Initialize static variables to prevent uninitialized access crashes
+byte dscKeybusInterface::dscClockPin = 255;
+byte dscKeybusInterface::dscReadPin = 255;
+byte dscKeybusInterface::dscWritePin = 255;
+char dscKeybusInterface::writeKey = 0;
+byte dscKeybusInterface::writePartition = 1;
+byte dscKeybusInterface::writeByte = 0;
+byte dscKeybusInterface::writeBit = 0;
+bool dscKeybusInterface::virtualKeypad = false;
+bool dscKeybusInterface::processModuleData = false;
+byte dscKeybusInterface::panelData[dscReadSize] = {0};
+byte dscKeybusInterface::panelByteCount = 0;
+byte dscKeybusInterface::panelBitCount = 0;
+volatile bool dscKeybusInterface::writeKeyPending = false;
+volatile byte dscKeybusInterface::moduleData[dscReadSize] = {0};
+volatile bool dscKeybusInterface::moduleDataCaptured = false;
+volatile bool dscKeybusInterface::moduleDataDetected = false;
+volatile byte dscKeybusInterface::moduleByteCount = 0;
+volatile byte dscKeybusInterface::moduleBitCount = 0;
+volatile bool dscKeybusInterface::writeAlarm = false;
+volatile bool dscKeybusInterface::starKeyCheck = false;
+volatile bool dscKeybusInterface::starKeyWait[dscPartitions] = {false};
+volatile bool dscKeybusInterface::bufferOverflow = false;
+volatile byte dscKeybusInterface::panelBufferLength = 0;
+volatile byte dscKeybusInterface::panelBuffer[dscBufferSize][dscReadSize] = {0};
+volatile byte dscKeybusInterface::panelBufferBitCount[dscBufferSize] = {0};
+volatile byte dscKeybusInterface::panelBufferByteCount[dscBufferSize] = {0};
+volatile byte dscKeybusInterface::isrPanelData[dscReadSize] = {0};
+volatile byte dscKeybusInterface::isrPanelByteCount = 0;
+volatile byte dscKeybusInterface::isrPanelBitCount = 0;
+volatile byte dscKeybusInterface::isrPanelBitTotal = 0;
+volatile byte dscKeybusInterface::isrModuleData[dscReadSize] = {0};
+volatile byte dscKeybusInterface::currentCmd = 0;
+volatile byte dscKeybusInterface::statusCmd = 0;
+volatile byte dscKeybusInterface::moduleCmd = 0;
+volatile byte dscKeybusInterface::moduleSubCmd = 0;
+volatile unsigned long dscKeybusInterface::clockHighTime = 0;
+volatile unsigned long dscKeybusInterface::keybusTime = 0;
 
 dscKeybusInterface::dscKeybusInterface(byte setClockPin, byte setReadPin, byte setWritePin) {
+  // Validate pin assignments before proceeding
+  if (setClockPin == 255 || setReadPin == 255) {
+    // Invalid pin configuration - set safe defaults but don't proceed with initialization
+    return;
+  }
+  
   dscClockPin = setClockPin;
   dscReadPin = setReadPin;
   dscWritePin = setWritePin;
   if (dscWritePin != 255) virtualKeypad = true;
+  else virtualKeypad = false;
+  
+  // Initialize object state
   writeReady = false;
   processRedundantData = true;
   displayTrailingBits = false;
   processModuleData = false;
   writePartition = 1;
   pauseStatus = false;
+  
+  // Initialize all arrays to ensure no uninitialized access
+  for (byte i = 0; i < dscPartitions; i++) {
+    starKeyWait[i] = false;
+  }
+  
+  // Initialize buffer arrays
+  for (byte i = 0; i < dscBufferSize; i++) {
+    for (byte j = 0; j < dscReadSize; j++) {
+      panelBuffer[i][j] = 0;
+    }
+    panelBufferBitCount[i] = 0;
+    panelBufferByteCount[i] = 0;
+  }
+  
+  // Initialize data arrays
+  for (byte i = 0; i < dscReadSize; i++) {
+    panelData[i] = 0;
+    moduleData[i] = 0;
+    isrPanelData[i] = 0;
+    isrModuleData[i] = 0;
+  }
+  
+  // Initialize ISR counters
+  isrPanelByteCount = 0;
+  isrPanelBitCount = 0;
+  isrPanelBitTotal = 0;
+  panelByteCount = 0;
+  panelBitCount = 0;
+  panelBufferLength = 0;
+  
+  // Initialize timing variables
+  clockHighTime = 0;
+  keybusTime = millis(); // Initialize to current time to prevent immediate timeout
+  
+  // Initialize control flags
+  writeKeyPending = false;
+  writeAlarm = false;
+  starKeyCheck = false;
+  moduleDataCaptured = false;
+  moduleDataDetected = false;
+  bufferOverflow = false;
+  
+  // Initialize command tracking
+  currentCmd = 0;
+  statusCmd = 0;
+  moduleCmd = 0;
+  moduleSubCmd = 0;
 }
 
 
 void dscKeybusInterface::begin(Stream &_stream) {
+  // Validate pins are properly configured
+  if (dscClockPin == 255 || dscReadPin == 255) {
+    if (_stream) {
+      _stream.println(F("ERROR: Invalid pin configuration for DSC interface"));
+    }
+    return;
+  }
+  
+  // Ensure all static variables are properly initialized before enabling interrupts
+  if (panelBufferLength != 0) {
+    // Reset all static variables to safe state
+    panelBufferLength = 0;
+    bufferOverflow = false;
+    writeKeyPending = false;
+    writeAlarm = false;
+    starKeyCheck = false;
+    moduleDataDetected = false;
+    moduleDataCaptured = false;
+    
+    // Clear all buffers
+    for (byte i = 0; i < dscBufferSize; i++) {
+      for (byte j = 0; j < dscReadSize; j++) {
+        panelBuffer[i][j] = 0;
+      }
+      panelBufferBitCount[i] = 0;
+      panelBufferByteCount[i] = 0;
+    }
+    
+    // Clear data arrays
+    for (byte i = 0; i < dscReadSize; i++) {
+      panelData[i] = 0;
+      moduleData[i] = 0;
+      isrPanelData[i] = 0;
+      isrModuleData[i] = 0;
+    }
+    
+    // Clear partition flags
+    for (byte i = 0; i < dscPartitions; i++) {
+      starKeyWait[i] = false;
+    }
+    
+    // Reset counters
+    isrPanelByteCount = 0;
+    isrPanelBitCount = 0;
+    isrPanelBitTotal = 0;
+    panelByteCount = 0;
+    panelBitCount = 0;
+    moduleByteCount = 0;
+    moduleBitCount = 0;
+    
+    // Reset command tracking
+    currentCmd = 0;
+    statusCmd = 0;
+    moduleCmd = 0;
+    moduleSubCmd = 0;
+    
+    // Initialize timing
+    clockHighTime = 0;
+    keybusTime = millis();
+  }
+  
   pinMode(dscClockPin, INPUT);
   pinMode(dscReadPin, INPUT);
   if (virtualKeypad) pinMode(dscWritePin, OUTPUT);
@@ -69,14 +225,26 @@ void dscKeybusInterface::begin(Stream &_stream) {
   // esp32 timer1 calls dscDataInterrupt() from dscClockInterrupt()
   #elif defined(ESP32)
   timer1 = timerBegin(1, 80, true);
-  timerStop(timer1);
-  timerAttachInterrupt(timer1, &dscDataInterrupt, true);
-  timerAlarmWrite(timer1, 250, true);
-  timerAlarmEnable(timer1);
+  if (timer1) {
+    timerStop(timer1);
+    timerAttachInterrupt(timer1, &dscDataInterrupt, true);
+    timerAlarmWrite(timer1, 250, true);
+    timerAlarmEnable(timer1);
+  } else {
+    if (_stream) {
+      _stream.println(F("ERROR: Failed to initialize ESP32 timer"));
+    }
+    return;
+  }
   #endif
 
-  // Generates an interrupt when the Keybus clock rises or falls - requires a hardware interrupt pin on Arduino/AVR
+  // CRITICAL: Only attach interrupt AFTER all static variables are initialized
+  // This prevents the interrupt handler from accessing uninitialized memory
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
+  
+  if (_stream) {
+    _stream.println(F("DSC Keybus Interface initialized successfully"));
+  }
 }
 
 

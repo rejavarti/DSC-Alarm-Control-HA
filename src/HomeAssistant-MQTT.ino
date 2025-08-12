@@ -293,9 +293,19 @@ void setup() {
   systemUptime = millis();
   logMessage("System starting up...");
 
-  // Initialize previous status tracking
-  for (byte i = 0; i < dscPartitions; i++) {
-    previousStatus[i] = 0xFF;  // Initialize to invalid status to force initial publication
+  // Initialize previous status tracking with bounds checking
+  if (dscPartitions > 0 && dscPartitions <= 8) {  // Validate dscPartitions is reasonable
+    for (byte i = 0; i < dscPartitions; i++) {
+      previousStatus[i] = 0xFF;  // Initialize to invalid status to force initial publication
+    }
+    logMessage("Status tracking initialized for " + String(dscPartitions) + " partitions");
+  } else {
+    handleSystemError("Invalid dscPartitions value: " + String(dscPartitions));
+    // Use safe default
+    for (byte i = 0; i < 4; i++) {
+      previousStatus[i] = 0xFF;
+    }
+    logMessage("Using safe default partition count of 4", true);
   }
   
   esp_task_wdt_reset();  // Reset watchdog after initialization
@@ -327,6 +337,22 @@ void setup() {
 
   // Starts the Keybus interface and optionally specifies how to print data.
   logMessage("Initializing DSC Keybus Interface...");
+  
+  // Add safety check for DSC constants before initialization
+  if (dscReadSize == 0 || dscBufferSize == 0 || dscPartitions == 0) {
+    handleSystemError("Invalid DSC constants detected - potential memory corruption");
+    ESP.restart();  // Force restart if constants are corrupted
+  }
+  
+  // Check available heap memory before DSC initialization
+  size_t freeHeap = ESP.getFreeHeap();
+  if (freeHeap < 30000) {  // Require at least 30KB free heap
+    handleSystemError("Insufficient heap memory for DSC initialization: " + String(freeHeap) + " bytes");
+    ESP.restart();
+  }
+  
+  logMessage("Pre-initialization checks passed - Heap: " + String(freeHeap) + " bytes");
+  
   dsc.begin();
   logMessage("DSC Keybus Interface is online");
   
@@ -414,6 +440,12 @@ void loop() {
 
     // Publishes status per partition
     for (byte partition = 0; partition < dscPartitions; partition++) {
+
+      // Bounds check for partition index to prevent buffer overflow
+      if (partition >= dscPartitions || partition >= 8) {
+        logMessage("Invalid partition index detected: " + String(partition), true);
+        break;  // Exit loop to prevent memory access violation
+      }
 
       // Skips processing if the partition is disabled or in installer programming
       if (dsc.disabled[partition]) continue;
@@ -595,9 +627,9 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     partition = payload[0] - 49;
     payloadIndex = 1;
     
-    // Additional validation for partition number
-    if (partition >= dscPartitions) {
-      logMessage("Invalid partition number: " + String(partition + 1), true);
+    // Additional validation for partition number with bounds checking
+    if (partition >= dscPartitions || partition >= 8) {
+      logMessage("Invalid partition number: " + String(partition + 1) + " (max: " + String(dscPartitions) + ")", true);
       return;
     }
     
