@@ -23,11 +23,11 @@ substitutions:
 
 esphome:
   name: dscalarm
-  # DSC Classic series build flag - REQUIRED for Classic panels
-  # NOTE: build_flags must be under esphome: section using platformio_options
-  platformio_options:
-    build_flags:
-      - -DdscClassicSeries
+  # DSC Classic series build flag is now automatically set by the component based on series_type
+  # NOTE: Manual build_flags are no longer needed as the component handles defines automatically
+  # platformio_options:
+  #   build_flags:
+  #     - -DdscClassicSeries  # Removed to prevent redefinition warning
 
 external_components:
   - source:
@@ -77,6 +77,7 @@ status_led:
 dsc_keybus:
   id: dsc_interface
   access_code: "$accessCode"
+  series_type: "Classic"  # Explicitly set for DSC Classic series panels
   debug: 0  # 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
   on_system_status_change:
     then:
