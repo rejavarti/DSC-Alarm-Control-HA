@@ -76,8 +76,9 @@ void DSCWrapper::resetStatus() {
 }
 
 void DSCWrapper::stop() {
-    if (dsc_interface_) {
+    if (dsc_interface_ && hardware_initialized_) {
         dsc_interface_->stop();
+        hardware_initialized_ = false; // Reset hardware state
     }
 }
 
