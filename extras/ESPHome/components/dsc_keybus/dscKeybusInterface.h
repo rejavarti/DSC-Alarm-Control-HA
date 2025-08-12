@@ -26,53 +26,8 @@
 #if defined dscClassicSeries
 #include "dscClassic.h"
 
-// Static variables are defined in dsc_static_variables.cpp to avoid multiple definition errors
-// Here we only provide extern declarations
-extern byte dscClassicInterface::dscClockPin;
-extern byte dscClassicInterface::dscReadPin;
-extern byte dscClassicInterface::dscPC16Pin;
-extern byte dscClassicInterface::dscWritePin;
-extern char dscClassicInterface::writeKey;
-extern byte dscClassicInterface::writePartition;
-extern byte dscClassicInterface::writeByte;
-extern byte dscClassicInterface::writeBit;
-extern bool dscClassicInterface::virtualKeypad;
-extern bool dscClassicInterface::processModuleData;
-extern byte dscClassicInterface::panelData[dscReadSize];
-extern byte dscClassicInterface::pc16Data[dscReadSize];
-extern byte dscClassicInterface::panelByteCount;
-extern byte dscClassicInterface::panelBitCount;
-extern volatile bool dscClassicInterface::writeKeyPending;
-extern volatile bool dscClassicInterface::writeKeyWait;
-extern volatile byte dscClassicInterface::moduleData[dscReadSize];
-extern volatile bool dscClassicInterface::moduleDataCaptured;
-extern volatile byte dscClassicInterface::moduleByteCount;
-extern volatile byte dscClassicInterface::moduleBitCount;
-extern volatile bool dscClassicInterface::writeAlarm;
-extern volatile bool dscClassicInterface::starKeyDetected;
-extern volatile bool dscClassicInterface::starKeyCheck;
-extern volatile bool dscClassicInterface::starKeyWait;
-extern volatile bool dscClassicInterface::bufferOverflow;
-extern volatile byte dscClassicInterface::panelBufferLength;
-extern volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize];
-extern volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize];
-extern volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize];
-extern volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize];
-extern volatile byte dscClassicInterface::isrPanelData[dscReadSize];
-extern volatile byte dscClassicInterface::isrPC16Data[dscReadSize];
-extern volatile byte dscClassicInterface::isrPanelByteCount;
-extern volatile byte dscClassicInterface::isrPanelBitCount;
-extern volatile byte dscClassicInterface::isrPanelBitTotal;
-extern volatile byte dscClassicInterface::isrModuleData[dscReadSize];
-extern volatile byte dscClassicInterface::isrModuleByteCount;
-extern volatile byte dscClassicInterface::isrModuleBitCount;
-extern volatile byte dscClassicInterface::isrModuleBitTotal;
-extern volatile byte dscClassicInterface::moduleCmd;
-extern volatile bool dscClassicInterface::readyLight;
-extern volatile bool dscClassicInterface::lightBlink;
-extern volatile unsigned long dscClassicInterface::clockHighTime;
-extern volatile unsigned long dscClassicInterface::keybusTime;
-extern volatile unsigned long dscClassicInterface::writeCompleteTime;
+// Static class members are declared in the class header (dscClassic.h) and defined in dsc_static_variables.cpp
+// No extern declarations needed for static class members
 
 // Interrupt function called after 250us by dscClockInterrupt() using AVR Timer1, disables the timer and calls
 // dscDataInterrupt() to read the data line
@@ -88,30 +43,8 @@ ISR(TIMER1_OVF_vect) {
 #elif defined dscKeypad
 #include "dscKeypad.h"
 
-extern byte dscKeypadInterface::dscClockPin;
-extern byte dscKeypadInterface::dscReadPin;
-extern byte dscKeypadInterface::dscWritePin;
-extern int  dscKeypadInterface::clockInterval;
-extern volatile byte dscKeypadInterface::keyData;
-extern volatile byte dscKeypadInterface::keyBufferLength;
-extern volatile byte dscKeypadInterface::keyBuffer[dscBufferSize];
-extern volatile bool dscKeypadInterface::bufferOverflow;
-extern volatile bool dscKeypadInterface::commandReady;
-extern volatile bool dscKeypadInterface::moduleDataDetected;
-extern volatile bool dscKeypadInterface::alarmKeyDetected;
-extern volatile bool dscKeypadInterface::alarmKeyResponsePending;
-extern volatile byte dscKeypadInterface::clockCycleCount;
-extern volatile byte dscKeypadInterface::clockCycleTotal;
-extern volatile byte dscKeypadInterface::panelCommand[dscReadSize];
-extern volatile byte dscKeypadInterface::isrPanelBitTotal;
-extern volatile byte dscKeypadInterface::isrPanelBitCount;
-extern volatile byte dscKeypadInterface::panelCommandByteCount;
-extern volatile byte dscKeypadInterface::isrModuleData[dscReadSize];
-extern volatile byte dscKeypadInterface::isrModuleBitTotal;
-extern volatile byte dscKeypadInterface::isrModuleBitCount;
-extern volatile byte dscKeypadInterface::isrModuleByteCount;
-extern volatile byte dscKeypadInterface::panelCommandByteTotal;
-extern volatile byte dscKeypadInterface::moduleData[dscReadSize];
+// Static class members are declared in the class header (dscKeypad.h) and defined in dsc_static_variables.cpp
+// No extern declarations needed for static class members
 
 #if defined(__AVR__)
 ISR(TIMER1_OVF_vect) {
@@ -123,36 +56,8 @@ ISR(TIMER1_OVF_vect) {
 #elif defined dscClassicKeypad
 #include "dscClassicKeypad.h"
 
-extern byte dscClassicKeypadInterface::dscClockPin;
-extern byte dscClassicKeypadInterface::dscReadPin;
-extern byte dscClassicKeypadInterface::dscWritePin;
-extern int  dscClassicKeypadInterface::clockInterval;
-extern volatile byte dscClassicKeypadInterface::keyData;
-extern volatile byte dscClassicKeypadInterface::keyBufferLength;
-extern volatile byte dscClassicKeypadInterface::keyBuffer[dscBufferSize];
-extern volatile bool dscClassicKeypadInterface::bufferOverflow;
-extern volatile bool dscClassicKeypadInterface::commandReady;
-extern volatile bool dscClassicKeypadInterface::moduleDataDetected;
-extern volatile bool dscClassicKeypadInterface::alarmKeyDetected;
-extern volatile bool dscClassicKeypadInterface::alarmKeyResponsePending;
-extern volatile byte dscClassicKeypadInterface::clockCycleCount;
-extern volatile byte dscClassicKeypadInterface::clockCycleTotal;
-extern volatile byte dscClassicKeypadInterface::panelCommand[dscReadSize];
-extern volatile byte dscClassicKeypadInterface::isrPanelBitTotal;
-extern volatile byte dscClassicKeypadInterface::isrPanelBitCount;
-extern volatile byte dscClassicKeypadInterface::panelCommandByteCount;
-extern volatile byte dscClassicKeypadInterface::isrModuleData[dscReadSize];
-extern volatile byte dscClassicKeypadInterface::isrModuleBitTotal;
-extern volatile byte dscClassicKeypadInterface::isrModuleBitCount;
-extern volatile byte dscClassicKeypadInterface::isrModuleByteCount;
-extern volatile byte dscClassicKeypadInterface::panelCommandByteTotal;
-extern volatile byte dscClassicKeypadInterface::moduleData[dscReadSize];
-extern volatile unsigned long dscClassicKeypadInterface::intervalStart;
-extern volatile unsigned long dscClassicKeypadInterface::beepInterval;
-extern volatile unsigned long dscClassicKeypadInterface::repeatInterval;
-extern volatile unsigned long dscClassicKeypadInterface::keyInterval;
-extern volatile unsigned long dscClassicKeypadInterface::alarmKeyTime;
-extern volatile unsigned long dscClassicKeypadInterface::alarmKeyInterval;
+// Static class members are declared in the class header (dscClassicKeypad.h) and defined in dsc_static_variables.cpp
+// No extern declarations needed for static class members
 
 #if defined(__AVR__)
 ISR(TIMER1_OVF_vect) {
@@ -165,43 +70,8 @@ ISR(TIMER1_OVF_vect) {
 #else
 #include "dscKeybus.h"
 
-extern byte dscKeybusInterface::dscClockPin;
-extern byte dscKeybusInterface::dscReadPin;
-extern byte dscKeybusInterface::dscWritePin;
-extern char dscKeybusInterface::writeKey;
-extern byte dscKeybusInterface::writePartition;
-extern byte dscKeybusInterface::writeByte;
-extern byte dscKeybusInterface::writeBit;
-extern bool dscKeybusInterface::virtualKeypad;
-extern bool dscKeybusInterface::processModuleData;
-extern byte dscKeybusInterface::panelData[dscReadSize];
-extern byte dscKeybusInterface::panelByteCount;
-extern byte dscKeybusInterface::panelBitCount;
-extern volatile bool dscKeybusInterface::writeKeyPending;
-extern volatile byte dscKeybusInterface::moduleData[dscReadSize];
-extern volatile bool dscKeybusInterface::moduleDataCaptured;
-extern volatile bool dscKeybusInterface::moduleDataDetected;
-extern volatile byte dscKeybusInterface::moduleByteCount;
-extern volatile byte dscKeybusInterface::moduleBitCount;
-extern volatile bool dscKeybusInterface::writeAlarm;
-extern volatile bool dscKeybusInterface::starKeyCheck;
-extern volatile bool dscKeybusInterface::starKeyWait[dscPartitions];
-extern volatile bool dscKeybusInterface::bufferOverflow;
-extern volatile byte dscKeybusInterface::panelBufferLength;
-extern volatile byte dscKeybusInterface::panelBuffer[dscBufferSize][dscReadSize];
-extern volatile byte dscKeybusInterface::panelBufferBitCount[dscBufferSize];
-extern volatile byte dscKeybusInterface::panelBufferByteCount[dscBufferSize];
-extern volatile byte dscKeybusInterface::isrPanelData[dscReadSize];
-extern volatile byte dscKeybusInterface::isrPanelByteCount;
-extern volatile byte dscKeybusInterface::isrPanelBitCount;
-extern volatile byte dscKeybusInterface::isrPanelBitTotal;
-extern volatile byte dscKeybusInterface::isrModuleData[dscReadSize];
-extern volatile byte dscKeybusInterface::currentCmd;
-extern volatile byte dscKeybusInterface::statusCmd;
-extern volatile byte dscKeybusInterface::moduleCmd;
-extern volatile byte dscKeybusInterface::moduleSubCmd;
-extern volatile unsigned long dscKeybusInterface::clockHighTime;
-extern volatile unsigned long dscKeybusInterface::keybusTime;
+// Static class members are declared in the class header (dscKeybus.h) and defined in dsc_static_variables.cpp
+// No extern declarations needed for static class members
 
 // Interrupt function called after 250us by dscClockInterrupt() using AVR Timer1, disables the timer and calls
 // dscDataInterrupt() to read the data line
