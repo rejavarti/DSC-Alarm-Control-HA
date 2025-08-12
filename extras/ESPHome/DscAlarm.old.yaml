@@ -1,13 +1,21 @@
+# DSC Keybus Interface for ESPHome
+# Supports both DSC PowerSeries AND Classic series panels
+# Uses local dscKeybusInterface implementation (NOT the external Dilbert66/esphome-dsckeybus)
+# 
+# Classic Series Support: PC1500, PC1550, PC1832, PC1864, PC1616, etc.
+# PowerSeries Support: PC1555MX, PC5015, PC1616, PC1832, PC1864, etc.
+#
+# ===== IMPORTANT FOR DSC CLASSIC SERIES =====
+# If you have a DSC Classic series panel, you MUST:
+# 1. Uncomment the build_flags section below
+# 2. Ensure PC-16 wiring (additional 1kΩ resistor to GPIO 17)
+# 3. Configure PGM output in your DSC panel for PC-16
+
 substitutions:
   accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
 
 esphome:
   name: dscalarm
-  # DSC Classic series build flag - REQUIRED for Classic panels
-  # NOTE: build_flags must be under esphome: section using platformio_options
-  platformio_options:
-    build_flags:
-      - -DdscClassicSeries
 
 external_components:
   - source:
@@ -15,10 +23,16 @@ external_components:
       path: components
     components: [dsc_keybus]
 
-esp32:
-  board: esp32dev
-  framework:
-    type: esp-idf
+esp8266:
+  board: nodemcuv2
+  # ===== DSC CLASSIC SERIES ONLY =====
+  # Uncomment these lines ONLY if you have a DSC Classic series panel:
+  # (Note: you should use DscAlarm_Classic.yaml instead for pre-configured setup)
+  #
+  # esphome:
+  #   platformio_options:
+  #     build_flags:
+  #       - -DdscClassicSeries
 
 wifi:
   ssid: !secret wifi_ssid
@@ -32,8 +46,7 @@ logger:
   level: verbose
 
 api:
-  encryption:
-    key: !secret encryption_key
+  password: !secret api_password  
 
 mqtt:
   broker: !secret mqtt_broker
@@ -52,13 +65,12 @@ safe_mode:
    
 status_led:
   pin:
-    number: GPIO2
+    number: D4
     inverted: yes
 
 dsc_keybus:
   id: dsc_interface
   access_code: "$accessCode"
-  series_type: "Classic"  # Explicitly set for DSC Classic series panels
   debug: 0  # 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
   on_system_status_change:
     then:
