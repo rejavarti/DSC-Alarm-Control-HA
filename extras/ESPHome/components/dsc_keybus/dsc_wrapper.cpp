@@ -1,4 +1,5 @@
 #include "dsc_wrapper.h"
+#include "esphome/core/defines.h"
 #include "dsc_arduino_compatibility.h"
 
 #ifdef ESP32

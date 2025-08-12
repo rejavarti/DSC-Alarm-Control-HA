@@ -3,6 +3,7 @@
 // DSC Keybus Wrapper - Singleton pattern to prevent multiple definition issues
 // This wrapper encapsulates the DSC library to prevent static member conflicts
 
+#include "esphome/core/defines.h"
 #include "dsc_arduino_compatibility.h"
 
 // Forward declarations to avoid including DSC headers in other files
