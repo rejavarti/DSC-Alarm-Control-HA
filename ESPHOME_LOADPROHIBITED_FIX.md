@@ -45,6 +45,19 @@ byte dscKeybusInterface::dscWritePin = 255;
 #### DSC Keypad Interface Variables
 Both `dscKeypadInterface` and `dscClassicKeypadInterface` classes also have all static variables properly initialized.
 
+#### ESP32-Specific Timer Variables
+ESP32 hardware timer variables are now properly initialized to prevent LoadProhibited crashes:
+
+```cpp
+// ESP32-specific timer variables - must be initialized to prevent LoadProhibited crashes
+#if defined(ESP32)
+hw_timer_t * dscClassicInterface::timer1 = nullptr;
+portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+#endif
+```
+
+These variables are critical for ESP32 operation as they are accessed by interrupt service routines during DSC interface initialization. Without proper initialization, accessing these variables results in LoadProhibited exceptions at addresses like `0xa5a5a5a5`.
+
 ### 2. ESPHome Component Safety Features
 
 The ESPHome component includes additional safety measures:
