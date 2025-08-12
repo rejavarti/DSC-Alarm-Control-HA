@@ -12,8 +12,10 @@
   #include <stdio.h>
   // Define the appropriate interface series based on configuration
   // Default to Classic series if neither is explicitly defined
-  #if !defined(dscClassicSeries) && !defined(dscPowerSeries)
-    #define dscClassicSeries
+  #ifndef dscClassicSeries
+    #ifndef dscPowerSeries
+      #define dscClassicSeries
+    #endif
   #endif
   
   #ifdef ESP32
@@ -103,6 +105,7 @@
   #define HIGH 1
   #define CHANGE 1
   #define HEX 16
+  #define DEC 10
   
   // Global Serial object - only if not already defined by Arduino
   #ifndef ARDUINO
