@@ -1,0 +1,15 @@
+esphome:
+  name: dsc-classic-test
+
+esp8266:
+  board: nodemcuv2
+
+# Enable logging
+logger:
+
+dsc_keybus:
+  access_code: "1234"
+  debug: 1
+  on_partition_status_change:
+    then:
+      - logger.log: "Partition status changed"

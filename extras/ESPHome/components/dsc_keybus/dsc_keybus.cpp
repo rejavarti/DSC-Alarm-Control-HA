@@ -1,16 +1,19 @@
 #include "dsc_keybus.h"
 #include "esphome/core/log.h"
 
-// Use the minimal DSC Keybus Interface for ESPHome
-#include "dscKeybusInterface_minimal.h"
+// Include the DSC Keybus Interface - this automatically selects Classic based on dscClassicSeries define
+#include "dscKeybusInterface.h"
 
 namespace esphome {
 namespace dsc_keybus {
 
 static const char *const TAG = "dsc_keybus";
 
-// Global DSC interface instance using minimal interface
-dscKeybusInterfaceMinimal dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
+// Stream instance for DSC Classic interface
+Stream dscStream;
+
+// Global DSC interface instance - automatically uses Classic interface due to dscClassicSeries define
+dscClassicInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_PC16_PIN, DSC_DEFAULT_WRITE_PIN);
 
 void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
@@ -32,9 +35,9 @@ void DSCKeybusComponent::setup() {
   
   this->force_disconnect_ = false;
   dsc.resetStatus();
-  dsc.begin();
+  dsc.begin(dscStream);
   
-  ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete");
+  ESP_LOGCONFIG(TAG, "DSC Keybus Interface (Classic Series) setup complete");
 }
 
 void DSCKeybusComponent::loop() {

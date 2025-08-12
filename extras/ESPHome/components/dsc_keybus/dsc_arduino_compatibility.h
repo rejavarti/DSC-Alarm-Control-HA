@@ -10,10 +10,8 @@
 #else
   // ESPHome/ESP-IDF or other non-Arduino environments - provide Arduino compatibility
   #include <stdio.h>
-  // Force PowerSeries only for ESPHome - disable Classic series
-  #ifdef ESPHOME  
-  #undef dscClassicSeries
-  #endif
+  // Enable Classic Series support for ESPHome
+  #define dscClassicSeries
   
   #ifdef ESP32
     #include <esp_attr.h>
@@ -47,7 +45,8 @@
     virtual void println(const char* str) { printf("%s\n", str); }
   };
   
-  // Arduino compatibility functions and constants
+  // Global Stream instance for DSC interface
+  extern Stream dscStream;
   inline uint8_t bitRead(uint8_t value, uint8_t bit) { return (value >> bit) & 1; }
   template<typename T>
   inline uint8_t bitRead(T value, uint8_t bit) { return (value >> bit) & 1; }
