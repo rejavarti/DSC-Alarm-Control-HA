@@ -2,6 +2,9 @@
 // These are defined here to avoid multiple definition errors
 // The wrapper pattern ensures DSC headers are only included in controlled places
 
+// Unique guard to prevent multiple static variable definitions
+#define DSC_STATIC_VARIABLES_DEFINED
+
 #if defined(dscClassicSeries)
 
 #include "dsc_arduino_compatibility.h"
