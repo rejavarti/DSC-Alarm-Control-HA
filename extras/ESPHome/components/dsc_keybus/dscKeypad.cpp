@@ -17,6 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "dsc_arduino_compatibility.h"
 #include "dscKeypad.h"
 #if defined dscKeypad_h
 

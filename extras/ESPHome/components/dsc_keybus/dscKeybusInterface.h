@@ -20,6 +20,7 @@
 #ifndef dscKeybusInterface_h
 #define dscKeybusInterface_h
 
+#include "dsc_arduino_compatibility.h"
 
 // DSC Classic Series
 #if defined dscClassicSeries

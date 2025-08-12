@@ -20,43 +20,9 @@
 #ifndef dscClassic_h
 #define dscClassic_h
 
-#include "dsc_arduino_compatibility.h"
+#include "dsc_common_constants.h"
 
-// ESPHome compatible type definitions
-#ifndef byte
-typedef uint8_t byte;
-#endif
-
-// DSC Keybus constants - aligned with dscKeybus.h
-#if defined(__AVR__)
-const byte dscPartitions = 4;   // Maximum number of partitions - requires 19 bytes of memory per partition
-const byte dscZones = 4;        // Maximum number of zone groups, 8 zones per group - requires 6 bytes of memory per zone group
-const byte dscBufferSize = 10;  // Number of commands to buffer if the sketch is busy - requires dscReadSize + 2 bytes of memory per command
-const byte dscReadSize = 16;    // Maximum bytes of a Keybus command
-#elif defined(ESP8266)
-const byte dscPartitions = 8;
-const byte dscZones = 8;
-const byte dscBufferSize = 50;
-const byte dscReadSize = 16;
-#elif defined(ESP32)
-const byte dscPartitions = 8;
-const byte dscZones = 8;
-const DRAM_ATTR byte dscBufferSize = 50;
-const DRAM_ATTR byte dscReadSize = 16;
-#else
-// Default fallback for ESPHome/ESP-IDF and other platforms
-const byte dscPartitions = 8;
-const byte dscZones = 8;
-const byte dscBufferSize = 50;
-const byte dscReadSize = 16;
-#endif
-
-// Exit delay target states
-#define DSC_EXIT_STAY 1
-#define DSC_EXIT_AWAY 2
-#define DSC_EXIT_NO_ENTRY_DELAY 3
-
-
+class dscClassicInterface {
 class dscClassicInterface {
 
   public:
