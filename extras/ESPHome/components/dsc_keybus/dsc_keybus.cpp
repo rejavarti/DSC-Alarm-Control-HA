@@ -11,7 +11,7 @@ static const char *const TAG = "dsc_keybus";
 void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
   
-  // Initialize the DSC wrapper instead of global instance
+  // Initialize the DSC wrapper (creates interface object but doesn't start hardware)
   getDSC().init(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN, DSC_DEFAULT_PC16_PIN);
   
   // Initialize system state
@@ -22,15 +22,24 @@ void DSCKeybusComponent::setup() {
   this->force_disconnect_ = false;
   getDSC().resetStatus();
 
-  // Begin the interface
-  getDSC().begin();
-
-  ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete");
+  ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete (hardware init deferred)");
 }
 
 void DSCKeybusComponent::loop() {
-  // Minimal loop implementation for testing - just call the wrapper
-  if (!this->force_disconnect_) {
+  // Initialize hardware on first loop iteration (system is fully ready)
+  if (!getDSC().isHardwareInitialized()) {
+    ESP_LOGD(TAG, "Initializing DSC Keybus hardware (timers, interrupts)...");
+    try {
+      getDSC().begin();
+      ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
+    } catch (...) {
+      ESP_LOGE(TAG, "Failed to initialize DSC Keybus hardware - will retry next loop");
+      return; // Retry on next loop iteration
+    }
+  }
+  
+  // Process keybus data only if hardware is initialized
+  if (!this->force_disconnect_ && getDSC().isHardwareInitialized()) {
     getDSC().loop();
   }
   
