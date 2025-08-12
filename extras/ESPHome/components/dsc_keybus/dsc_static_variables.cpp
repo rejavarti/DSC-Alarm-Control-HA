@@ -5,9 +5,11 @@
 // Unique guard to prevent multiple static variable definitions
 #define DSC_STATIC_VARIABLES_DEFINED
 
+#include "esphome/core/defines.h"
+#include "dsc_arduino_compatibility.h"
+
 #if defined(dscClassicSeries)
 
-#include "dsc_arduino_compatibility.h"
 #include "dscClassic.h"
 
 // Static member definitions for dscClassicInterface
