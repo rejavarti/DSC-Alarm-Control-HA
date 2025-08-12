@@ -123,6 +123,7 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   void alarm_trigger_panic();
   void alarm_trigger_fire();
   void alarm_keypress(const std::string &keys);
+  void disconnect_keybus();
 
   // Trigger registration methods
   void add_system_status_trigger(SystemStatusChangeTrigger *trigger) {
@@ -185,7 +186,6 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   // Helper methods
   bool is_numeric_code(const std::string &code);
   const char* status_text(uint8_t status_code);
-  void disconnect_keybus();
 };
 
 }  // namespace dsc_keybus

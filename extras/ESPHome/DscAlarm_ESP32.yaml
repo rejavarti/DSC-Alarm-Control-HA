@@ -345,7 +345,7 @@ switch:
     name: "DSCAlarm Connection"
     id: connection_status_switch
     lambda: |-
-      return getDSC().getKeybusConnected();
+      return esphome::dsc_keybus::getDSC().getKeybusConnected();
     icon: "mdi:shield-link-variant"
     turn_on_action:
       - switch.toggle: restart_switch
