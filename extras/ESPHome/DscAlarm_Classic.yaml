@@ -242,6 +242,34 @@ binary_sensor:
     name: "DSCAlarm System Status"
     id: system_status_sensor
     device_class: connectivity
+    
+  # System health monitoring
+  - platform: template
+    name: "DSCAlarm System Healthy"
+    id: system_healthy_sensor
+    device_class: problem
+    lambda: |-
+      // System is healthy if WiFi connected, API connected, and no buffer overflow
+      bool wifi_ok = wifi::global_wifi_component->is_connected();
+      bool api_ok = api::global_api_server->is_connected();
+      bool heap_ok = esp_get_free_heap_size() > 10000; // At least 10KB free
+      return wifi_ok && api_ok && heap_ok;
+    
+  # DSC Keybus connection status  
+  - platform: template
+    name: "DSCAlarm Keybus Connected"
+    id: keybus_connected_sensor
+    device_class: connectivity
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+      
+  # DSC Buffer overflow detection
+  - platform: template
+    name: "DSCAlarm Buffer Overflow"
+    id: buffer_overflow_sensor  
+    device_class: problem
+    lambda: |-
+      return id(dsc_interface).getBufferOverflow();
 
 text_sensor:
   - platform: template
@@ -276,6 +304,15 @@ text_sensor:
       name: "DSCAlarm WiFi SSID"
     mac_address:
       name: "DSCAlarm MAC Address"
+      
+  # System error tracking
+  - platform: template
+    name: "DSCAlarm Last Error"
+    id: last_error_sensor
+    icon: "mdi:alert-circle"
+    lambda: |-
+      static std::string last_error = "None";
+      return last_error;
 
 sensor:
   # System uptime
@@ -297,6 +334,52 @@ sensor:
     device_class: signal_strength
     state_class: measurement
     icon: "mdi:wifi-strength-2"
+    
+  # System diagnostics - Free heap memory
+  - platform: template
+    name: "DSCAlarm Free Heap"
+    id: free_heap_sensor
+    update_interval: 60s
+    unit_of_measurement: "bytes"
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      return esp_get_free_heap_size();
+      
+  # WiFi reconnection counter
+  - platform: template
+    name: "DSCAlarm WiFi Reconnects"
+    id: wifi_reconnects_sensor
+    update_interval: 60s
+    state_class: total_increasing
+    icon: "mdi:wifi-sync"
+    lambda: |-
+      static uint32_t reconnect_count = 0;
+      if (!wifi::global_wifi_component->is_connected()) {
+        reconnect_count++;
+      }
+      return reconnect_count;
+
+# Periodic system health monitoring
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          // Update system health status
+          bool wifi_ok = wifi::global_wifi_component->is_connected();
+          bool api_ok = api::global_api_server->is_connected(); 
+          bool heap_ok = esp_get_free_heap_size() > 10000;
+          bool system_ok = wifi_ok && api_ok && heap_ok;
+          
+          id(system_healthy_sensor).publish_state(system_ok);
+          
+          // Log system health if issues detected
+          if (!system_ok) {
+            ESP_LOGW("system_health", "System health issue detected - WiFi: %s, API: %s, Heap: %s", 
+              wifi_ok ? "OK" : "FAIL", 
+              api_ok ? "OK" : "FAIL",
+              heap_ok ? "OK" : "FAIL");
+          }
 
 button:
   # Emergency buttons
