@@ -46,6 +46,7 @@ class dscClassicKeypadInterface {
     byte commandInterval = 26;   // Sets the milliseconds between panel commands
     bool keyBeep, beepStart;
 
+    static int clockInterval;
     static byte dscClockPin;
     static byte dscReadPin;
     static byte dscWritePin;

@@ -26,51 +26,53 @@
 #if defined dscClassicSeries
 #include "dscClassic.h"
 
-byte dscClassicInterface::dscClockPin;
-byte dscClassicInterface::dscReadPin;
-byte dscClassicInterface::dscPC16Pin;
-byte dscClassicInterface::dscWritePin;
-char dscClassicInterface::writeKey;
-byte dscClassicInterface::writePartition;
-byte dscClassicInterface::writeByte;
-byte dscClassicInterface::writeBit;
-bool dscClassicInterface::virtualKeypad;
-bool dscClassicInterface::processModuleData;
-byte dscClassicInterface::panelData[dscReadSize];
-byte dscClassicInterface::pc16Data[dscReadSize];
-byte dscClassicInterface::panelByteCount;
-byte dscClassicInterface::panelBitCount;
-volatile bool dscClassicInterface::writeKeyPending;
-volatile bool dscClassicInterface::writeKeyWait;
-volatile byte dscClassicInterface::moduleData[dscReadSize];
-volatile bool dscClassicInterface::moduleDataCaptured;
-volatile byte dscClassicInterface::moduleByteCount;
-volatile byte dscClassicInterface::moduleBitCount;
-volatile bool dscClassicInterface::writeAlarm;
-volatile bool dscClassicInterface::starKeyDetected;
-volatile bool dscClassicInterface::starKeyCheck;
-volatile bool dscClassicInterface::starKeyWait;
-volatile bool dscClassicInterface::bufferOverflow;
-volatile byte dscClassicInterface::panelBufferLength;
-volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize];
-volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize];
-volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize];
-volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize];
-volatile byte dscClassicInterface::isrPanelData[dscReadSize];
-volatile byte dscClassicInterface::isrPC16Data[dscReadSize];
-volatile byte dscClassicInterface::isrPanelByteCount;
-volatile byte dscClassicInterface::isrPanelBitCount;
-volatile byte dscClassicInterface::isrPanelBitTotal;
-volatile byte dscClassicInterface::isrModuleData[dscReadSize];
-volatile byte dscClassicInterface::isrModuleByteCount;
-volatile byte dscClassicInterface::isrModuleBitCount;
-volatile byte dscClassicInterface::isrModuleBitTotal;
-volatile byte dscClassicInterface::moduleCmd;
-volatile bool dscClassicInterface::readyLight;
-volatile bool dscClassicInterface::lightBlink;
-volatile unsigned long dscClassicInterface::clockHighTime;
-volatile unsigned long dscClassicInterface::keybusTime;
-volatile unsigned long dscClassicInterface::writeCompleteTime;
+// Static variables are defined in dsc_static_variables.cpp to avoid multiple definition errors
+// Here we only provide extern declarations
+extern byte dscClassicInterface::dscClockPin;
+extern byte dscClassicInterface::dscReadPin;
+extern byte dscClassicInterface::dscPC16Pin;
+extern byte dscClassicInterface::dscWritePin;
+extern char dscClassicInterface::writeKey;
+extern byte dscClassicInterface::writePartition;
+extern byte dscClassicInterface::writeByte;
+extern byte dscClassicInterface::writeBit;
+extern bool dscClassicInterface::virtualKeypad;
+extern bool dscClassicInterface::processModuleData;
+extern byte dscClassicInterface::panelData[dscReadSize];
+extern byte dscClassicInterface::pc16Data[dscReadSize];
+extern byte dscClassicInterface::panelByteCount;
+extern byte dscClassicInterface::panelBitCount;
+extern volatile bool dscClassicInterface::writeKeyPending;
+extern volatile bool dscClassicInterface::writeKeyWait;
+extern volatile byte dscClassicInterface::moduleData[dscReadSize];
+extern volatile bool dscClassicInterface::moduleDataCaptured;
+extern volatile byte dscClassicInterface::moduleByteCount;
+extern volatile byte dscClassicInterface::moduleBitCount;
+extern volatile bool dscClassicInterface::writeAlarm;
+extern volatile bool dscClassicInterface::starKeyDetected;
+extern volatile bool dscClassicInterface::starKeyCheck;
+extern volatile bool dscClassicInterface::starKeyWait;
+extern volatile bool dscClassicInterface::bufferOverflow;
+extern volatile byte dscClassicInterface::panelBufferLength;
+extern volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize];
+extern volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize];
+extern volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize];
+extern volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize];
+extern volatile byte dscClassicInterface::isrPanelData[dscReadSize];
+extern volatile byte dscClassicInterface::isrPC16Data[dscReadSize];
+extern volatile byte dscClassicInterface::isrPanelByteCount;
+extern volatile byte dscClassicInterface::isrPanelBitCount;
+extern volatile byte dscClassicInterface::isrPanelBitTotal;
+extern volatile byte dscClassicInterface::isrModuleData[dscReadSize];
+extern volatile byte dscClassicInterface::isrModuleByteCount;
+extern volatile byte dscClassicInterface::isrModuleBitCount;
+extern volatile byte dscClassicInterface::isrModuleBitTotal;
+extern volatile byte dscClassicInterface::moduleCmd;
+extern volatile bool dscClassicInterface::readyLight;
+extern volatile bool dscClassicInterface::lightBlink;
+extern volatile unsigned long dscClassicInterface::clockHighTime;
+extern volatile unsigned long dscClassicInterface::keybusTime;
+extern volatile unsigned long dscClassicInterface::writeCompleteTime;
 
 // Interrupt function called after 250us by dscClockInterrupt() using AVR Timer1, disables the timer and calls
 // dscDataInterrupt() to read the data line

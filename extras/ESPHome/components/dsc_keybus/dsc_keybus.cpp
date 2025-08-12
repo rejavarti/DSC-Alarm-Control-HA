@@ -1,7 +1,20 @@
 #include "dsc_keybus.h"
 #include "esphome/core/log.h"
 
-// Include the DSC Keybus Interface - this automatically selects Classic based on dscClassicSeries define
+// Ensure the correct series define is set before including the interface
+// ESPHome defines are set via build flags, but we need to make sure they're available here
+#ifdef dscClassicSeries
+  #define DSC_SERIES_CLASSIC
+  #pragma message "dsc_keybus.cpp: dscClassicSeries is defined"
+#elif defined(dscPowerSeries)
+  #define DSC_SERIES_POWERSERIES
+  #pragma message "dsc_keybus.cpp: dscPowerSeries is defined"
+#else
+  #pragma message "dsc_keybus.cpp: Neither dscClassicSeries nor dscPowerSeries is defined!"
+  #error "No DSC series type defined! Check __init__.py defines"
+#endif
+
+// Include the DSC Keybus Interface - this automatically selects based on defines
 #include "dscKeybusInterface.h"
 
 namespace esphome {

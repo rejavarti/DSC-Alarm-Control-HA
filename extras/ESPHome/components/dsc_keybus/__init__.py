@@ -104,10 +104,13 @@ async def to_code(config):
     series_type = config[CONF_SERIES_TYPE]
     if series_type.upper() == "CLASSIC":
         cg.add_define("dscClassicSeries")
+        cg.add_build_flag("-DdscClassicSeries")  # Ensure it reaches all files (may cause redefinition warning, but needed)
         if CONF_PC16_PIN in config:
             cg.add_define("DSC_CLASSIC_PC16_PIN", config[CONF_PC16_PIN])
+            cg.add_build_flag(f"-DDSC_CLASSIC_PC16_PIN={config[CONF_PC16_PIN]}")
     else:  # PowerSeries
         cg.add_define("dscPowerSeries")
+        cg.add_build_flag("-DdscPowerSeries")
     
     # Set up triggers
     for conf in config.get(CONF_ON_SYSTEM_STATUS_CHANGE, []):
