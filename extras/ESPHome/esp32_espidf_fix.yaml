@@ -1,0 +1,61 @@
+# ESP32 ESP-IDF Framework Configuration Fix
+# Resolves "Calling app_main()" hang issues on ESP32 with ESPHome
+#
+# This configuration snippet should be included in ESP32 ESPHome configurations
+# that use framework: type: esp-idf to prevent boot hanging issues.
+#
+# Root Cause: ESP-IDF requires larger stack sizes and proper memory configuration
+# compared to Arduino framework, especially for complex applications like DSC Keybus
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Use ESPHome default versions for maximum compatibility
+    
+    # Additional ESP-IDF configurations for memory management
+    sdkconfig_options:
+      # Main task stack size - increase to prevent stack overflow during init
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "16384"  # Default is 3584, increase to 16KB
+      
+      # System event task stack size
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "4096"  # Default is 2304, increase to 4KB
+      
+      # Timer task stack size  
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "4096"  # Default is 2048, increase to 4KB
+      
+      # WiFi task stack sizes
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "6144"  # Default is 3584, increase to 6KB
+      CONFIG_ESP32_WIFI_RX_BUFFER_NUM: "16"     # Increase WiFi RX buffers
+      CONFIG_ESP32_WIFI_TX_BUFFER_NUM: "16"     # Increase WiFi TX buffers
+      
+      # Memory management optimizations
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "64"  # Default is 32, increase for DSC events
+      CONFIG_FREERTOS_HZ: "1000"                # 1ms tick rate for responsive DSC processing
+      
+      # Watchdog timer configurations
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"       # 30 second watchdog timeout
+      CONFIG_ESP_TASK_WDT_EN: y                 # Enable task watchdog
+      CONFIG_ESP_TASK_WDT_INIT: y               # Initialize watchdog early
+      
+      # Memory allocation optimizations
+      CONFIG_HEAP_TRACING_STACK_DEPTH: "10"    # Enable heap debugging
+      CONFIG_ESP_SYSTEM_MEMPROT_FEATURE: n     # Disable memory protection for performance
+      
+      # Interrupt and timing optimizations for DSC Keybus
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "2000"    # 2 second interrupt watchdog
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: n         # Disable CPU1 interrupt watchdog
+      
+      # UART optimizations for logging
+      CONFIG_ESP_CONSOLE_UART_BAUDRATE: "115200"  # Match ESPHome logger baud rate
+      
+      # Network stack optimizations
+      CONFIG_LWIP_TCP_MSS: "1440"              # Optimize TCP MSS for stability
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "12"      # Increase TCP receive mailbox
+      CONFIG_LWIP_UDP_RECVMBOX_SIZE: "12"      # Increase UDP receive mailbox
+      
+      # Power management - disable for DSC real-time requirements
+      CONFIG_PM_ENABLE: n                      # Disable power management for consistent timing
+
+# Include this in your main ESPHome configuration:
+# <<: !include esp32_espidf_fix.yaml
