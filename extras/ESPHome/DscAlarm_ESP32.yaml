@@ -322,7 +322,7 @@ button:
     icon: "mdi:fire"
     on_press:
       - lambda: |-
-          dsc.write("f");
+          id(dsc_interface).alarm_keypress("f");
           
   - platform: template  
     name: "Aux Alarm"
@@ -330,7 +330,7 @@ button:
     icon: "mdi:hospital-box"
     on_press:
       - lambda: |-
-          dsc.write("a");
+          id(dsc_interface).alarm_keypress("a");
           
   - platform: template
     name: "Panic Alarm" 
@@ -338,19 +338,19 @@ button:
     icon: "mdi:police-badge"
     on_press:
       - lambda: |-
-          dsc.write("p");
+          id(dsc_interface).alarm_keypress("p");
 
 switch:
   - platform: template
     name: "DSCAlarm Connection"
     id: connection_status_switch
     lambda: |-
-      return dsc.keybusConnected;
+      return getDSC().getKeybusConnected();
     icon: "mdi:shield-link-variant"
     turn_on_action:
       - switch.toggle: restart_switch
     turn_off_action:
       - lambda: |-
-          disconnectKeybus();
+          id(dsc_interface).disconnect_keybus();
   - platform: restart
     id: restart_switch
