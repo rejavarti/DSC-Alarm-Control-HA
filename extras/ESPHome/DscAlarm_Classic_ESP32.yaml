@@ -140,7 +140,7 @@ dsc_keybus:
             case 9: id(za9).publish_state(open); break;
             case 10: id(za10).publish_state(open); break;
             case 11: id(za11).publish_state(open); break;
-          )
+          }
 
 binary_sensor:
   # Zone status sensors
