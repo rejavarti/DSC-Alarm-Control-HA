@@ -8,6 +8,13 @@
 #include "esphome/core/defines.h"
 #include "dsc_arduino_compatibility.h"
 
+// ESP32 hardware timer includes for timer1 and timer1Mux
+#if defined(ESP32)
+#include "esp32-hal-timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/portmacro.h"
+#endif
+
 #if defined(dscClassicSeries)
 
 #include "dscClassic.h"
@@ -58,6 +65,12 @@ volatile bool dscClassicInterface::lightBlink = false;
 volatile unsigned long dscClassicInterface::clockHighTime = 0;
 volatile unsigned long dscClassicInterface::keybusTime = 0;
 volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
+
+// ESP32-specific timer variables - must be initialized to prevent LoadProhibited crashes
+#if defined(ESP32)
+hw_timer_t * dscClassicInterface::timer1 = nullptr;
+portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+#endif
 
 #elif defined(dscKeypad)
 
@@ -170,5 +183,11 @@ volatile byte dscKeybusInterface::moduleCmd = 0;
 volatile byte dscKeybusInterface::moduleSubCmd = 0;
 volatile unsigned long dscKeybusInterface::clockHighTime = 0;
 volatile unsigned long dscKeybusInterface::keybusTime = 0;
+
+// ESP32-specific timer variables - must be initialized to prevent LoadProhibited crashes
+#if defined(ESP32)
+hw_timer_t * dscKeybusInterface::timer1 = nullptr;
+portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+#endif
 
 #endif
