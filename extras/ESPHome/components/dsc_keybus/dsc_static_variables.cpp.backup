@@ -1,0 +1,80 @@
+// Global DSC interface instances and static variable definitions
+// These are defined here to avoid multiple definition errors
+
+#if defined(dscClassicSeries)
+
+#include "dsc_arduino_compatibility.h"
+#include "dscClassic.h"
+// Include the default pin definitions
+#include "dsc_keybus.h"
+
+// Global DSC interface instance definition
+dscClassicInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, 
+                        #ifdef DSC_CLASSIC_PC16_PIN
+                        DSC_CLASSIC_PC16_PIN,
+                        #else
+                        DSC_DEFAULT_PC16_PIN,
+                        #endif
+                        DSC_DEFAULT_WRITE_PIN);
+
+// Static variable definitions for dscClassicInterface
+
+byte dscClassicInterface::dscClockPin;
+byte dscClassicInterface::dscReadPin;
+byte dscClassicInterface::dscPC16Pin;
+byte dscClassicInterface::dscWritePin;
+char dscClassicInterface::writeKey;
+byte dscClassicInterface::writePartition;
+byte dscClassicInterface::writeByte;
+byte dscClassicInterface::writeBit;
+bool dscClassicInterface::virtualKeypad;
+bool dscClassicInterface::processModuleData;
+byte dscClassicInterface::panelData[dscReadSize];
+byte dscClassicInterface::pc16Data[dscReadSize];
+byte dscClassicInterface::panelByteCount;
+byte dscClassicInterface::panelBitCount;
+volatile bool dscClassicInterface::writeKeyPending;
+volatile bool dscClassicInterface::writeKeyWait;
+volatile byte dscClassicInterface::moduleData[dscReadSize];
+volatile bool dscClassicInterface::moduleDataCaptured;
+volatile byte dscClassicInterface::moduleByteCount;
+volatile byte dscClassicInterface::moduleBitCount;
+volatile bool dscClassicInterface::writeAlarm;
+volatile bool dscClassicInterface::starKeyDetected;
+volatile bool dscClassicInterface::starKeyCheck;
+volatile bool dscClassicInterface::starKeyWait;
+volatile bool dscClassicInterface::bufferOverflow;
+volatile byte dscClassicInterface::panelBufferLength;
+volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize];
+volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize];
+volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize];
+volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize];
+volatile byte dscClassicInterface::isrPanelData[dscReadSize];
+volatile byte dscClassicInterface::isrPC16Data[dscReadSize];
+volatile byte dscClassicInterface::isrPanelByteCount;
+volatile byte dscClassicInterface::isrPanelBitCount;
+volatile byte dscClassicInterface::isrPanelBitTotal;
+volatile byte dscClassicInterface::isrModuleData[dscReadSize];
+volatile byte dscClassicInterface::isrModuleByteCount;
+volatile byte dscClassicInterface::isrModuleBitCount;
+volatile byte dscClassicInterface::isrModuleBitTotal;
+volatile byte dscClassicInterface::moduleCmd;
+volatile bool dscClassicInterface::readyLight;
+volatile bool dscClassicInterface::lightBlink;
+volatile unsigned long dscClassicInterface::clockHighTime;
+volatile unsigned long dscClassicInterface::keybusTime;
+volatile unsigned long dscClassicInterface::writeCompleteTime;
+
+#elif defined(dscPowerSeries)
+
+#include "dsc_arduino_compatibility.h"
+#include "dscKeybus.h"
+#include "dsc_keybus.h"
+
+// Global DSC interface instance definition for PowerSeries
+dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
+
+// Static variable definitions for dscKeybusInterface (if needed)
+// Add any PowerSeries specific static variables here
+
+#endif // defined(dscClassicSeries) / defined(dscPowerSeries)

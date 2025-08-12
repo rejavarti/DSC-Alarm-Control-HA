@@ -57,18 +57,16 @@ public:
 DSCStream dscStream;
 #endif
 
-// Global DSC interface instance - automatically selects based on defined series type
+// Forward declaration of global DSC interface instance
 #ifdef dscClassicSeries
-dscClassicInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, 
-                        #ifdef DSC_CLASSIC_PC16_PIN
-                        DSC_CLASSIC_PC16_PIN,
-                        #else
-                        DSC_DEFAULT_PC16_PIN,
-                        #endif
-                        DSC_DEFAULT_WRITE_PIN);
-#else
-dscKeybusInterface dsc(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN);
+extern dscClassicInterface dsc;
+#else 
+extern dscKeybusInterface dsc;
 #endif
+
+// Global DSC interface instance - defined only once in dsc_keybus.cpp
+// This prevents multiple definition errors when the component is used
+// across different translation units in ESPHome
 
 void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
