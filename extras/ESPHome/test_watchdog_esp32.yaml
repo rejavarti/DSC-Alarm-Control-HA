@@ -1,0 +1,37 @@
+esphome:
+  name: test-dsc-watchdog-esp32
+  comment: "Test ESP32 watchdog timer improvements for DSC component"
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Minimal required configuration for testing
+logger:
+  level: DEBUG
+
+wifi:
+  ssid: "test"
+  password: "password"
+  ap:
+    ssid: "test-fallback"
+
+api:
+
+# Test DSC component with watchdog improvements
+dsc_keybus:
+  access_code: "1234"
+  debug: 1
+
+# Add a simple automation to test component functionality
+binary_sensor:
+  - platform: template
+    name: "DSC Test Sensor"
+    id: dsc_test
