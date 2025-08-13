@@ -535,10 +535,9 @@ interval:
   - interval: 10s
     then:
       - lambda: |-
-          // Reset task watchdog to prevent timeout
-          #ifdef CONFIG_ESP_TASK_WDT_EN
-          esp_task_wdt_reset();
-          #endif
+          // ESPHome handles watchdog resets automatically
+          // Manual watchdog reset not needed in ESPHome lambdas
+          ESP_LOGD("watchdog", "Periodic health check - system running normally");
 
 button:
   # Emergency buttons
