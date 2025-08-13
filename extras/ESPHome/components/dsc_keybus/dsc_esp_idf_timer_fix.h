@@ -17,6 +17,8 @@
   // ESP-IDF framework - use native ESP timer API
   #include <esp_timer.h>
   #include <esp_err.h>
+  #include "freertos/FreeRTOS.h"
+  #include "freertos/task.h"
   #define DSC_TIMER_MODE_ESP_IDF
 #endif
 
