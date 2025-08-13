@@ -17,6 +17,8 @@
   // ESP-IDF framework - use native ESP timer API
   #include <esp_timer.h>
   #include <esp_err.h>
+  // Include Arduino compatibility header first to ensure portYIELD_CORE macro is defined
+  #include "dsc_arduino_compatibility.h"
   // Include portmacro.h first to ensure proper port definitions
   #include "freertos/portmacro.h"
   
