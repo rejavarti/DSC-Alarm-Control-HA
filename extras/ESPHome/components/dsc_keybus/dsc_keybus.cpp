@@ -91,7 +91,6 @@ void DSCKeybusComponent::loop() {
     if (getDSC().getBufferOverflow()) {
       ESP_LOGW(TAG, "DSC Keybus buffer overflow detected - system may be too busy");
       getDSC().setBufferOverflow(false);
-#endif
     }
     
     // Handle keybus connection status changes
