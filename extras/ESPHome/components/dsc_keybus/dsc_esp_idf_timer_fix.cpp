@@ -2,6 +2,12 @@
 
 #if defined(ESP32) || defined(ESP_PLATFORM)
 
+// Ensure FreeRTOS includes are available for ESP-IDF mode
+#ifndef ARDUINO
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
+
 namespace dsc_esp_timer {
 
 // Global timer instance
