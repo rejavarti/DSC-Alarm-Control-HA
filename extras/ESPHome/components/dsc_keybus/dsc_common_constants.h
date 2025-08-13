@@ -48,4 +48,10 @@ enum Light {off, on, blink};
 
 #endif // DSC_CONSTANTS_DEFINED
 
+// ESP32 static variable initialization functions - prevents LoadProhibited crashes
+#if defined(ESP32) || defined(ESP_PLATFORM)
+extern volatile bool dsc_static_variables_initialized;
+extern void dsc_manual_static_variables_init();
+#endif
+
 #endif // DSC_COMMON_CONSTANTS_H

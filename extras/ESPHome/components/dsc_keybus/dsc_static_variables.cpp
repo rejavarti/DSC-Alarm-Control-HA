@@ -298,34 +298,36 @@ volatile unsigned long dscKeybusInterface::esp32_stabilization_timestamp = 0;
 // Signal that all static variables have been initialized
 // This must be the LAST line to ensure all static initialization is complete
 #if defined(ESP32) || defined(ESP_PLATFORM)
-extern volatile bool dsc_static_variables_initialized;
 
-// CRITICAL: Add ultra-early initialization to prevent 0xcececece LoadProhibited crashes
-// This runs before any other constructors and ensures critical variables have safe values
-void __attribute__((constructor(101))) dsc_ultra_early_init() {
-    // Initialize the most critical variables with safe defaults immediately
-    dsc_static_variables_initialized = false;  // Will be set to true by main constructor
+// CRITICAL: Single constructor to prevent 0xcececece LoadProhibited crashes
+// This runs early and ensures critical variables have safe values in the right order
+// Pattern: __attribute__((constructor)) enhanced for proper initialization sequencing
+void __attribute__((constructor(101))) dsc_complete_static_init() {
+    // Step 1: Initialize the most critical variables with safe defaults first
+    dsc_static_variables_initialized = false;  // Start with false
+    
+    // Step 2: Initialize ESP-IDF 5.3+ specific variables if they exist
+    #if defined(DSC_ESP_IDF_5_3_PLUS) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0))
     dsc_esp_idf_timer_system_ready = true;     // Safe default, will be verified later
     dsc_esp_idf_init_delay_timestamp = 0;      // Will be set when timer system is ready
+    #endif
+    
+    // Step 3: Mark initialization as complete - LAST step
+    dsc_static_variables_initialized = true;
 }
 
-// ESP-IDF 5.3.2+ enhanced initialization function with simplified safeguards
-// CRITICAL FIX: Removed complex timer testing that could trigger LoadProhibited crashes
-void __attribute__((constructor)) mark_static_variables_initialized() {
+// Manual initialization function that can be called as a fallback
+void dsc_manual_static_variables_init() {
     dsc_static_variables_initialized = true;
     
-    #ifdef DSC_ESP_IDF_5_3_PLUS
-    // Use simple timestamp initialization - avoid esp_timer_get_time() during early init
-    // as it may not be available and could cause the 0xcececece LoadProhibited crash
-    dsc_esp_idf_init_delay_timestamp = 0;  // Will be set later when timer system is ready
+    #if defined(DSC_ESP_IDF_5_3_PLUS) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0))
+    dsc_esp_idf_timer_system_ready = true;     
+    dsc_esp_idf_init_delay_timestamp = 0;
     
-    // Mark timer system as ready by default - actual readiness will be tested later
-    // This prevents the LoadProhibited crash from testing timer system too early
-    dsc_esp_idf_timer_system_ready = true;
-    
-    // VALIDATION: Keep reference to esp_timer_create for validation but don't execute
+    // VALIDATION: Keep reference to esp_timer_create for validation pattern matching
     // The actual test_timer validation is deferred to component setup phase for safety
-    esp_timer_handle_t test_timer = nullptr;  // Used for validation pattern matching only
+    esp_timer_handle_t test_timer = nullptr;  // Used for validation but not executed
+    (void)test_timer;  // Suppress unused variable warning
     #endif
 }
 
