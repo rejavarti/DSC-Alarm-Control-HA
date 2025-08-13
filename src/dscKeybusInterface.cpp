@@ -19,12 +19,8 @@
 
 #include "dscKeybus.h"
 
-// Define global Serial object for native/ESP-IDF builds (not Arduino)
-#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
-#ifndef Serial
-Stream Serial;
-#endif
-#endif
+// Global Serial object definition - only for native/ESP-IDF builds, 
+// removed to avoid conflicts as it's already provided by compatibility headers
 
 #if defined(ESP32)
 portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
@@ -144,9 +140,7 @@ dscKeybusInterface::dscKeybusInterface(byte setClockPin, byte setReadPin, byte s
 void dscKeybusInterface::begin(Stream &_stream) {
   // Validate pins are properly configured
   if (dscClockPin == 255 || dscReadPin == 255) {
-    if (_stream) {
-      _stream.println(F("ERROR: Invalid pin configuration for DSC interface"));
-    }
+    _stream.println(F("ERROR: Invalid pin configuration for DSC interface"));
     return;
   }
   
@@ -231,9 +225,7 @@ void dscKeybusInterface::begin(Stream &_stream) {
     timerAlarmWrite(timer1, 250, true);
     timerAlarmEnable(timer1);
   } else {
-    if (_stream) {
-      _stream.println(F("ERROR: Failed to initialize ESP32 timer"));
-    }
+    _stream.println(F("ERROR: Failed to initialize ESP32 timer"));
     return;
   }
   #endif
@@ -242,9 +234,7 @@ void dscKeybusInterface::begin(Stream &_stream) {
   // This prevents the interrupt handler from accessing uninitialized memory
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
   
-  if (_stream) {
-    _stream.println(F("DSC Keybus Interface initialized successfully"));
-  }
+  _stream.println(F("DSC Keybus Interface initialized successfully"));
 }
 
 

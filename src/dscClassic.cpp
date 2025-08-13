@@ -160,9 +160,7 @@ dscClassicInterface::dscClassicInterface(byte setClockPin, byte setReadPin, byte
 void dscClassicInterface::begin(Stream &_stream) {
   // Validate pins are properly configured
   if (dscClockPin == 255 || dscReadPin == 255 || dscPC16Pin == 255) {
-    if (_stream) {
-      _stream.println(F("ERROR: Invalid pin configuration for DSC Classic interface"));
-    }
+    _stream.println(F("ERROR: Invalid pin configuration for DSC Classic interface"));
     return;
   }
   
@@ -251,9 +249,7 @@ void dscClassicInterface::begin(Stream &_stream) {
     timerAlarmWrite(timer1, 250, true);
     timerAlarmEnable(timer1);
   } else {
-    if (_stream) {
-      _stream.println(F("ERROR: Failed to initialize ESP32 timer for DSC Classic"));
-    }
+    _stream.println(F("ERROR: Failed to initialize ESP32 timer for DSC Classic"));
     return;
   }
   #endif
@@ -262,9 +258,7 @@ void dscClassicInterface::begin(Stream &_stream) {
   // This prevents the interrupt handler from accessing uninitialized memory
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
   
-  if (_stream) {
-    _stream.println(F("DSC Classic Interface initialized successfully"));
-  }
+  _stream.println(F("DSC Classic Interface initialized successfully"));
 }
 
 
