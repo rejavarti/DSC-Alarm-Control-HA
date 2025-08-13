@@ -54,13 +54,13 @@ void dscClassicInterface::begin(Stream &_stream) {
 #if defined(ESP32) || defined(ESP_PLATFORM)
   extern volatile bool dsc_static_variables_initialized;
   if (!dsc_static_variables_initialized) {
-    if (_stream) _stream.println(F("ERROR: Static variables not initialized - aborting begin()"));
+    _stream.println(F("ERROR: Static variables not initialized - aborting begin()"));
     return;  // Abort initialization to prevent LoadProhibited crash
   }
   
   // Additional safety: verify that essential static variables are properly initialized
   if (timer1 == (hw_timer_t*)0xcececece || timer1 == (hw_timer_t*)0xa5a5a5a5) {
-    if (_stream) _stream.println(F("ERROR: timer1 has uninitialized memory pattern - aborting"));
+    _stream.println(F("ERROR: timer1 has uninitialized memory pattern - aborting"));
     return;  // Abort to prevent LoadProhibited crash
   }
 #endif
