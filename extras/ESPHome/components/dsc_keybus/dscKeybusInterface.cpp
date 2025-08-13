@@ -29,9 +29,10 @@
 #endif
 
 
+// ESP32 timer variables are now initialized in dsc_static_variables.cpp
+// to prevent LoadProhibited crashes during initialization
 #if defined(ESP32)
-portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
-hw_timer_t * dscKeybusInterface::timer1 = NULL;
+// Static variables declared in header, defined in dsc_static_variables.cpp
 #endif  // ESP32
 
 
@@ -71,14 +72,29 @@ void dscKeybusInterface::begin(Stream &_stream) {
 
   // esp32 timer1 calls dscDataInterrupt() from dscClockInterrupt()
   #elif defined(ESP32)
+  // Ensure timer1Mux is properly initialized before timer operations
+  // This prevents LoadProhibited crashes (0xcececece pattern) during ISR execution
+  if (timer1 != nullptr) {
+    timerEnd(timer1);  // Clean up any existing timer
+    timer1 = nullptr;
+  }
+  
+  // Initialize timer with full error checking
   timer1 = timerBegin(1, 80, true);
+  if (timer1 == nullptr) {
+    if (stream) stream->println(F("ERROR: Failed to initialize ESP32 timer1"));
+    return;
+  }
+  
+  // Configure timer safely - ensure timer1 is valid before each operation
   timerStop(timer1);
   timerAttachInterrupt(timer1, &dscDataInterrupt, true);
   timerAlarmWrite(timer1, 250, true);
   timerAlarmEnable(timer1);
   #endif
 
-  // Generates an interrupt when the Keybus clock rises or falls - requires a hardware interrupt pin on Arduino/AVR
+  // CRITICAL: Only attach clock interrupt AFTER timer is fully configured
+  // This prevents ISR execution before timer1 and timer1Mux are ready
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
 }
 
@@ -96,8 +112,13 @@ void dscKeybusInterface::stop() {
 
   // Disables esp32 timer1
   #elif defined(ESP32)
-  timerAlarmDisable(timer1);
-  timerEnd(timer1);
+  // Safety check: Only disable timer if it's properly initialized
+  // This prevents additional crashes during cleanup
+  if (timer1 != nullptr) {
+    timerAlarmDisable(timer1);
+    timerEnd(timer1);
+    timer1 = nullptr;  // Reset to null to indicate timer is no longer valid
+  }
   #endif
 
   // Disables the Keybus clock pin interrupt
@@ -128,7 +149,11 @@ bool dscKeybusInterface::loop() {
 
   // Checks if Keybus data is detected and sets a status flag if data is not detected for 3s
   #if defined(ESP32)
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Only enter critical section if timer1 is properly initialized
+  // This prevents LoadProhibited crashes (0xcececece pattern) during keybus monitoring
+  if (timer1 != nullptr) {
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #else
   noInterrupts();
   #endif
@@ -137,7 +162,10 @@ bool dscKeybusInterface::loop() {
   else keybusConnected = true;
 
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Only exit critical section if timer1 is properly initialized
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #else
   interrupts();
   #endif
@@ -170,7 +198,11 @@ bool dscKeybusInterface::loop() {
 
   // Resets counters when the buffer is cleared
   #if defined(ESP32)
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Only enter critical section if timer1 is properly initialized
+  // This prevents LoadProhibited crashes (0xcececece pattern) during buffer management
+  if (timer1 != nullptr) {
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #else
   noInterrupts();
   #endif
@@ -181,7 +213,10 @@ bool dscKeybusInterface::loop() {
   }
 
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Only exit critical section if timer1 is properly initialized
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #else
   interrupts();
   #endif
@@ -501,8 +536,12 @@ void dscKeybusInterface::dscClockInterrupt() {
 
   // esp32 timer1 calls dscDataInterrupt() in 250us
   #elif defined(ESP32)
-  timerStart(timer1);
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    timerStart(timer1);
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #endif
 
   static unsigned long previousClockHighTime;
@@ -636,7 +675,11 @@ void dscKeybusInterface::dscClockInterrupt() {
     }
   }
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Only exit critical section if timer1 is properly initialized 
+  // This prevents LoadProhibited crashes (0xcececece pattern) in clock ISR
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #endif
 }
 
@@ -648,8 +691,12 @@ void dscKeybusInterface::dscDataInterrupt() {
 void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscKeybusInterface::dscDataInterrupt() {
-  timerStop(timer1);
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    timerStop(timer1);
+    portENTER_CRITICAL(&timer1Mux);
+  }
 #elif defined(ESP_IDF_VERSION)
 void dscKeybusInterface::dscDataInterrupt() {
 #else
@@ -724,7 +771,11 @@ void dscKeybusInterface::dscDataInterrupt() {
     }
   }
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Only exit critical section if timer1 is properly initialized
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #endif
 }
 
