@@ -1,6 +1,6 @@
 // Static member definitions for DSC Interface classes
 // CRITICAL: These must be defined before any DSC headers are included
-// to prevent LoadProhibited crashes (0xa5a5a5a5) during ESP32 initialization
+// to prevent LoadProhibited crashes (0xcececece pattern) during ESP32 initialization
 // 
 // This file MUST be compiled first to ensure static variables are initialized
 // before any interrupt service routines (ISRs) can access them
@@ -24,6 +24,10 @@
 #ifndef TIMER_BASE_CLK
 #define TIMER_BASE_CLK 80000000  // 80MHz APB clock
 #endif
+
+// Critical safety check for ESP32 LoadProhibited prevention
+// Initialize a guard variable to detect if static initialization has completed
+volatile bool dsc_static_variables_initialized = false;
 #endif
 
 #if defined(dscClassicSeries)
@@ -237,4 +241,13 @@ volatile bool dscKeybusInterface::esp32_timers_configured = false;
 volatile unsigned long dscKeybusInterface::esp32_init_timestamp = 0;
 #endif
 
+#endif
+
+// Signal that all static variables have been initialized
+// This must be the LAST line to ensure all static initialization is complete
+#if defined(ESP32) || defined(ESP_PLATFORM)
+extern volatile bool dsc_static_variables_initialized;
+void __attribute__((constructor)) mark_static_variables_initialized() {
+    dsc_static_variables_initialized = true;
+}
 #endif

@@ -49,6 +49,22 @@ dscClassicInterface::dscClassicInterface(byte setClockPin, byte setReadPin, byte
 
 
 void dscClassicInterface::begin(Stream &_stream) {
+  // CRITICAL: Check for static variable initialization before proceeding
+  // This prevents LoadProhibited crashes (0xcececece pattern) during ESP32 initialization
+#if defined(ESP32) || defined(ESP_PLATFORM)
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    if (_stream) _stream.println(F("ERROR: Static variables not initialized - aborting begin()"));
+    return;  // Abort initialization to prevent LoadProhibited crash
+  }
+  
+  // Additional safety: verify that essential static variables are properly initialized
+  if (timer1 == (hw_timer_t*)0xcececece || timer1 == (hw_timer_t*)0xa5a5a5a5) {
+    if (_stream) _stream.println(F("ERROR: timer1 has uninitialized memory pattern - aborting"));
+    return;  // Abort to prevent LoadProhibited crash
+  }
+#endif
+  
   pinMode(dscClockPin, INPUT);
   pinMode(dscReadPin, INPUT);
   pinMode(dscPC16Pin, INPUT);
@@ -71,15 +87,50 @@ void dscClassicInterface::begin(Stream &_stream) {
 
   // esp32 timer1 calls dscDataInterrupt() from dscClockInterrupt()
   #elif defined(ESP32)
-  timer1 = timerBegin(1, 80, true);
-  timerStop(timer1);
-  timerAttachInterrupt(timer1, &dscDataInterrupt, true);
-  timerAlarmWrite(timer1, 250, true);
-  timerAlarmEnable(timer1);
+  // Clean up any existing timer first
+  if (timer1 != nullptr) {
+    timerEnd(timer1);
+    timer1 = nullptr;
+  }
+  
+  // Initialize timer with error checking and retry logic
+  int retry_count = 0;
+  const int max_retries = 3;
+  
+  while (retry_count < max_retries && timer1 == nullptr) {
+    timer1 = timerBegin(1, 80, true);
+    if (timer1 == nullptr) {
+      retry_count++;
+      if (stream && retry_count >= max_retries) {
+        stream->println(F("ERROR: Failed to initialize ESP32 timer1 after retries"));
+        return;
+      }
+      delay(10);  // Small delay before retry
+    }
+  }
+  
+  if (timer1 != nullptr) {
+    timerStop(timer1);
+    timerAttachInterrupt(timer1, &dscDataInterrupt, true);
+    timerAlarmWrite(timer1, 250, true);
+    timerAlarmEnable(timer1);
+    
+    // Mark ESP32 timers as configured
+    esp32_timers_configured = true;
+  } else {
+    if (stream) stream->println(F("ERROR: timer1 is null after initialization"));
+    return;
+  }
   #endif
 
   // Generates an interrupt when the Keybus clock rises or falls - requires a hardware interrupt pin on Arduino/AVR
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
+  
+#if defined(ESP32) || defined(ESP_PLATFORM)
+  // Mark hardware as initialized only after successful completion
+  esp32_hardware_initialized = true;
+  esp32_init_timestamp = millis();
+#endif
 }
 
 

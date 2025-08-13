@@ -19,34 +19,22 @@ void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
 
 #ifdef ESP32
-  // Early watchdog configuration for ESP-IDF to prevent app_main() hanging
-  // Must be done before any complex initialization that might cause stack overflow
-  esp_err_t wdt_err = esp_task_wdt_init(30, true);  // 30 second timeout, enable panic
-  if (wdt_err == ESP_OK) {
-    esp_task_wdt_add(NULL);  // Add current task to watchdog
-    ESP_LOGD(TAG, "ESP32 watchdog timer configured for setup (30s timeout)");
-  } else {
-    ESP_LOGW(TAG, "Failed to initialize watchdog timer: %s", esp_err_to_name(wdt_err));
-  }
-  
-  // Additional early initialization protection for ESP-IDF
-  ESP_LOGD(TAG, "ESP-IDF early initialization protection active");
+  // Critical: Delay ESP32 setup to prevent LoadProhibited crashes during app_main()
+  // The 0xcececece pattern indicates static variables accessed before initialization
+  ESP_LOGD(TAG, "Deferring ESP32 hardware setup to prevent LoadProhibited crashes");
   
   // Check available heap memory before proceeding
   size_t free_heap = esp_get_free_heap_size();
-  if (free_heap < 50000) {  // Less than 50KB free
+  if (free_heap < 30000) {  // Less than 30KB free
     ESP_LOGW(TAG, "Low heap memory detected: %zu bytes free", free_heap);
   } else {
     ESP_LOGD(TAG, "Available heap memory: %zu bytes", free_heap);
   }
 #endif
   
-  // Initialize the DSC wrapper (creates interface object but doesn't start hardware)
+  // ONLY initialize the DSC wrapper object (NO hardware initialization yet)
+  // This creates the interface object but doesn't start timers/interrupts
   getDSC().init(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN, DSC_DEFAULT_PC16_PIN);
-
-#ifdef ESP32
-  esp_task_wdt_reset();  // Reset watchdog after DSC initialization
-#endif
   
   // Initialize system state
   for (auto *trigger : this->system_status_triggers_) {
@@ -56,48 +44,53 @@ void DSCKeybusComponent::setup() {
   this->force_disconnect_ = false;
   getDSC().resetStatus();
 
-#ifdef ESP32
-  esp_task_wdt_reset();  // Final watchdog reset before completing setup
-  ESP_LOGD(TAG, "ESP32 setup watchdog resets completed successfully");
-#endif
-
-  ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete (hardware init deferred)");
+  ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete (hardware init deferred to loop())");
 }
 
 void DSCKeybusComponent::loop() {
-#ifdef ESP32
-  // Reset watchdog at the start of each loop iteration to prevent freezing
-  // This matches the improvements made to the Arduino INO file
-  esp_task_wdt_reset();
-#endif
-
-  // Initialize hardware on first loop iteration (system is fully ready)
+  // Initialize hardware on first loop iteration when ESP32 system is fully ready
+  // This prevents LoadProhibited crashes (0xcececece) during app_main() startup
   if (!getDSC().isHardwareInitialized()) {
-    ESP_LOGD(TAG, "Initializing DSC Keybus hardware (timers, interrupts)...");
+    ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware...");
+    
+#ifdef ESP32
+    // Additional safety check for ESP32 - ensure heap is stable
+    size_t free_heap = esp_get_free_heap_size();
+    if (free_heap < 20000) {  // Less than 20KB free
+      ESP_LOGW(TAG, "Low heap during hardware init: %zu bytes - delaying initialization", free_heap);
+      return;  // Defer hardware initialization until heap is stable
+    }
+#endif
+    
+    // Small delay to ensure system is completely stable before hardware init
+    // This prevents the LoadProhibited crash pattern
+    static uint32_t init_attempt_time = 0;
+    uint32_t current_time = millis();
+    
+    if (init_attempt_time == 0) {
+      init_attempt_time = current_time;
+      ESP_LOGD(TAG, "Scheduling hardware initialization after system stabilization");
+      return;  // Wait for next loop iteration
+    }
+    
+    // Wait at least 1000ms after first attempt to ensure system stability
+    if (current_time - init_attempt_time < 1000) {
+      return;  // Still waiting for system to stabilize
+    }
+    
+    ESP_LOGD(TAG, "System stabilized - initializing DSC Keybus hardware (timers, interrupts)...");
     getDSC().begin();
     ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
-
-#ifdef ESP32
-    esp_task_wdt_reset();  // Reset watchdog after hardware initialization
-#endif
   }
   
-  // Process keybus data only if hardware is initialized
+  // Process keybus data only if hardware is initialized and not force disconnected
   if (!this->force_disconnect_ && getDSC().isHardwareInitialized()) {
     getDSC().loop();
-
-#ifdef ESP32
-    // Reset watchdog after DSC processing to prevent timeout during heavy processing
-    esp_task_wdt_reset();
-#endif
     
     // Check for buffer overflow condition (similar to Arduino INO improvements)
     if (getDSC().getBufferOverflow()) {
       ESP_LOGW(TAG, "DSC Keybus buffer overflow detected - system may be too busy");
       getDSC().setBufferOverflow(false);
-      
-#ifdef ESP32
-      esp_task_wdt_reset();  // Reset watchdog after error handling
 #endif
     }
     

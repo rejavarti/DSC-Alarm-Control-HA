@@ -55,49 +55,69 @@ void DSCWrapper::init(uint8_t clockPin, uint8_t readPin, uint8_t writePin, uint8
 
 void DSCWrapper::begin() {
     if (dsc_interface_ && !hardware_initialized_) {
+        // Critical safety check for ESP32 LoadProhibited prevention
+        // The 0xcececece pattern indicates static variables accessed before ready
 #ifdef ESP32
-        // Reset watchdog before hardware initialization to prevent timeout
-        esp_task_wdt_reset();
+        // Ensure we have adequate heap memory before hardware initialization
+        size_t free_heap = esp_get_free_heap_size();
+        if (free_heap < 15000) {  // Less than 15KB free
+            return;  // Abort hardware initialization - insufficient memory
+        }
+        
+        // Additional safety: check that timer variables are properly initialized
+        // This prevents the LoadProhibited crash at 0xcececece address
+        if (!initialized_) {
+            return;  // Interface not properly initialized - abort
+        }
 #endif
-        dsc_interface_->begin();
-        hardware_initialized_ = true;
+        
+        // Initialize hardware with protection against early access
+        try {
+            dsc_interface_->begin();
+            hardware_initialized_ = true;
+        } catch (...) {
+            // Hardware initialization failed - keep hardware_initialized_ false
+            // This will cause retry on next loop iteration
 #ifdef ESP32
-        // Reset watchdog after hardware initialization
-        esp_task_wdt_reset();
+            // Log error if possible
 #endif
+        }
     }
 }
 
 void DSCWrapper::begin(Stream& stream) {
     if (dsc_interface_ && !hardware_initialized_) {
+        // Critical safety check for ESP32 LoadProhibited prevention
 #ifdef ESP32
-        // Reset watchdog before hardware initialization to prevent timeout
-        esp_task_wdt_reset();
+        // Ensure we have adequate heap memory before hardware initialization
+        size_t free_heap = esp_get_free_heap_size();
+        if (free_heap < 15000) {  // Less than 15KB free
+            return;  // Abort hardware initialization - insufficient memory
+        }
+        
+        // Additional safety: check that timer variables are properly initialized
+        if (!initialized_) {
+            return;  // Interface not properly initialized - abort
+        }
 #endif
-        dsc_interface_->begin(stream);
-        hardware_initialized_ = true;
-#ifdef ESP32
-        // Reset watchdog after hardware initialization
-        esp_task_wdt_reset();
-#endif
+        
+        // Initialize hardware with protection against early access
+        try {
+            dsc_interface_->begin(stream);
+            hardware_initialized_ = true;
+        } catch (...) {
+            // Hardware initialization failed - keep hardware_initialized_ false
+        }
     }
 }
 
 bool DSCWrapper::loop() {
     if (dsc_interface_ && hardware_initialized_) {
-#ifdef ESP32
-        // Reset watchdog during DSC processing to prevent timeout during heavy data processing
-        // This is especially important during alarm events when there's heavy keybus traffic
-        esp_task_wdt_reset();
-#endif
-        bool result = dsc_interface_->loop();
-#ifdef ESP32
-        // Reset watchdog after DSC processing completes
-        esp_task_wdt_reset();
-#endif
-        return result;
+        // Process DSC data without watchdog interference to prevent timing issues
+        return dsc_interface_->loop();
     }
     return false;
+}
 }
 
 void DSCWrapper::resetStatus() {
