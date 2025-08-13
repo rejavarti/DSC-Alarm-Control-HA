@@ -110,8 +110,10 @@ esp32:
       CONFIG_HEAP_POISONING_COMPREHENSIVE: y             # Enable heap poisoning
       CONFIG_HEAP_TRACING_STANDALONE: y                  # Enable heap tracing
       
-      # Core dump configuration for crash analysis
-      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: y           # Save core dumps to flash
+      # Core dump configuration for crash analysis - FIXED
+      # Changed from flash to UART to resolve "No core dump partition found!" error
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_UART: y            # Save core dumps to UART output
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: n           # Disable flash dumps (no partition available)
       CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           # ELF format for analysis
 ```
 
@@ -301,7 +303,24 @@ Monitor these sensors for system health:
 For persistent issues:
 1. Enable ESP32 core debug output
 2. Use ESP32 exception decoder for crash analysis
-3. Check core dump files in flash memory
+3. Check core dump output in UART logs (core dumps now save to UART instead of flash)
+
+### Core Dump Partition Error Fix
+
+**Issue**: "No core dump partition found!" error during ESP32 boot
+
+**Root Cause**: Core dump to flash was enabled (`CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: y`) but the default partition table doesn't include a core dump partition.
+
+**Solution**: Changed core dump destination from flash to UART:
+- `CONFIG_ESP32_ENABLE_COREDUMP_TO_UART: y` - Core dumps output to UART
+- `CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: n` - Disabled flash storage
+- Core dumps are now captured in serial output instead of flash memory
+
+**Benefits**:
+- Eliminates "No core dump partition found!" error
+- Maintains crash analysis capability
+- No partition table modifications required
+- Works with default ESP32 partition layout
 4. Monitor with logic analyzer for timing issues
 
 ## Migration

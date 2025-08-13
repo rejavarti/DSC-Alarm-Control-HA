@@ -1,0 +1,38 @@
+# Test configuration to verify core dump partition fix
+# This is a minimal test configuration to ensure the core dump settings don't cause partition errors
+
+esphome:
+  name: test-coredump-fix
+  
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    
+    # Test the fixed core dump configuration
+    sdkconfig_options:
+      # Core dump configuration - FIXED
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_UART: y            # Save core dumps to UART output
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: n           # Disable flash dumps (no partition available)
+      CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           # ELF format for analysis
+      
+      # Basic ESP32 settings
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      CONFIG_PARTITION_TABLE_CUSTOM: n                    # Use default partition table
+
+wifi:
+  ssid: "test"
+  password: "test123456"
+  ap:
+    ssid: "test-ap"
+    password: "test123456"
+
+logger:
+  baud_rate: 115200
+  level: INFO
+
+# Minimal sensor to verify compilation
+sensor:
+  - platform: uptime
+    name: "Test Uptime"
