@@ -139,7 +139,7 @@ logger:
   baud_rate: 115200
   hardware_uart: UART0
   # Enable detailed ESP-IDF logging for troubleshooting
-  esp32_log_tags:
+  logs:
     esp_timer: DEBUG
     heap_init: DEBUG
     system_api: DEBUG

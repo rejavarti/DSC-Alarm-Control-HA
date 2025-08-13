@@ -286,7 +286,7 @@ Enable comprehensive debugging:
 ```yaml
 logger:
   level: DEBUG
-  esp32_log_tags:
+  logs:
     esp_timer: DEBUG
     heap_init: DEBUG
     app_main: DEBUG
