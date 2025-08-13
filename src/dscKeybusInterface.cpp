@@ -19,15 +19,12 @@
 
 #include "dscKeybus.h"
 
-// Global Serial object definition - only for native/ESP-IDF builds, 
-// removed to avoid conflicts as it's already provided by compatibility headers
+// NOTE: Static variables are defined in dsc_static_variables.cpp for ESPHome builds
+// to prevent LoadProhibited crashes and multiple definition errors.
+// For Arduino IDE builds, static variables should be defined here.
 
-#if defined(ESP32)
-portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
-hw_timer_t * dscKeybusInterface::timer1 = NULL;
-#endif  // ESP32
-
-// Initialize static variables to prevent uninitialized access crashes
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+// Define static variables for Arduino builds only (ESPHome uses dsc_static_variables.cpp)
 byte dscKeybusInterface::dscClockPin = 255;
 byte dscKeybusInterface::dscReadPin = 255;
 byte dscKeybusInterface::dscWritePin = 255;
@@ -65,6 +62,13 @@ volatile byte dscKeybusInterface::moduleCmd = 0;
 volatile byte dscKeybusInterface::moduleSubCmd = 0;
 volatile unsigned long dscKeybusInterface::clockHighTime = 0;
 volatile unsigned long dscKeybusInterface::keybusTime = 0;
+
+// ESP32-specific timer variables
+#if defined(ESP32)
+portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t * dscKeybusInterface::timer1 = NULL;
+#endif  // ESP32
+#endif
 
 dscKeybusInterface::dscKeybusInterface(byte setClockPin, byte setReadPin, byte setWritePin) {
   // Validate pin assignments before proceeding
