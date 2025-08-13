@@ -17,6 +17,23 @@
   // ESP-IDF framework - use native ESP timer API
   #include <esp_timer.h>
   #include <esp_err.h>
+  #include <esp_ipc.h>
+  // Include portmacro.h first to ensure proper port definitions
+  #include "freertos/portmacro.h"
+  
+  // ESP-IDF 5.3.2 compatibility fix: Define missing portYIELD_CORE() macro
+  // This macro is expected by FreeRTOS.h when configNUMBER_OF_CORES > 1
+  #ifndef portYIELD_CORE
+  #define portYIELD_CORE(xCoreID) \
+    do { \
+      if (xCoreID == xPortGetCoreID()) { \
+        portYIELD(); \
+      } else { \
+        esp_ipc_call(xCoreID, vTaskYield, NULL); \
+      } \
+    } while(0)
+  #endif
+  
   #include "freertos/FreeRTOS.h"
   #include "freertos/task.h"
   #define DSC_TIMER_MODE_ESP_IDF
