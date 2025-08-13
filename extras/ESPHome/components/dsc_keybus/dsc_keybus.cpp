@@ -1,6 +1,7 @@
 #include "dsc_keybus.h"
 #include "esphome/core/log.h"
 #include "dsc_wrapper.h"
+#include "dsc_esp_idf_timer_fix.h"  // Enhanced ESP-IDF timer compatibility
 #include <algorithm>
 
 #ifdef ESP32
@@ -8,6 +9,15 @@
 #include <esp_heap_caps.h>  // For heap memory management
 #include <esp_err.h>        // For ESP error handling
 #include <esp_system.h>     // For system functions
+#include <esp_idf_version.h>  // For ESP-IDF version detection
+
+// ESP-IDF 5.3.2+ specific includes for enhanced crash prevention
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+#include <esp_timer.h>      // For high-resolution timer
+#include <esp_app_desc.h>   // For application descriptor
+#define DSC_ESP_IDF_5_3_PLUS_COMPONENT
+#endif
+
 #endif
 
 namespace esphome {
@@ -19,17 +29,71 @@ void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
 
 #ifdef ESP32
+  // Enhanced ESP-IDF 5.3.2+ LoadProhibited crash prevention
+  // The 0xcececece pattern indicates static variables accessed during app_main()
+  // This enhanced approach provides multiple layers of protection
+  
+  #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+  ESP_LOGD(TAG, "ESP-IDF 5.3.2+ detected - applying enhanced LoadProhibited crash prevention");
+  
+  // Check ESP-IDF timer system readiness before proceeding
+  extern volatile bool dsc_esp_idf_timer_system_ready;
+  extern volatile unsigned long dsc_esp_idf_init_delay_timestamp;
+  
+  if (!dsc_esp_idf_timer_system_ready) {
+    ESP_LOGW(TAG, "ESP-IDF timer system not ready during setup - deferring ALL initialization");
+    return;  // Completely abort setup until timer system is ready
+  }
+  
+  // Check if sufficient time has passed since static variable initialization
+  unsigned long current_time_ms = esp_timer_get_time() / 1000;
+  if (current_time_ms - dsc_esp_idf_init_delay_timestamp < 2000) {  // 2 second minimum delay
+    ESP_LOGD(TAG, "Insufficient stabilization time since ESP-IDF init - deferring setup");
+    return;  // Wait longer for system stabilization
+  }
+  #endif
+  
   // Critical: Delay ESP32 setup to prevent LoadProhibited crashes during app_main()
   // The 0xcececece pattern indicates static variables accessed before initialization
   ESP_LOGD(TAG, "Deferring ESP32 hardware setup to prevent LoadProhibited crashes");
   
-  // Check available heap memory before proceeding
+  // Enhanced heap memory validation with stricter requirements for ESP-IDF 5.3.2+
   size_t free_heap = esp_get_free_heap_size();
-  if (free_heap < 30000) {  // Less than 30KB free
-    ESP_LOGW(TAG, "Low heap memory detected: %zu bytes free", free_heap);
+  size_t min_heap = 30000;  // Default minimum
+  
+  #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+  min_heap = 50000;  // Stricter requirement for ESP-IDF 5.3.2+
+  #endif
+  
+  if (free_heap < min_heap) {
+    ESP_LOGW(TAG, "Insufficient heap memory detected: %zu bytes free (need %zu) - deferring setup", 
+             free_heap, min_heap);
+    return;  // Defer setup until more memory is available
   } else {
     ESP_LOGD(TAG, "Available heap memory: %zu bytes", free_heap);
   }
+  
+  // Additional ESP-IDF 5.3.2+ system readiness checks
+  #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+  // Verify that the ESP timer system is fully operational
+  esp_timer_handle_t test_timer = nullptr;
+  esp_timer_create_args_t test_args = {
+    .callback = nullptr,
+    .arg = nullptr,
+    .dispatch_method = ESP_TIMER_TASK,
+    .name = "dsc_setup_test"
+  };
+  
+  esp_err_t timer_test = esp_timer_create(&test_args, &test_timer);
+  if (timer_test != ESP_OK || test_timer == nullptr) {
+    ESP_LOGW(TAG, "ESP timer system not fully ready (error %d) - deferring setup", timer_test);
+    return;  // Timer system not ready
+  } else {
+    esp_timer_delete(test_timer);  // Clean up test timer
+    ESP_LOGD(TAG, "ESP timer system verified operational");
+  }
+  #endif
+  
 #endif
   
   // ONLY initialize the DSC wrapper object (NO hardware initialization yet)
@@ -48,37 +112,83 @@ void DSCKeybusComponent::setup() {
 }
 
 void DSCKeybusComponent::loop() {
-  // Initialize hardware on first loop iteration when ESP32 system is fully ready
-  // This prevents LoadProhibited crashes (0xcececece) during app_main() startup
+  // Enhanced initialization for ESP-IDF 5.3.2+ to prevent LoadProhibited crashes
+  // The 0xcececece pattern indicates hardware initialization attempted too early
   if (!getDSC().isHardwareInitialized()) {
     ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware...");
     
 #ifdef ESP32
-    // Additional safety check for ESP32 - ensure heap is stable
+    #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+    // Additional ESP-IDF 5.3.2+ specific readiness checks
+    extern volatile bool dsc_esp_idf_timer_system_ready;
+    extern volatile unsigned long dsc_esp_idf_init_delay_timestamp;
+    
+    if (!dsc_esp_idf_timer_system_ready) {
+      ESP_LOGW(TAG, "ESP-IDF timer system still not ready - skipping hardware init");
+      return;  // Skip this loop iteration
+    }
+    
+    // Ensure adequate stabilization time for ESP-IDF 5.3.2+
+    unsigned long current_time_ms = esp_timer_get_time() / 1000;
+    if (current_time_ms - dsc_esp_idf_init_delay_timestamp < 3000) {  // 3 second minimum for hardware init
+      ESP_LOGD(TAG, "ESP-IDF 5.3.2+ stabilization period not complete - delaying hardware init");
+      return;  // Wait longer for complete system stabilization
+    }
+    #endif
+    
+    // Enhanced heap stability check with stricter requirements
     size_t free_heap = esp_get_free_heap_size();
-    if (free_heap < 20000) {  // Less than 20KB free
-      ESP_LOGW(TAG, "Low heap during hardware init: %zu bytes - delaying initialization", free_heap);
+    size_t min_heap = 20000;  // Default minimum
+    
+    #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+    min_heap = 35000;  // Stricter requirement for ESP-IDF 5.3.2+ hardware init
+    #endif
+    
+    if (free_heap < min_heap) {
+      ESP_LOGW(TAG, "Insufficient heap for hardware init: %zu bytes free (need %zu) - delaying", 
+               free_heap, min_heap);
       return;  // Defer hardware initialization until heap is stable
     }
 #endif
     
-    // Small delay to ensure system is completely stable before hardware init
-    // This prevents the LoadProhibited crash pattern
+    // Enhanced stabilization timing with longer delays for ESP-IDF 5.3.2+
     static uint32_t init_attempt_time = 0;
     uint32_t current_time = millis();
+    uint32_t required_delay = 1000;  // Default 1 second
+    
+    #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+    required_delay = 2000;  // 2 seconds for ESP-IDF 5.3.2+
+    #endif
     
     if (init_attempt_time == 0) {
       init_attempt_time = current_time;
-      ESP_LOGD(TAG, "Scheduling hardware initialization after system stabilization");
+      ESP_LOGD(TAG, "Scheduling hardware initialization after %u ms system stabilization", required_delay);
       return;  // Wait for next loop iteration
     }
     
-    // Wait at least 1000ms after first attempt to ensure system stability
-    if (current_time - init_attempt_time < 1000) {
+    // Wait for the required stabilization period
+    if (current_time - init_attempt_time < required_delay) {
       return;  // Still waiting for system to stabilize
     }
     
     ESP_LOGD(TAG, "System stabilized - initializing DSC Keybus hardware (timers, interrupts)...");
+    
+    #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+    // Pre-initialize the enhanced timer system for ESP-IDF 5.3.2+
+    ESP_LOGD(TAG, "Pre-initializing ESP-IDF 5.3.2+ timer system for DSC interface");
+    if (!dsc_esp_timer::dsc_timer_is_initialized()) {
+      // Attempt to initialize the enhanced timer system
+      bool timer_ready = dsc_esp_timer::dsc_timer_begin(1, 80, nullptr);
+      if (!timer_ready) {
+        ESP_LOGW(TAG, "Failed to pre-initialize ESP-IDF timer system - retrying next loop");
+        init_attempt_time = 0;  // Reset to retry
+        return;
+      }
+      dsc_esp_timer::dsc_timer_end();  // Clean up test initialization
+      ESP_LOGD(TAG, "ESP-IDF timer system pre-initialization successful");
+    }
+    #endif
+    
     getDSC().begin();
     ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
   }

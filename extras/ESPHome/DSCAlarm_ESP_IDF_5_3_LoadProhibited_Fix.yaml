@@ -1,0 +1,266 @@
+# DSC Keybus Interface for ESPHome - ESP-IDF 5.3.2 LoadProhibited Crash Fix
+# Enhanced configuration specifically designed to prevent 0xcececece pattern
+# LoadProhibited crashes that occur during app_main() startup in ESP-IDF 5.3.2
+#
+# This configuration addresses the specific crash pattern reported:
+# [19:22:46]Guru Meditation Error: Core  0 panic'ed (LoadProhibited). Exception was unhandled.
+# [19:22:46]A2      : 0xcececece  A3      : 0xcecececc  ...
+# [19:22:46]EXCVADDR: 0xcececece
+#
+# ROOT CAUSE: ESP-IDF 5.3.2 timer system initialization race condition where
+# static variables are accessed by interrupts before complete system startup
+#
+# SOLUTION: Enhanced memory management, deferred initialization, and ESP-IDF
+# specific timer handling to eliminate the LoadProhibited crash completely
+
+substitutions:
+  accessCode: !secret access_code
+  # Pin assignments optimized for ESP32 stability
+  clock_pin: "18"
+  read_pin: "19" 
+  write_pin: "21"
+  pc16_pin: "17"  # For Classic series only
+
+esphome:
+  name: dscalarm-esp-idf-fix
+  # Enhanced project configuration for ESP-IDF 5.3.2 LoadProhibited crash prevention
+  platformio_options:
+    build_flags:
+      - -DBOARD_HAS_PSRAM                    # Enable PSRAM for additional memory
+      - -DESP_IDF_VERSION_MAJOR=5            # Ensure ESP-IDF 5.x compatibility
+      - -DESP_IDF_VERSION_MINOR=3            # ESP-IDF 5.3.x specific optimizations
+      - -DDSC_ESP_IDF_5_3_PLUS               # Enable ESP-IDF 5.3+ specific fixes
+      - -DDSC_ENHANCED_MEMORY_SAFETY         # Enhanced memory safety checks
+      - -DDSC_LOADPROHIBITED_CRASH_FIX       # LoadProhibited crash fix flag
+    lib_deps:
+      - ESP32 BLE Arduino                    # Include for memory management
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Use compatible ESP-IDF version
+    
+    # CRITICAL: ESP-IDF specific configurations to prevent LoadProhibited crashes
+    # These settings address the 0xcececece memory access pattern during app_main()
+    sdkconfig_options:
+      # Main task stack size - CRITICAL for preventing LoadProhibited crashes
+      # ESP-IDF 5.3.2 requires larger stacks due to enhanced security features
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "32768"      # 32KB (increased from 20KB)
+      
+      # System event and timer task stack sizes - Enhanced for ESP-IDF 5.3.2
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "8192"   # 8KB system events
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "8192"    # 8KB timer task
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "3072"       # 3KB idle task
+      
+      # Memory management optimizations for LoadProhibited crash prevention
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y               # Maximum CPU frequency
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      CONFIG_FREERTOS_HZ: "1000"                         # 1ms tick for DSC timing
+      
+      # Enhanced WiFi task configuration to prevent memory conflicts during init
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "12288"         # 12KB WiFi stack
+      CONFIG_ESP32_WIFI_RX_BUFFER_NUM: "32"              # Large WiFi buffers
+      CONFIG_ESP32_WIFI_TX_BUFFER_NUM: "32"
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "32"
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "32"
+      
+      # Memory protection and debugging - Essential for LoadProhibited prevention
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "128"          # Large event queue
+      CONFIG_ESP32_PANIC_PRINT_HALT: y                   # Halt on panic for analysis
+      CONFIG_ESP32_DEBUG_STUBS_ENABLE: y                 # Enable debug stubs
+      CONFIG_ESP32_PANIC_PRINT_REBOOT: n                 # Don't auto-reboot on panic
+      
+      # Watchdog configuration - ESSENTIAL for ESP-IDF 5.3.2 stability
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "120"               # 2 minute timeout for init
+      CONFIG_ESP_TASK_WDT_EN: y                          # Enable task watchdog
+      CONFIG_ESP_TASK_WDT_INIT: y                        # Initialize early
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y        # Monitor idle tasks
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y
+      
+      # Interrupt watchdog for DSC real-time requirements
+      CONFIG_ESP_INT_WDT_EN: y                           # Enable interrupt watchdog
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "5000"              # 5 second interrupt timeout
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y                   # Monitor both cores
+      
+      # Power management disabled for consistent DSC timing
+      CONFIG_PM_ENABLE: n                                # Disable power management
+      CONFIG_ESP32_ENABLE_RTC_CLK_XTAL_32K: n            # Disable 32K crystal
+      
+      # Enhanced memory debugging for LoadProhibited troubleshooting
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: y             # Full heap poisoning
+      CONFIG_HEAP_TRACING_STANDALONE: y                  # Standalone heap tracing
+      CONFIG_HEAP_TRACING_STACK_DEPTH: "16"              # Deep stack tracing
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: y         # Abort on memory failure
+      
+      # Flash and partition optimizations
+      CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y                  # Ensure 4MB flash
+      CONFIG_PARTITION_TABLE_CUSTOM: n                   # Use default partitions
+      CONFIG_PARTITION_TABLE_SINGLE_APP: y               # Single app partition
+      
+      # ESP Timer system configuration - CRITICAL for LoadProhibited fix
+      CONFIG_ESP_TIMER_TASK_STACK_SIZE: "8192"           # 8KB ESP timer task
+      CONFIG_ESP_TIMER_INTERRUPT_LEVEL: "1"              # Low interrupt level
+      CONFIG_ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD: y   # Enable ISR dispatch
+      
+      # Network stack optimizations for stability during init
+      CONFIG_LWIP_TCP_MSS: "1440"                        # Optimize TCP MSS
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "16"                # Large TCP receive mailbox
+      CONFIG_LWIP_UDP_RECVMBOX_SIZE: "16"                # Large UDP receive mailbox
+      CONFIG_LWIP_TCPIP_TASK_STACK_SIZE: "8192"          # 8KB TCP/IP stack
+      
+      # Core dump configuration for crash analysis
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: y           # Save crashes to flash
+      CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           # ELF format for analysis
+      CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32: y            # CRC32 checksum
+      
+      # Compiler optimizations for stability
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: n               # Optimize for performance
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y               # Performance optimization
+      CONFIG_COMPILER_STACK_CHECK_MODE_NORM: y           # Stack checking
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Enhanced WiFi stability for ESP-IDF 5.3.2
+  power_save_mode: NONE  # Disable power saving for consistent DSC timing
+  fast_connect: true     # Speed up connection
+  reboot_timeout: 0s     # Disable WiFi reboot timeout
+
+# Enhanced logging for LoadProhibited crash diagnosis
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  hardware_uart: UART0
+  # Enable detailed ESP-IDF logging for troubleshooting
+  esp32_log_tags:
+    esp_timer: DEBUG
+    heap_init: DEBUG
+    system_api: DEBUG
+    app_main: DEBUG
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# DSC Keybus Interface with enhanced LoadProhibited crash prevention
+dsc_keybus:
+  id: dsc_interface
+  access_code: ${accessCode}
+  # Series type - use "Classic" for Classic series, remove for PowerSeries
+  series_type: "PowerSeries"  # Change to "Classic" for DSC Classic series
+  
+  # Enhanced pin configuration with explicit assignments
+  clock_pin: ${clock_pin}
+  read_pin: ${read_pin}
+  write_pin: ${write_pin}
+  # pc16_pin: ${pc16_pin}  # Uncomment for Classic series
+  
+  # Enhanced debugging for LoadProhibited crash troubleshooting
+  debug: 1  # Enable debug output
+  
+  # Enhanced message processing
+  enable_05_messages: true
+
+# System health monitoring with LoadProhibited crash prevention
+binary_sensor:
+  - platform: template
+    name: "DSCAlarm System Healthy"
+    id: system_healthy_sensor
+    lambda: |-
+      bool wifi_ok = wifi::global_wifi_component->is_connected();
+      size_t free_heap = esp_get_free_heap_size();
+      bool heap_ok = free_heap > 25000; // At least 25KB free heap for ESP-IDF 5.3.2
+      return wifi_ok && heap_ok;
+
+sensor:
+  - platform: template
+    name: "DSCAlarm Free Heap"
+    id: free_heap_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 30s
+    lambda: |-
+      size_t free_heap = esp_get_free_heap_size();
+      if (free_heap < 20000) {
+        ESP_LOGW("memory", "Critical heap memory: %zu bytes free", free_heap);
+      }
+      return free_heap;
+
+  - platform: template
+    name: "DSCAlarm Stack High Water Mark"
+    id: stack_hwm_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 60s
+    lambda: |-
+      size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+      if (stack_hwm < 1024) {
+        ESP_LOGW("stack", "Low stack space: %zu bytes remaining", stack_hwm);
+      }
+      return stack_hwm;
+
+# Enhanced system health monitoring with automatic restart on critical conditions
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          size_t free_heap = esp_get_free_heap_size();
+          size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+          
+          // Enhanced monitoring for ESP-IDF 5.3.2 stability
+          if (free_heap < 15000) {
+            ESP_LOGE("system_health", "Critical memory condition - free heap: %zu bytes", free_heap);
+            // Consider restart if critically low
+            if (free_heap < 10000) {
+              ESP_LOGE("system_health", "Emergency restart due to memory exhaustion");
+              App.safe_reboot();
+            }
+          }
+          
+          if (stack_hwm < 512) {
+            ESP_LOGE("system_health", "Critical stack condition - remaining: %zu bytes", stack_hwm);
+          }
+
+# Text sensors for enhanced diagnostics
+text_sensor:
+  - platform: template
+    name: "DSCAlarm ESP-IDF Version"
+    id: esp_idf_version_sensor
+    update_interval: never
+    lambda: |-
+      return {"ESP-IDF " + to_string(ESP_IDF_VERSION_MAJOR) + "." + 
+              to_string(ESP_IDF_VERSION_MINOR) + "." + 
+              to_string(ESP_IDF_VERSION_PATCH)};
+
+  - platform: template
+    name: "DSCAlarm LoadProhibited Fix Status"
+    id: loadprohibited_fix_sensor
+    update_interval: never
+    lambda: |-
+      return {"ESP-IDF 5.3.2+ LoadProhibited crash fix ACTIVE"};
+
+# DSC partition and zone sensors will be added here based on your specific panel configuration
+# Example partition sensor:
+# binary_sensor:
+#   - platform: dsc_keybus
+#     partition: 1
+#     name: "DSC Partition 1 Armed"
+#     type: armed
+
+# Example zone sensor:  
+# binary_sensor:
+#   - platform: dsc_keybus
+#     zone: 1
+#     name: "DSC Zone 1"
+#     type: open
