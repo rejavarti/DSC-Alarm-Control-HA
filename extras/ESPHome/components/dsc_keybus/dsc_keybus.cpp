@@ -98,7 +98,7 @@ void DSCKeybusComponent::setup() {
   
   // ONLY initialize the DSC wrapper object (NO hardware initialization yet)
   // This creates the interface object but doesn't start timers/interrupts
-  getDSC().init(DSC_DEFAULT_CLOCK_PIN, DSC_DEFAULT_READ_PIN, DSC_DEFAULT_WRITE_PIN, DSC_DEFAULT_PC16_PIN);
+  getDSC().init(this->clock_pin_, this->read_pin_, this->write_pin_, this->pc16_pin_);
   
   // Initialize system state
   for (auto *trigger : this->system_status_triggers_) {
