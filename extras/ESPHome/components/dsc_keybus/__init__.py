@@ -125,6 +125,9 @@ async def to_code(config):
     else:  # PowerSeries
         cg.add_define("dscPowerSeries")
     
+    # Prevent multiple definition of static variables - critical for ESPHome builds
+    cg.add_define("DSC_STATIC_VARIABLES_DEFINED")
+    
     # Set up triggers
     for conf in config.get(CONF_ON_SYSTEM_STATUS_CHANGE, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
