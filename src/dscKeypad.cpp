@@ -227,7 +227,11 @@ bool dscKeypadInterface::loop() {
     #elif defined(ESP8266)
     timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP);
     #elif defined(ESP32)
-    timerStart(timer1);
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      timerStart(timer1);
+    }
     #endif
   }
   else if (!commandReady) intervalStart = millis();
@@ -541,7 +545,11 @@ void dscKeypadInterface::dscClockInterrupt() {
     #elif defined(ESP8266)
     timer1_disable();
     #elif defined(ESP32)
-    timerStop(timer1);
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      timerStop(timer1);
+    }
     #endif
   }
 

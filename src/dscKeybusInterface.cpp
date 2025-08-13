@@ -654,8 +654,12 @@ void dscKeybusInterface::dscClockInterrupt() {
 
   // esp32 timer1 calls dscDataInterrupt() in 250us
   #elif defined(ESP32)
-  timerStart(timer1);
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    timerStart(timer1);
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #endif
 
   static unsigned long previousClockHighTime;
@@ -801,8 +805,12 @@ void dscKeybusInterface::dscDataInterrupt() {
 void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscKeybusInterface::dscDataInterrupt() {
-  timerStop(timer1);
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    timerStop(timer1);
+    portENTER_CRITICAL(&timer1Mux);
+  }
 #else
 // Native/test environment
 void dscKeybusInterface::dscDataInterrupt() {
