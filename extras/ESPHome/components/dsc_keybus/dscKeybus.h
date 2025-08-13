@@ -279,6 +279,13 @@ class dscKeybusInterface {
     static volatile bool esp32_hardware_initialized;
     static volatile bool esp32_timers_configured;
     static volatile unsigned long esp32_init_timestamp;
+    
+    // ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
+    #ifdef DSC_ESP_IDF_5_3_PLUS
+    static volatile bool esp32_esp_idf_timer_ready;
+    static volatile bool esp32_system_fully_initialized;
+    static volatile unsigned long esp32_stabilization_timestamp;
+    #endif
     #endif
 
     Stream* stream;

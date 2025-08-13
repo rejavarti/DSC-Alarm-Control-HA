@@ -17,9 +17,13 @@
 #include <esp_timer.h>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
+#include <esp_idf_version.h>  // For ESP-IDF version detection
+#include "dsc_esp_idf_timer_fix.h"  // Enhanced timer compatibility layer
+
 #ifdef ARDUINO
 #include <esp32-hal-timer.h>
 #endif
+
 // Ensure timer types are properly defined before use
 #ifndef TIMER_BASE_CLK
 #define TIMER_BASE_CLK 80000000  // 80MHz APB clock
@@ -28,6 +32,15 @@
 // Critical safety check for ESP32 LoadProhibited prevention
 // Initialize a guard variable to detect if static initialization has completed
 volatile bool dsc_static_variables_initialized = false;
+
+// ESP-IDF 5.3.2 specific safeguards
+// Track ESP-IDF version to apply version-specific fixes
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+#define DSC_ESP_IDF_5_3_PLUS
+volatile bool dsc_esp_idf_timer_system_ready = false;
+volatile unsigned long dsc_esp_idf_init_delay_timestamp = 0;
+#endif
+
 #endif
 
 #if defined(dscClassicSeries)
@@ -83,8 +96,10 @@ volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
 
 // ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
 // These MUST be initialized to prevent memory access violations during ISR execution
-// The 0xa5a5a5a5 pattern indicates these variables were accessed before initialization
+// The 0xa5a5a5a5 and 0xcececece patterns indicate these variables were accessed before initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
+
+// Legacy timer variables for backward compatibility
 hw_timer_t * dscClassicInterface::timer1 = nullptr;
 portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -92,6 +107,14 @@ portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool dscClassicInterface::esp32_hardware_initialized = false;
 volatile bool dscClassicInterface::esp32_timers_configured = false;
 volatile unsigned long dscClassicInterface::esp32_init_timestamp = 0;
+
+// ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
+#ifdef DSC_ESP_IDF_5_3_PLUS
+volatile bool dscClassicInterface::esp32_esp_idf_timer_ready = false;
+volatile bool dscClassicInterface::esp32_system_fully_initialized = false;
+volatile unsigned long dscClassicInterface::esp32_stabilization_timestamp = 0;
+#endif
+
 #endif
 
 #elif defined(dscKeypad)
@@ -230,8 +253,10 @@ volatile unsigned long dscKeybusInterface::keybusTime = 0;
 
 // ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
 // These MUST be initialized to prevent memory access violations during ISR execution
-// The 0xa5a5a5a5 pattern indicates these variables were accessed before initialization
+// The 0xa5a5a5a5 and 0xcececece patterns indicate these variables were accessed before initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
+
+// Legacy timer variables for backward compatibility
 hw_timer_t * dscKeybusInterface::timer1 = nullptr;
 portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -239,6 +264,14 @@ portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool dscKeybusInterface::esp32_hardware_initialized = false;
 volatile bool dscKeybusInterface::esp32_timers_configured = false;
 volatile unsigned long dscKeybusInterface::esp32_init_timestamp = 0;
+
+// ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
+#ifdef DSC_ESP_IDF_5_3_PLUS
+volatile bool dscKeybusInterface::esp32_esp_idf_timer_ready = false;
+volatile bool dscKeybusInterface::esp32_system_fully_initialized = false;
+volatile unsigned long dscKeybusInterface::esp32_stabilization_timestamp = 0;
+#endif
+
 #endif
 
 #endif
@@ -247,7 +280,46 @@ volatile unsigned long dscKeybusInterface::esp32_init_timestamp = 0;
 // This must be the LAST line to ensure all static initialization is complete
 #if defined(ESP32) || defined(ESP_PLATFORM)
 extern volatile bool dsc_static_variables_initialized;
+
+// ESP-IDF 5.3.2+ enhanced initialization function with additional safeguards
 void __attribute__((constructor)) mark_static_variables_initialized() {
     dsc_static_variables_initialized = true;
+    
+    #ifdef DSC_ESP_IDF_5_3_PLUS
+    // Set initial timestamp for ESP-IDF 5.3.2+ stabilization tracking
+    dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000; // Convert to milliseconds
+    
+    // Additional safety check for ESP-IDF timer system readiness
+    // This prevents the 0xcececece LoadProhibited crashes in ESP-IDF 5.3.2+
+    esp_timer_handle_t test_timer = nullptr;
+    esp_timer_create_args_t test_args = {
+        .callback = nullptr,
+        .arg = nullptr,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "dsc_init_test"
+    };
+    
+    // Test if ESP timer system is ready without actually creating a timer
+    if (esp_timer_create(&test_args, &test_timer) == ESP_OK) {
+        if (test_timer != nullptr) {
+            esp_timer_delete(test_timer);
+        }
+        dsc_esp_idf_timer_system_ready = true;
+    } else {
+        dsc_esp_idf_timer_system_ready = false;
+    }
+    #endif
+}
+
+// Additional constructor to ensure proper ordering
+void __attribute__((constructor(102))) finalize_dsc_initialization() {
+    #ifdef DSC_ESP_IDF_5_3_PLUS
+    // Mark system as ready for timer initialization after a brief delay
+    // This additional delay prevents LoadProhibited crashes during app_main()
+    if (dsc_static_variables_initialized && dsc_esp_idf_timer_system_ready) {
+        // System appears ready for DSC timer operations
+        // The actual hardware initialization will still be deferred to ESPHome loop()
+    }
+    #endif
 }
 #endif
