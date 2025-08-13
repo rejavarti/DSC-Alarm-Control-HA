@@ -160,6 +160,15 @@ void DSCKeybusComponent::disconnect_keybus() {
   this->force_disconnect_ = true;
 }
 
+// Status methods - wrapper for DSCWrapper methods to maintain YAML compatibility
+bool DSCKeybusComponent::getKeybusConnected() {
+  return getDSC().getKeybusConnected();
+}
+
+bool DSCKeybusComponent::getBufferOverflow() {
+  return getDSC().getBufferOverflow();
+}
+
 // Helper methods
 bool DSCKeybusComponent::is_numeric_code(const std::string &code) {
   return !code.empty() && std::all_of(code.begin(), code.end(), ::isdigit);

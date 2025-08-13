@@ -128,6 +128,10 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   void alarm_keypress(const std::string &keys);
   void disconnect_keybus();
 
+  // Status methods - wrapper for DSCWrapper methods to maintain YAML compatibility
+  bool getKeybusConnected();
+  bool getBufferOverflow();
+
   // Trigger registration methods
   void add_system_status_trigger(SystemStatusChangeTrigger *trigger) {
     this->system_status_triggers_.push_back(trigger);
