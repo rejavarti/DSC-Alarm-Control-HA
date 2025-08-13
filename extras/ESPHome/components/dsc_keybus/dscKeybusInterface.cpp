@@ -55,9 +55,21 @@ void dscKeybusInterface::begin(Stream &_stream) {
   // This prevents LoadProhibited crashes (0xcececece pattern) during ESP32 initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
   extern volatile bool dsc_static_variables_initialized;
+  
+  // SAFETY FALLBACK: If constructors haven't run yet, force initialization now
+  // This handles edge cases where begin() is called very early in boot sequence
   if (!dsc_static_variables_initialized) {
-    _stream.println(F("ERROR: Static variables not initialized - aborting begin()"));
-    return;  // Abort initialization to prevent LoadProhibited crash
+    // Declare and call the manual initialization function as fallback
+    extern void dsc_manual_static_variables_init();
+    dsc_manual_static_variables_init();
+    
+    // If still not initialized after manual call, there's a deeper issue
+    if (!dsc_static_variables_initialized) {
+      _stream.println(F("ERROR: Static variables not initialized - aborting begin()"));
+      return;  // Abort initialization to prevent LoadProhibited crash
+    } else {
+      _stream.println(F("WARNING: Used fallback static variable initialization"));
+    }
   }
   
   // Additional safety: verify that essential static variables are properly initialized

@@ -298,20 +298,22 @@ volatile unsigned long dscKeybusInterface::esp32_stabilization_timestamp = 0;
 // Signal that all static variables have been initialized
 // This must be the LAST line to ensure all static initialization is complete
 #if defined(ESP32) || defined(ESP_PLATFORM)
-extern volatile bool dsc_static_variables_initialized;
 
-// CRITICAL: Add ultra-early initialization to prevent 0xcececece LoadProhibited crashes
+// CRITICAL: Add ultra-early initialization to prevent 0xcececece LoadProhibited crashes  
 // This runs before any other constructors and ensures critical variables have safe values
-void __attribute__((constructor(101))) dsc_ultra_early_init() {
+void __attribute__((constructor(100))) dsc_ultra_early_init() {
     // Initialize the most critical variables with safe defaults immediately
     dsc_static_variables_initialized = false;  // Will be set to true by main constructor
+    
+    // Only initialize ESP-IDF 5.3+ specific variables if they exist
+    #if defined(DSC_ESP_IDF_5_3_PLUS) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0))
     dsc_esp_idf_timer_system_ready = true;     // Safe default, will be verified later
     dsc_esp_idf_init_delay_timestamp = 0;      // Will be set when timer system is ready
+    #endif
 }
 
-// ESP-IDF 5.3.2+ enhanced initialization function with simplified safeguards
-// CRITICAL FIX: Removed complex timer testing that could trigger LoadProhibited crashes
-void __attribute__((constructor)) mark_static_variables_initialized() {
+// Manual initialization function that can be called as a fallback
+void dsc_manual_static_variables_init() {
     dsc_static_variables_initialized = true;
     
     #ifdef DSC_ESP_IDF_5_3_PLUS
@@ -327,6 +329,13 @@ void __attribute__((constructor)) mark_static_variables_initialized() {
     // The actual test_timer validation is deferred to component setup phase for safety
     esp_timer_handle_t test_timer = nullptr;  // Used for validation pattern matching only
     #endif
+}
+
+// ESP-IDF 5.3.2+ enhanced initialization function with simplified safeguards
+// CRITICAL FIX: Removed complex timer testing that could trigger LoadProhibited crashes
+void __attribute__((constructor(101))) mark_static_variables_initialized() {
+    // Call the manual initialization function
+    dsc_manual_static_variables_init();
 }
 
 // Additional constructor to ensure proper ordering - simplified to prevent LoadProhibited
