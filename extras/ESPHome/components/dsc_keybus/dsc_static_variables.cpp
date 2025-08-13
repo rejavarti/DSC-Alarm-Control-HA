@@ -36,7 +36,9 @@ volatile bool dsc_static_variables_initialized = false;
 // ESP-IDF 5.3.2 specific safeguards
 // Track ESP-IDF version to apply version-specific fixes
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+#ifndef DSC_ESP_IDF_5_3_PLUS
 #define DSC_ESP_IDF_5_3_PLUS
+#endif
 volatile bool dsc_esp_idf_timer_system_ready = false;
 volatile unsigned long dsc_esp_idf_init_delay_timestamp = 0;
 #endif
