@@ -1,6 +1,10 @@
 #ifndef DSC_ARDUINO_COMPATIBILITY_H
 #define DSC_ARDUINO_COMPATIBILITY_H
 
+// Prevent duplicate static variable definitions in ESPHome builds
+// Static variables are defined in dsc_static_variables.cpp
+#define DSC_STATIC_VARIABLES_DEFINED
+
 #include <cstdint>
 #include <cstring>
 
