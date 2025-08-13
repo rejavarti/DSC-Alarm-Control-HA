@@ -27,8 +27,8 @@
 #include "dscClassic.h"
 
 #if defined(ESP32)
-portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
-hw_timer_t * dscClassicInterface::timer1 = NULL;
+// Static variables are now defined in dsc_static_variables.cpp to prevent LoadProhibited crashes
+// Removing duplicate definitions - timer1 and timer1Mux are defined there
 #endif
 
 dscClassicInterface::dscClassicInterface(byte setClockPin, byte setReadPin, byte setPC16Pin, byte setWritePin, const char * setAccessCode) {
