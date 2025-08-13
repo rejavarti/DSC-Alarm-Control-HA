@@ -192,7 +192,11 @@ bool dscClassicInterface::loop() {
 
   // Checks if Keybus data is detected and sets a status flag if data is not detected for 3s
   #if defined(ESP32)
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #else
   noInterrupts();
   #endif
@@ -201,7 +205,11 @@ bool dscClassicInterface::loop() {
   else keybusConnected = true;
 
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #else
   interrupts();
   #endif
@@ -232,7 +240,11 @@ bool dscClassicInterface::loop() {
 
   // Resets counters when the buffer is cleared
   #if defined(ESP32)
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #else
   noInterrupts();
   #endif
@@ -243,7 +255,11 @@ bool dscClassicInterface::loop() {
   }
 
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #else
   interrupts();
   #endif
@@ -1116,8 +1132,12 @@ void dscClassicInterface::dscClockInterrupt() {
 
   // esp32 timer1 calls dscDataInterrupt() in 250us
   #elif defined(ESP32)
-  timerStart(timer1);
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    timerStart(timer1);
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #endif
 
   static unsigned long previousClockHighTime;
@@ -1157,7 +1177,11 @@ void dscClassicInterface::dscClockInterrupt() {
     }
   }
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #endif
 }
 
@@ -1169,8 +1193,12 @@ void dscClassicInterface::dscDataInterrupt() {
 void ICACHE_RAM_ATTR dscClassicInterface::dscDataInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscClassicInterface::dscDataInterrupt() {
-  timerStop(timer1);
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    timerStop(timer1);
+    portENTER_CRITICAL(&timer1Mux);
+  }
 #elif defined(ESP_IDF_VERSION)
 void dscClassicInterface::dscDataInterrupt() {
 #else
@@ -1300,7 +1328,11 @@ void dscClassicInterface::dscDataInterrupt() {
 
   }
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #endif
 }
 
