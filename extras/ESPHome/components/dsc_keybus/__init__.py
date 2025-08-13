@@ -37,6 +37,9 @@ ZoneAlarmChangeTrigger = dsc_keybus_ns.class_(
 # Configuration keys
 CONF_SERIES_TYPE = "series_type"
 CONF_PC16_PIN = "pc16_pin"
+CONF_CLOCK_PIN = "clock_pin"
+CONF_READ_PIN = "read_pin"
+CONF_WRITE_PIN = "write_pin"
 CONF_ON_SYSTEM_STATUS_CHANGE = "on_system_status_change"
 CONF_ON_PARTITION_STATUS_CHANGE = "on_partition_status_change"
 CONF_ON_PARTITION_MSG_CHANGE = "on_partition_msg_change"
@@ -53,6 +56,9 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional("enable_05_messages", default=True): cv.boolean,
     cv.Optional(CONF_SERIES_TYPE, default="Classic"): cv.one_of("PowerSeries", "Classic"),
     cv.Optional(CONF_PC16_PIN): cv.int_range(0, 40),  # Pin for Classic series PC-16 line
+    cv.Optional(CONF_CLOCK_PIN): cv.int_range(0, 40),  # DSC Clock pin
+    cv.Optional(CONF_READ_PIN): cv.int_range(0, 40),   # DSC Data read pin  
+    cv.Optional(CONF_WRITE_PIN): cv.int_range(0, 40),  # DSC Data write pin
     cv.Optional(CONF_ON_SYSTEM_STATUS_CHANGE): automation.validate_automation(
         {
             cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(SystemStatusChangeTrigger),
@@ -99,6 +105,16 @@ async def to_code(config):
     cg.add(var.set_access_code(config["access_code"]))
     cg.add(var.set_debug_level(config["debug"]))
     cg.add(var.set_enable_05_messages(config["enable_05_messages"]))
+    
+    # Set pin configurations if specified
+    if CONF_CLOCK_PIN in config:
+        cg.add(var.set_clock_pin(config[CONF_CLOCK_PIN]))
+    if CONF_READ_PIN in config:
+        cg.add(var.set_read_pin(config[CONF_READ_PIN]))
+    if CONF_WRITE_PIN in config:
+        cg.add(var.set_write_pin(config[CONF_WRITE_PIN]))
+    if CONF_PC16_PIN in config:
+        cg.add(var.set_pc16_pin(config[CONF_PC16_PIN]))
     
     # Set series type and enable appropriate defines
     series_type = config[CONF_SERIES_TYPE]

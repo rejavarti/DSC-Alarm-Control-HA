@@ -111,6 +111,10 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   void set_access_code(const std::string &code) { this->access_code_ = code; }
   void set_debug_level(uint8_t level) { this->debug_level_ = level; }
   void set_enable_05_messages(bool enable) { this->enable_05_messages_ = enable; }
+  void set_clock_pin(uint8_t pin) { this->clock_pin_ = pin; }
+  void set_read_pin(uint8_t pin) { this->read_pin_ = pin; }
+  void set_write_pin(uint8_t pin) { this->write_pin_ = pin; }
+  void set_pc16_pin(uint8_t pin) { this->pc16_pin_ = pin; }
 
   // Component lifecycle
   void setup() override;
@@ -176,6 +180,12 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   uint8_t debug_level_{0};
   bool enable_05_messages_{true};
   bool force_disconnect_{false};
+  
+  // Pin configuration - use default pins if not specified
+  uint8_t clock_pin_{DSC_DEFAULT_CLOCK_PIN};
+  uint8_t read_pin_{DSC_DEFAULT_READ_PIN};
+  uint8_t write_pin_{DSC_DEFAULT_WRITE_PIN};
+  uint8_t pc16_pin_{DSC_DEFAULT_PC16_PIN};
 
   // Trigger lists
   std::vector<SystemStatusChangeTrigger *> system_status_triggers_;
