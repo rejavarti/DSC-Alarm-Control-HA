@@ -28,7 +28,23 @@
   #if defined(ESP32) || defined(ESP_PLATFORM)
     #include <esp_attr.h>
     #include <esp_timer.h>
+    #include <esp_ipc.h>
     #include <freertos/portmacro.h>
+    
+    // ESP-IDF 5.3.2 compatibility fix: Define missing portYIELD_CORE() macro
+    // This macro is expected by FreeRTOS.h when configNUMBER_OF_CORES > 1
+    // CRITICAL: Must be defined before ANY FreeRTOS headers are included
+    #ifndef portYIELD_CORE
+    #define portYIELD_CORE(xCoreID) \
+      do { \
+        if (xCoreID == xPortGetCoreID()) { \
+          portYIELD(); \
+        } else { \
+          esp_ipc_call(xCoreID, vTaskYield, NULL); \
+        } \
+      } while(0)
+    #endif
+    
     // For ESPHome/ESP-IDF, define hw_timer_t which is Arduino ESP32 framework specific
     #ifndef ARDUINO
       typedef esp_timer_handle_t hw_timer_t;
