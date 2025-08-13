@@ -144,6 +144,23 @@
   inline void noInterrupts() { /* stub */ }
   inline void interrupts() { /* stub */ }
   
+  // Arduino delay function compatibility
+  #if defined(ESP32) || defined(ESP_PLATFORM)
+    // For ESP32/ESP-IDF, use FreeRTOS delay
+    #include <freertos/FreeRTOS.h>
+    #include <freertos/task.h>
+    inline void delay(unsigned long ms) { 
+      vTaskDelay(pdMS_TO_TICKS(ms));
+    }
+  #else
+    // For other platforms, use standard sleep
+    #include <chrono>
+    #include <thread>
+    inline void delay(unsigned long ms) { 
+      std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+  #endif
+  
   #define INPUT 0
   #define OUTPUT 1
   #define LOW 0
