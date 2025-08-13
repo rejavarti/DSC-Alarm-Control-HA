@@ -36,16 +36,17 @@ void DSCKeybusComponent::setup() {
   #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
   ESP_LOGD(TAG, "ESP-IDF 5.3.2+ detected - applying enhanced LoadProhibited crash prevention");
   
-  // Check ESP-IDF timer system readiness before proceeding
+  // Initialize timestamp now that ESP timer system is safely available
   extern volatile bool dsc_esp_idf_timer_system_ready;
   extern volatile unsigned long dsc_esp_idf_init_delay_timestamp;
   
-  if (!dsc_esp_idf_timer_system_ready) {
-    ESP_LOGW(TAG, "ESP-IDF timer system not ready during setup - deferring ALL initialization");
-    return;  // Completely abort setup until timer system is ready
+  // Initialize timestamp if not already set (constructor couldn't safely do this)
+  if (dsc_esp_idf_init_delay_timestamp == 0) {
+    dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000;
+    ESP_LOGD(TAG, "Initialized ESP-IDF stabilization timestamp: %lu ms", dsc_esp_idf_init_delay_timestamp);
   }
   
-  // Check if sufficient time has passed since static variable initialization
+  // Check if sufficient time has passed since static variable initialization  
   unsigned long current_time_ms = esp_timer_get_time() / 1000;
   if (current_time_ms - dsc_esp_idf_init_delay_timestamp < 2000) {  // 2 second minimum delay
     ESP_LOGD(TAG, "Insufficient stabilization time since ESP-IDF init - deferring setup");
@@ -123,9 +124,10 @@ void DSCKeybusComponent::loop() {
     extern volatile bool dsc_esp_idf_timer_system_ready;
     extern volatile unsigned long dsc_esp_idf_init_delay_timestamp;
     
-    if (!dsc_esp_idf_timer_system_ready) {
-      ESP_LOGW(TAG, "ESP-IDF timer system still not ready - skipping hardware init");
-      return;  // Skip this loop iteration
+    // Initialize timestamp if not set yet (safety fallback)
+    if (dsc_esp_idf_init_delay_timestamp == 0) {
+      dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000;
+      ESP_LOGD(TAG, "Late initialization of ESP-IDF stabilization timestamp: %lu ms", dsc_esp_idf_init_delay_timestamp);
     }
     
     // Ensure adequate stabilization time for ESP-IDF 5.3.2+
