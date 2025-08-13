@@ -21,10 +21,15 @@
 #if defined dscKeypad_h
 
 
+// NOTE: ESP32 timer variables are defined in dsc_static_variables.cpp for ESPHome builds
+// to prevent LoadProhibited crashes and multiple definition errors.
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+// Define timer variables for Arduino builds only (ESPHome uses dsc_static_variables.cpp)
 #if defined(ESP32)
 portMUX_TYPE dscKeypadInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 hw_timer_t * dscKeypadInterface::timer1 = NULL;
 #endif  // ESP32
+#endif
 
 
 dscKeypadInterface::dscKeypadInterface(byte setClockPin, byte setReadPin, byte setWritePin) {

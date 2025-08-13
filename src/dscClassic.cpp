@@ -19,12 +19,25 @@
 
 #include "dscClassic.h"
 
+// NOTE: Static variables are defined in dsc_static_variables.cpp for ESPHome builds
+// to prevent LoadProhibited crashes and multiple definition errors.
+// For Arduino IDE builds, static variables are defined in the corresponding component file.
+
+// NOTE: ESP32 timer variables are also defined in dsc_static_variables.cpp for ESPHome builds
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+// Define timer variables for Arduino builds only (ESPHome uses dsc_static_variables.cpp)
 #if defined(ESP32)
 portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 hw_timer_t * dscClassicInterface::timer1 = NULL;
 #endif
+#endif
 
-// Initialize static variables to prevent uninitialized access crashes
+// NOTE: Static variables are defined in dsc_static_variables.cpp for ESPHome builds
+// to prevent LoadProhibited crashes and multiple definition errors.
+// For Arduino IDE builds, static variables are defined here.
+
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+// Define static variables for Arduino builds only (ESPHome uses dsc_static_variables.cpp)
 byte dscClassicInterface::dscClockPin = 255;
 byte dscClassicInterface::dscReadPin = 255;  
 byte dscClassicInterface::dscPC16Pin = 255;
@@ -71,8 +84,14 @@ volatile unsigned long dscClassicInterface::clockHighTime = 0;
 volatile unsigned long dscClassicInterface::keybusTime = 0;
 volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
 
+// ESP32-specific timer variables
+#if defined(ESP32)
+portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t * dscClassicInterface::timer1 = NULL;
+#endif
+#endif
+
 dscClassicInterface::dscClassicInterface(byte setClockPin, byte setReadPin, byte setPC16Pin, byte setWritePin, const char * setAccessCode) {
-  // Validate pin assignments before proceeding
   if (setClockPin == 255 || setReadPin == 255 || setPC16Pin == 255) {
     // Invalid pin configuration - set safe defaults but don't proceed with initialization
     return;
