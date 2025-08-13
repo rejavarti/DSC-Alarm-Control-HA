@@ -116,7 +116,10 @@ esp32:
       CONFIG_LWIP_TCPIP_TASK_STACK_SIZE: "8192"          # 8KB TCP/IP stack
       
       # Core dump configuration for crash analysis
-      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: y           # Save crashes to flash
+      # FIXED: Changed from flash to UART to resolve "No core dump partition found!" error
+      # Flash-based core dumps require custom partition table with core dump partition
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_UART: y            # Save crashes to UART output
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: n           # Disable flash dumps (no partition available)
       CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           # ELF format for analysis
       CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32: y            # CRC32 checksum
       
