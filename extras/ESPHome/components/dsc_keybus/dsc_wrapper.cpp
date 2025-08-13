@@ -72,16 +72,8 @@ void DSCWrapper::begin() {
 #endif
         
         // Initialize hardware with protection against early access
-        try {
-            dsc_interface_->begin();
-            hardware_initialized_ = true;
-        } catch (...) {
-            // Hardware initialization failed - keep hardware_initialized_ false
-            // This will cause retry on next loop iteration
-#ifdef ESP32
-            // Log error if possible
-#endif
-        }
+        dsc_interface_->begin();
+        hardware_initialized_ = true;
     }
 }
 
@@ -102,12 +94,8 @@ void DSCWrapper::begin(Stream& stream) {
 #endif
         
         // Initialize hardware with protection against early access
-        try {
-            dsc_interface_->begin(stream);
-            hardware_initialized_ = true;
-        } catch (...) {
-            // Hardware initialization failed - keep hardware_initialized_ false
-        }
+        dsc_interface_->begin(stream);
+        hardware_initialized_ = true;
     }
 }
 
@@ -117,7 +105,6 @@ bool DSCWrapper::loop() {
         return dsc_interface_->loop();
     }
     return false;
-}
 }
 
 void DSCWrapper::resetStatus() {
