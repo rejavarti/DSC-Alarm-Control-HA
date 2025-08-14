@@ -22,15 +22,20 @@
 
 #include <cstdint>
 #include <cstring>
-#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
-  // ESP-IDF framework includes or native build (not Arduino platforms)
-  #ifdef ESP_IDF_VERSION
+#include "dsc_arduino_compatibility.h"
+
+// Compatible type definitions
+#ifndef byte
+typedef uint8_t byte;
+#endif
+  // Non-Arduino environments - provide Arduino compatibility
+  #if defined(ESP_IDF_VERSION)
+    // ESP-IDF framework includes
     #include <esp_attr.h>
     #include <esp_timer.h>
     #include <freertos/portmacro.h>
   #endif
   #include <stdio.h>
-  #include <cstring>
   #include <chrono>
   #include <thread>
   
@@ -78,7 +83,6 @@
   inline int digitalPinToInterrupt(int pin) { return pin; /* stub */ }
   inline void noInterrupts() { /* stub */ }
   inline void interrupts() { /* stub */ }
-  // Note: delay() is not defined here to avoid conflicts with Arduino.h
   inline char* itoa(int value, char* str, int base) {
     sprintf(str, (base == 16) ? "%X" : "%d", value);
     return str;
@@ -107,13 +111,9 @@
   #define HEX 16
   #define DEC 10
   
-  // Global Serial object - only declare if not already provided by Arduino framework
-  #ifndef Serial
-  extern Stream Serial;
-  #endif
-#elif defined(ARDUINO)
-  // Arduino framework include
-  #include <Arduino.h>
+  // Global Serial object
+  static Stream _serial_instance;
+  static Stream& Serial = _serial_instance;
 #endif
 
 // Compatible type definitions

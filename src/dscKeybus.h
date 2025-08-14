@@ -22,15 +22,18 @@
 
 #include <cstdint>
 #include <cstring>
-#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
-  // ESP-IDF framework includes or native build (not Arduino platforms)
-  #ifdef ESP_IDF_VERSION
+#if defined(ARDUINO)
+  // Arduino framework include
+  #include <Arduino.h>
+#else
+  // Non-Arduino environments - provide Arduino compatibility
+  #if defined(ESP_IDF_VERSION)
+    // ESP-IDF framework includes
     #include <esp_attr.h>
     #include <esp_timer.h>
     #include <freertos/portmacro.h>
   #endif
   #include <stdio.h>
-  #include <cstring>
   #include <chrono>
   #include <thread>
   
@@ -111,9 +114,6 @@
   #ifndef Serial
   extern Stream Serial;
   #endif
-#elif defined(ARDUINO)
-  // Arduino framework include
-  #include <Arduino.h>
 #endif
 
 // Compatible type definitions
