@@ -169,7 +169,11 @@ bool dscClassicKeypadInterface::loop() {
 
   // Resets counters when the buffer is cleared
   #if defined(ESP32)
-  portENTER_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portENTER_CRITICAL(&timer1Mux);
+  }
   #else
   noInterrupts();
   #endif
@@ -180,7 +184,11 @@ bool dscClassicKeypadInterface::loop() {
   }
 
   #if defined(ESP32)
-  portEXIT_CRITICAL(&timer1Mux);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 != nullptr) {
+    portEXIT_CRITICAL(&timer1Mux);
+  }
   #else
   interrupts();
   #endif
