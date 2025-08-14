@@ -26,6 +26,7 @@
   #ifdef ESP_IDF_VERSION
     #include <esp_attr.h>
     #include <esp_timer.h>
+    #include <esp_rom_delay.h>
     #include <freertos/portmacro.h>
   #endif
   #include <stdio.h>
@@ -72,6 +73,15 @@
   inline void interrupts() { /* stub */ }
   inline void delay(unsigned long ms) { 
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+  }
+  inline void delayMicroseconds(unsigned long us) {
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+      // Use ESP32 ROM function for precise microsecond delays
+      esp_rom_delay_us(us);
+    #else
+      // Use standard library for other platforms
+      std::this_thread::sleep_for(std::chrono::microseconds(us));
+    #endif
   }
   inline char* itoa(int value, char* str, int base) {
     sprintf(str, (base == 16) ? "%X" : "%d", value);

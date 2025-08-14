@@ -153,8 +153,12 @@
     // For ESP32/ESP-IDF, use FreeRTOS delay
     #include <freertos/FreeRTOS.h>
     #include <freertos/task.h>
+    #include <esp_rom_delay.h>
     inline void delay(unsigned long ms) { 
       vTaskDelay(pdMS_TO_TICKS(ms));
+    }
+    inline void delayMicroseconds(unsigned long us) {
+      esp_rom_delay_us(us);
     }
   #else
     // For other platforms, use standard sleep
@@ -162,6 +166,9 @@
     #include <thread>
     inline void delay(unsigned long ms) { 
       std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+    inline void delayMicroseconds(unsigned long us) {
+      std::this_thread::sleep_for(std::chrono::microseconds(us));
     }
   #endif
   
