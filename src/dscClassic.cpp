@@ -277,6 +277,13 @@ void dscClassicInterface::begin(Stream &_stream) {
   // This prevents the interrupt handler from accessing uninitialized memory
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
   
+#if defined(ESP32) || defined(ESP_PLATFORM)
+  // Mark hardware as initialized and add small stabilization delay
+  esp32_hardware_initialized = true;
+  esp32_init_timestamp = millis();
+  delayMicroseconds(1000);  // 1ms stabilization delay to ensure interrupt setup is complete
+#endif
+  
   _stream.println(F("DSC Classic Interface initialized successfully"));
 }
 
@@ -1250,6 +1257,20 @@ void IRAM_ATTR dscClassicInterface::dscClockInterrupt() {
 void dscClassicInterface::dscClockInterrupt() {
 #endif
 
+  // CRITICAL: Early safety check to prevent LoadProhibited crashes
+  // Verify that static variables are initialized before proceeding
+#if defined(ESP32) || defined(ESP_PLATFORM)
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    return;  // Abort ISR execution if not ready - prevents 0xcececece crashes
+  }
+  
+  // Additional safety: Check for uninitialized memory patterns in critical variables
+  if (timer1 == (hw_timer_t*)0xcececece || timer1 == (hw_timer_t*)0xa5a5a5a5) {
+    return;  // Abort ISR execution if memory pattern indicates uninitialized state
+  }
+#endif
+
   // Data sent from the panel and keypads/modules has latency after a clock change (observed up to 160us for
   // keypad data).  The following sets up a timer for each platform that will call dscDataInterrupt() in
   // 250us to read the data line.
@@ -1326,11 +1347,20 @@ void dscClassicInterface::dscDataInterrupt() {
 void ICACHE_RAM_ATTR dscClassicInterface::dscDataInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscClassicInterface::dscDataInterrupt() {
+  // CRITICAL: Early safety check to prevent LoadProhibited crashes
+  // Verify that static variables and timer are ready before proceeding
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    return;  // Abort ISR execution if not ready
+  }
+  
   // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
     timerStop(timer1);
     portENTER_CRITICAL(&timer1Mux);
+  } else {
+    return;  // Abort if timer is not properly initialized
   }
 #else
 // Native/test environment

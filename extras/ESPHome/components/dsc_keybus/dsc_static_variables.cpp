@@ -97,11 +97,13 @@ volatile byte dscClassicInterface::panelBuffer[dscBufferSize][dscReadSize] = {0}
 volatile byte dscClassicInterface::pc16Buffer[dscBufferSize][dscReadSize] = {0};
 volatile byte dscClassicInterface::panelBufferBitCount[dscBufferSize] = {0};
 volatile byte dscClassicInterface::panelBufferByteCount[dscBufferSize] = {0};
-volatile byte dscClassicInterface::isrPanelData[dscReadSize] = {0};
-volatile byte dscClassicInterface::isrPC16Data[dscReadSize] = {0};
-volatile byte dscClassicInterface::isrPanelByteCount = 0;
-volatile byte dscClassicInterface::isrPanelBitCount = 0;
-volatile byte dscClassicInterface::isrPanelBitTotal = 0;
+// ISR-accessed variables - CRITICAL for LoadProhibited crash prevention
+// These variables are directly accessed in interrupt service routines and must be protected
+volatile byte __attribute__((section(".data"))) dscClassicInterface::isrPanelData[dscReadSize] = {0};
+volatile byte __attribute__((section(".data"))) dscClassicInterface::isrPC16Data[dscReadSize] = {0};
+volatile byte __attribute__((section(".data"))) dscClassicInterface::isrPanelByteCount = 0;
+volatile byte __attribute__((section(".data"))) dscClassicInterface::isrPanelBitCount = 0;
+volatile byte __attribute__((section(".data"))) dscClassicInterface::isrPanelBitTotal = 0;
 volatile byte dscClassicInterface::isrModuleData[dscReadSize] = {0};
 volatile byte dscClassicInterface::isrModuleByteCount = 0;
 volatile byte dscClassicInterface::isrModuleBitCount = 0;
@@ -109,8 +111,8 @@ volatile byte dscClassicInterface::isrModuleBitTotal = 0;
 volatile byte dscClassicInterface::moduleCmd = 0;
 volatile bool dscClassicInterface::readyLight = false;
 volatile bool dscClassicInterface::lightBlink = false;
-volatile unsigned long dscClassicInterface::clockHighTime = 0;
-volatile unsigned long dscClassicInterface::keybusTime = 0;
+volatile unsigned long __attribute__((section(".data"))) dscClassicInterface::clockHighTime = 0;
+volatile unsigned long __attribute__((section(".data"))) dscClassicInterface::keybusTime = 0;
 volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
 
 // ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
@@ -119,13 +121,15 @@ volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
 #if defined(ESP32) || defined(ESP_PLATFORM)
 
 // Legacy timer variables for backward compatibility
-hw_timer_t * dscClassicInterface::timer1 = nullptr;
-portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+// CRITICAL: Force timer variables into initialized data section to prevent 0xcececece crashes
+hw_timer_t * __attribute__((section(".data"))) dscClassicInterface::timer1 = nullptr;
+portMUX_TYPE __attribute__((section(".data"))) dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
 
 // Additional ESP32 safety variables to prevent LoadProhibited crashes
-volatile bool dscClassicInterface::esp32_hardware_initialized = false;
-volatile bool dscClassicInterface::esp32_timers_configured = false;
-volatile unsigned long dscClassicInterface::esp32_init_timestamp = 0;
+// CRITICAL: Force hardware state variables into initialized data section
+volatile bool __attribute__((section(".data"))) dscClassicInterface::esp32_hardware_initialized = false;
+volatile bool __attribute__((section(".data"))) dscClassicInterface::esp32_timers_configured = false;
+volatile unsigned long __attribute__((section(".data"))) dscClassicInterface::esp32_init_timestamp = 0;
 
 // ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
 #ifdef DSC_ESP_IDF_5_3_PLUS
