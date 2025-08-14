@@ -4,7 +4,7 @@
 #include "dsc_esp_idf_timer_fix.h"  // Enhanced ESP-IDF timer compatibility
 #include <algorithm>
 
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP_PLATFORM)
 #include <esp_task_wdt.h>  // For ESP32 watchdog timer management
 #include <esp_heap_caps.h>  // For heap memory management
 #include <esp_err.h>        // For ESP error handling
@@ -27,7 +27,7 @@ static const char *const TAG = "dsc_keybus";
 void DSCKeybusComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
 
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP_PLATFORM)
   // Enhanced ESP-IDF 5.3.2+ LoadProhibited crash prevention
   // The 0xcececece pattern indicates static variables accessed during app_main()
   // This enhanced approach provides multiple layers of protection
@@ -140,7 +140,7 @@ void DSCKeybusComponent::loop() {
   if (!getDSC().isHardwareInitialized()) {
     ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware...");
     
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP_PLATFORM)
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
     // Additional ESP-IDF 5.3.2+ specific readiness checks
     // ESP-IDF 5.3+ specific variables are now declared in dsc_keybus.h
@@ -323,4 +323,4 @@ void DSCKeybusComponent::dump_config() {
 }  // namespace dsc_keybus
 }  // namespace esphome
 
-#endif  // ESP32
+#endif  // defined(ESP32) || defined(ESP_PLATFORM)
