@@ -22,11 +22,12 @@
 
 #include <cstdint>
 #include <cstring>
+#include "dsc_arduino_compatibility.h"
 
-#if defined(ARDUINO)
-  // Arduino framework include
-  #include <Arduino.h>
-#else
+// Compatible type definitions
+#ifndef byte
+typedef uint8_t byte;
+#endif
   // Non-Arduino environments - provide Arduino compatibility
   #if defined(ESP_IDF_VERSION)
     // ESP-IDF framework includes
