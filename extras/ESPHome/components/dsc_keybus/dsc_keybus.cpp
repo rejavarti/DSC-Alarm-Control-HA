@@ -38,14 +38,14 @@ void DSCKeybusComponent::setup() {
   // ESP-IDF 5.3+ specific variables are now declared in dsc_keybus.h
   // Initialize timestamp now that ESP timer system is safely available
   // Initialize timestamp if not already set (constructor couldn't safely do this)
-  if (dsc_esp_idf_init_delay_timestamp == 0) {
-    dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000;
-    ESP_LOGD(TAG, "Initialized ESP-IDF stabilization timestamp: %lu ms", dsc_esp_idf_init_delay_timestamp);
+  if (::dsc_esp_idf_init_delay_timestamp == 0) {
+    ::dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000;
+    ESP_LOGD(TAG, "Initialized ESP-IDF stabilization timestamp: %lu ms", ::dsc_esp_idf_init_delay_timestamp);
   }
   
   // Check if sufficient time has passed since static variable initialization  
   unsigned long current_time_ms = esp_timer_get_time() / 1000;
-  if (current_time_ms - dsc_esp_idf_init_delay_timestamp < 2000) {  // 2 second minimum delay
+  if (current_time_ms - ::dsc_esp_idf_init_delay_timestamp < 2000) {  // 2 second minimum delay
     ESP_LOGD(TAG, "Insufficient stabilization time since ESP-IDF init - deferring setup");
     return;  // Wait longer for system stabilization
   }
@@ -95,7 +95,7 @@ void DSCKeybusComponent::setup() {
   // Additional ESP-IDF 5.3.2+ system readiness checks
   #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
   // ESP-IDF 5.3.2+ specific readiness verification
-  extern volatile bool dsc_esp_idf_timer_system_ready;
+  // Use global extern declaration from dsc_keybus.h
   
   // Verify that the ESP timer system is fully operational
   esp_timer_handle_t test_timer = nullptr;
@@ -113,7 +113,7 @@ void DSCKeybusComponent::setup() {
   } else {
     esp_timer_delete(test_timer);  // Clean up test timer
     ESP_LOGD(TAG, "ESP timer system verified operational");
-    dsc_esp_idf_timer_system_ready = true;  // Mark timer system as ready
+    ::dsc_esp_idf_timer_system_ready = true;  // Mark timer system as ready
   }
   #endif
   
@@ -146,14 +146,14 @@ void DSCKeybusComponent::loop() {
     // ESP-IDF 5.3+ specific variables are now declared in dsc_keybus.h
     
     // Initialize timestamp if not set yet (safety fallback)
-    if (dsc_esp_idf_init_delay_timestamp == 0) {
-      dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000;
-      ESP_LOGD(TAG, "Late initialization of ESP-IDF stabilization timestamp: %lu ms", dsc_esp_idf_init_delay_timestamp);
+    if (::dsc_esp_idf_init_delay_timestamp == 0) {
+      ::dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000;
+      ESP_LOGD(TAG, "Late initialization of ESP-IDF stabilization timestamp: %lu ms", ::dsc_esp_idf_init_delay_timestamp);
     }
     
     // Ensure adequate stabilization time for ESP-IDF 5.3.2+
     unsigned long current_time_ms = esp_timer_get_time() / 1000;
-    if (current_time_ms - dsc_esp_idf_init_delay_timestamp < 3000) {  // 3 second minimum for hardware init
+    if (current_time_ms - ::dsc_esp_idf_init_delay_timestamp < 3000) {  // 3 second minimum for hardware init
       ESP_LOGD(TAG, "ESP-IDF 5.3.2+ stabilization period not complete - delaying hardware init");
       return;  // Wait longer for complete system stabilization
     }
@@ -198,8 +198,8 @@ void DSCKeybusComponent::loop() {
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
     // ESP-IDF 5.3.2+ specific readiness checks before hardware initialization
-    extern volatile bool dsc_esp_idf_timer_system_ready;
-    if (!dsc_esp_idf_timer_system_ready) {
+    // Use global extern declaration from dsc_keybus.h
+    if (!::dsc_esp_idf_timer_system_ready) {
       ESP_LOGW(TAG, "ESP-IDF 5.3.2+ timer system not ready - deferring hardware init");
       return;  // Wait for timer system to be verified as ready
     }
