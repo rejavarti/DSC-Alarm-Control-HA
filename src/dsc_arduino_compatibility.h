@@ -1,9 +1,12 @@
 #ifndef DSC_ARDUINO_COMPATIBILITY_H
 #define DSC_ARDUINO_COMPATIBILITY_H
 
-// Prevent duplicate static variable definitions in ESPHome builds
-// Static variables are defined in dsc_static_variables.cpp
+// Prevent duplicate static variable definitions in ESPHome builds only
+// Static variables are defined in dsc_static_variables.cpp for ESPHome
+// For Arduino builds, static variables should be defined in each component file
+#if !defined(ARDUINO)
 #define DSC_STATIC_VARIABLES_DEFINED
+#endif
 
 #include <cstdint>
 #include <cstring>
@@ -193,8 +196,14 @@
   
   // Global Serial object - only if not already defined by Arduino
   #ifndef ARDUINO
-    static Stream _serial_instance;
-    static Stream& Serial = _serial_instance;
+    // Create a single global definition to avoid multiple definition errors
+    #ifndef DSC_SERIAL_DEFINED
+      #define DSC_SERIAL_DEFINED
+      static Stream _serial_instance;
+      Stream& Serial = _serial_instance;
+    #else
+      extern Stream Serial;
+    #endif
   #endif
 #endif
 

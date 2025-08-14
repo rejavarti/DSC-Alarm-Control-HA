@@ -24,6 +24,8 @@
 #include <cstring>
 #include "dsc_arduino_compatibility.h"
 
+// Only define Arduino compatibility if not using Arduino framework
+#if !defined(ARDUINO)
 // Compatible type definitions
 #ifndef byte
 typedef uint8_t byte;
@@ -111,12 +113,16 @@ typedef uint8_t byte;
   #define HEX 16
   #define DEC 10
   
-  // Global Serial object
-  static Stream _serial_instance;
-  static Stream& Serial = _serial_instance;
+  // Global Serial object - use extern to avoid multiple definitions
+  extern Stream Serial;
 #endif
 
-// Compatible type definitions
+#if defined(ARDUINO)
+// For Arduino builds, use the standard Arduino Serial object
+// No additional definitions needed as they're provided by Arduino.h
+#endif
+
+// Compatible type definitions for both Arduino and non-Arduino
 #ifndef byte
 typedef uint8_t byte;
 #endif

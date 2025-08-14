@@ -111,8 +111,10 @@
   #define DEC 10
   
   // Global Serial object - only declare if not already provided by Arduino framework
-  #ifndef Serial
-  extern Stream Serial;
+  #ifndef ARDUINO
+    #ifndef Serial
+    extern Stream Serial;
+    #endif
   #endif
 #endif
 
