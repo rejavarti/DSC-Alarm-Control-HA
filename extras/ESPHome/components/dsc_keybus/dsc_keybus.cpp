@@ -205,6 +205,8 @@ void DSCKeybusComponent::loop() {
       return;  // Wait for timer system to be verified as ready
     }
     #endif
+    
+    #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
     // Pre-initialize the enhanced timer system for ESP-IDF 5.3.2+
     ESP_LOGD(TAG, "Pre-initializing ESP-IDF 5.3.2+ timer system for DSC interface");
     if (!dsc_esp_timer::dsc_timer_is_initialized()) {
