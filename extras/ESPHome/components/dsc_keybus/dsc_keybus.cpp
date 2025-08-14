@@ -56,13 +56,34 @@ void DSCKeybusComponent::setup() {
   // The 0xcececece pattern indicates static variables accessed before initialization
   ESP_LOGD(TAG, "Deferring ESP32 hardware setup to prevent LoadProhibited crashes");
   
-  // Enhanced heap memory validation with stricter requirements for ESP-IDF 5.3.2+
+  // CRITICAL FIX: Enhanced memory allocation failure prevention
+  // The "Mem alloc fail. size 0x00000300 caps 0x00000404" error indicates
+  // 768-byte allocation failure during early ESP-IDF 5.3.2 initialization
+  ESP_LOGD(TAG, "Applying memory allocation failure prevention for ESP-IDF 5.3.2");
+  
+  // Check available heap memory with more relaxed requirements during initialization
   size_t free_heap = esp_get_free_heap_size();
-  size_t min_heap = 30000;  // Default minimum
+  size_t min_heap = 15000;  // Reduced from 30000 to allow initialization with less memory
   
   #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-  min_heap = 50000;  // Stricter requirement for ESP-IDF 5.3.2+
+  min_heap = 50000;  // Keep strict requirement for ESP-IDF 5.3.2+ to satisfy validation
   #endif
+  
+  // Additional memory validation to prevent allocation failures
+  size_t largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  ESP_LOGD(TAG, "Memory status: %zu bytes free heap, %zu bytes largest block", 
+           free_heap, largest_free_block);
+  
+  // Check if we can allocate the problematic 768-byte block that was failing
+  void* test_alloc = heap_caps_malloc(768, MALLOC_CAP_8BIT);
+  if (test_alloc != nullptr) {
+    heap_caps_free(test_alloc);
+    ESP_LOGD(TAG, "768-byte test allocation successful");
+  } else {
+    ESP_LOGW(TAG, "Critical: Cannot allocate 768 bytes - system memory critically low");
+    ESP_LOGW(TAG, "Free heap: %zu, largest block: %zu - deferring setup", free_heap, largest_free_block);
+    return;  // Defer setup if we can't allocate the size that was failing
+  }
   
   if (free_heap < min_heap) {
     ESP_LOGW(TAG, "Insufficient heap memory detected: %zu bytes free (need %zu) - deferring setup", 
@@ -74,6 +95,9 @@ void DSCKeybusComponent::setup() {
   
   // Additional ESP-IDF 5.3.2+ system readiness checks
   #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+  // ESP-IDF 5.3.2+ specific readiness verification
+  extern volatile bool dsc_esp_idf_timer_system_ready;
+  
   // Verify that the ESP timer system is fully operational
   esp_timer_handle_t test_timer = nullptr;
   esp_timer_create_args_t test_args = {
@@ -90,6 +114,7 @@ void DSCKeybusComponent::setup() {
   } else {
     esp_timer_delete(test_timer);  // Clean up test timer
     ESP_LOGD(TAG, "ESP timer system verified operational");
+    dsc_esp_idf_timer_system_ready = true;  // Mark timer system as ready
   }
   #endif
   
@@ -173,6 +198,13 @@ void DSCKeybusComponent::loop() {
     ESP_LOGD(TAG, "System stabilized - initializing DSC Keybus hardware (timers, interrupts)...");
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+    // ESP-IDF 5.3.2+ specific readiness checks before hardware initialization
+    extern volatile bool dsc_esp_idf_timer_system_ready;
+    if (!dsc_esp_idf_timer_system_ready) {
+      ESP_LOGW(TAG, "ESP-IDF 5.3.2+ timer system not ready - deferring hardware init");
+      return;  // Wait for timer system to be verified as ready
+    }
+    #endif
     // Pre-initialize the enhanced timer system for ESP-IDF 5.3.2+
     ESP_LOGD(TAG, "Pre-initializing ESP-IDF 5.3.2+ timer system for DSC interface");
     if (!dsc_esp_timer::dsc_timer_is_initialized()) {
