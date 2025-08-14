@@ -53,12 +53,8 @@ volatile bool __attribute__((section(".data"))) dsc_static_variables_initialized
 // ESP-IDF 5.3.2 specific safeguards
 // Track ESP-IDF version to apply version-specific fixes
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
-#ifndef DSC_ESP_IDF_5_3_PLUS
-#define DSC_ESP_IDF_5_3_PLUS
-#endif
-#ifndef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-#define DSC_ESP_IDF_5_3_PLUS_COMPONENT
-#endif
+// Note: DSC_ESP_IDF_5_3_PLUS and DSC_ESP_IDF_5_3_PLUS_COMPONENT are now defined via ESPHome config
+// Removed redundant #define statements to prevent redefinition warnings
 volatile bool __attribute__((section(".data"))) dsc_esp_idf_timer_system_ready = false;
 volatile unsigned long __attribute__((section(".data"))) dsc_esp_idf_init_delay_timestamp = 0;
 #endif
