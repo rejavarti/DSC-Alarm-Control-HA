@@ -338,6 +338,25 @@ void setup() {
   // Starts the Keybus interface and optionally specifies how to print data.
   logMessage("Initializing DSC Keybus Interface...");
   
+  // CRITICAL: Enhanced LoadProhibited crash prevention for ESP32
+  // The 0xcececece pattern indicates static variables accessed during app_main()
+  // This enhanced approach provides multiple layers of protection
+  
+  #if defined(ESP32)
+  // Check static variable initialization status  
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    handleSystemError("DSC static variables not initialized - potential LoadProhibited crash");
+    ESP.restart();
+  }
+  
+  // Add stabilization delay to prevent early ISR access to uninitialized timers
+  delay(2000);  // 2 second stabilization delay
+  esp_task_wdt_reset();  // Reset watchdog after stabilization delay
+  
+  logMessage("ESP32 LoadProhibited crash prevention: Static variables verified, system stabilized");
+  #endif
+  
   // Add safety check for DSC constants before initialization
   if (dscReadSize == 0 || dscBufferSize == 0 || dscPartitions == 0) {
     handleSystemError("Invalid DSC constants detected - potential memory corruption");

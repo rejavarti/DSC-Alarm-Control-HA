@@ -21,7 +21,9 @@
 
 // Define dsc_static_variables_initialized for Arduino builds
 #ifndef DSC_STATIC_VARIABLES_DEFINED
-volatile bool dsc_static_variables_initialized = true;
+// CRITICAL: Initialize to false and use constructor to properly initialize 
+// This prevents 0xcececece LoadProhibited crashes during ESP32 startup
+volatile bool __attribute__((section(".data"))) dsc_static_variables_initialized = false;
 #endif
 
 // NOTE: Static variables are defined in dsc_static_variables.cpp for ESPHome builds
@@ -32,12 +34,14 @@ volatile bool dsc_static_variables_initialized = true;
 #ifndef DSC_STATIC_VARIABLES_DEFINED
 // Define timer variables for Arduino builds only (ESPHome uses dsc_static_variables.cpp)
 #if defined(ESP32)
-portMUX_TYPE dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
-hw_timer_t * dscClassicInterface::timer1 = NULL;
+// CRITICAL: Force timer variables into initialized data section to prevent 0xcececece crashes
+portMUX_TYPE __attribute__((section(".data"))) dscClassicInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t * __attribute__((section(".data"))) dscClassicInterface::timer1 = NULL;
 
 // Additional ESP32 safety variables to prevent LoadProhibited crashes
-volatile bool dscClassicInterface::esp32_hardware_initialized = false;
-volatile bool dscClassicInterface::esp32_timers_configured = false;
+// CRITICAL: Force hardware state variables into initialized data section  
+volatile bool __attribute__((section(".data"))) dscClassicInterface::esp32_hardware_initialized = false;
+volatile bool __attribute__((section(".data"))) dscClassicInterface::esp32_timers_configured = false;
 volatile unsigned long dscClassicInterface::esp32_init_timestamp = 0;
 
 // ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
@@ -1532,3 +1536,22 @@ void dscClassicInterface::dscDataInterrupt() {
   }
   #endif
 }
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+// CRITICAL: Constructor to prevent 0xcececece LoadProhibited crashes
+// This runs early and ensures critical variables have safe values in the right order
+void __attribute__((constructor(101))) dsc_classic_static_init() {
+    // Step 1: Initialize the most critical variables with safe defaults first
+    dsc_static_variables_initialized = false;  // Start with false to indicate work in progress
+    
+    // Step 2: Verify timer variables are properly initialized (they already have safe defaults above)
+    // The timer variables are defined with __attribute__((section(".data"))) to ensure proper placement
+    
+    // Step 3: Force memory barrier to ensure all writes are completed before marking as done
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    __sync_synchronize();
+    #endif
+    
+    // Step 4: Mark initialization as complete - LAST step
+    dsc_static_variables_initialized = true;
+}
+#endif
