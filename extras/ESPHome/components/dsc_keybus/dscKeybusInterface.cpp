@@ -602,11 +602,20 @@ void dscKeybusInterface::dscClockInterrupt() {
 
   // esp32 timer1 calls dscDataInterrupt() in 250us
   #elif defined(ESP32)
+  // CRITICAL: Early safety check to prevent LoadProhibited crashes  
+  // Verify that static variables and timer are ready before proceeding
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    return;  // Abort ISR execution if not ready
+  }
+  
   // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
     timerStart(timer1);
     portENTER_CRITICAL(&timer1Mux);
+  } else {
+    return;  // Abort if timer is not properly initialized
   }
   #endif
 
@@ -757,11 +766,20 @@ void dscKeybusInterface::dscDataInterrupt() {
 void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscKeybusInterface::dscDataInterrupt() {
+  // CRITICAL: Early safety check to prevent LoadProhibited crashes
+  // Verify that static variables and timer are ready before proceeding
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    return;  // Abort ISR execution if not ready
+  }
+  
   // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
     timerStop(timer1);
     portENTER_CRITICAL(&timer1Mux);
+  } else {
+    return;  // Abort if timer is not properly initialized
   }
 #elif defined(ESP_IDF_VERSION)
 void dscKeybusInterface::dscDataInterrupt() {
@@ -839,7 +857,7 @@ void dscKeybusInterface::dscDataInterrupt() {
   #if defined(ESP32)
   // Safety check: Only exit critical section if timer1 is properly initialized
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
     portEXIT_CRITICAL(&timer1Mux);
   }
   #endif
