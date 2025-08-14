@@ -2,7 +2,7 @@
 #include "esphome/core/defines.h"
 #include "dsc_arduino_compatibility.h"
 
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP_PLATFORM)
 #include <esp_task_wdt.h>  // For ESP32 watchdog timer management
 #endif
 
@@ -57,7 +57,7 @@ void DSCWrapper::begin() {
     if (dsc_interface_ && !hardware_initialized_) {
         // Critical safety check for ESP32 LoadProhibited prevention
         // The 0xcececece pattern indicates static variables accessed before ready
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP_PLATFORM)
         // Ensure we have adequate heap memory before hardware initialization
         size_t free_heap = esp_get_free_heap_size();
         if (free_heap < 15000) {  // Less than 15KB free
@@ -80,7 +80,7 @@ void DSCWrapper::begin() {
 void DSCWrapper::begin(Stream& stream) {
     if (dsc_interface_ && !hardware_initialized_) {
         // Critical safety check for ESP32 LoadProhibited prevention
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP_PLATFORM)
         // Ensure we have adequate heap memory before hardware initialization
         size_t free_heap = esp_get_free_heap_size();
         if (free_heap < 15000) {  // Less than 15KB free
