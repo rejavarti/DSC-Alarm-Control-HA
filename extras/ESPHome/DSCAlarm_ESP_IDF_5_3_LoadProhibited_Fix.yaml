@@ -26,12 +26,16 @@ esphome:
   # Enhanced project configuration for ESP-IDF 5.3.2 LoadProhibited crash prevention
   platformio_options:
     build_flags:
-      - -DBOARD_HAS_PSRAM                    # Enable PSRAM for additional memory
-      - -DESP_IDF_VERSION_MAJOR=5            # Ensure ESP-IDF 5.x compatibility
-      - -DESP_IDF_VERSION_MINOR=3            # ESP-IDF 5.3.x specific optimizations
-      - -DDSC_ESP_IDF_5_3_PLUS               # Enable ESP-IDF 5.3+ specific fixes
-      - -DDSC_ENHANCED_MEMORY_SAFETY         # Enhanced memory safety checks
-      - -DDSC_LOADPROHIBITED_CRASH_FIX       # LoadProhibited crash fix flag
+      # CRITICAL FIX: Memory allocation failure prevention flags
+      - -DESP32_REDUCE_MEMORY_OVERHEAD         # Enable memory reduction optimizations
+      - -DCONFIG_HEAP_INIT_ON_STARTUP=1       # Initialize heap early for allocation reliability
+      - -DDSC_MEMORY_ALLOCATION_FAILURE_FIX   # Enable specific memory allocation fixes
+      - -DBOARD_HAS_PSRAM                      # Enable PSRAM for additional memory
+      - -DESP_IDF_VERSION_MAJOR=5              # Ensure ESP-IDF 5.x compatibility
+      - -DESP_IDF_VERSION_MINOR=3              # ESP-IDF 5.3.x specific optimizations
+      - -DDSC_ESP_IDF_5_3_PLUS                 # Enable ESP-IDF 5.3+ specific fixes
+      - -DDSC_ENHANCED_MEMORY_SAFETY           # Enhanced memory safety checks
+      - -DDSC_LOADPROHIBITED_CRASH_FIX         # LoadProhibited crash fix flag
     lib_deps:
       - ESP32 BLE Arduino                    # Include for memory management
 
@@ -66,10 +70,17 @@ esp32:
       
       # Enhanced WiFi task configuration to prevent memory conflicts during init
       CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "12288"         # 12KB WiFi stack
-      CONFIG_ESP32_WIFI_RX_BUFFER_NUM: "32"              # Large WiFi buffers
-      CONFIG_ESP32_WIFI_TX_BUFFER_NUM: "32"
-      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "32"
-      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "32"
+      # CRITICAL FIX: Additional heap memory optimizations for allocation failure prevention
+      # Increase available heap memory during initialization
+      CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "16"       # Reduce WiFi static buffers (was 32)
+      CONFIG_ESP32_WIFI_STATIC_TX_BUFFER_NUM: "16"       # Reduce WiFi static buffers (was 32)
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "16"      # Keep dynamic buffers at 16
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "16"      # Keep dynamic buffers at 16
+      
+      # Additional memory optimizations for ESP-IDF 5.3.2 initialization
+      CONFIG_ESP32_WIFI_AMPDU_TX_ENABLED: n              # Disable AMPDU TX to save memory
+      CONFIG_ESP32_WIFI_AMPDU_RX_ENABLED: n              # Disable AMPDU RX to save memory
+      CONFIG_ESP32_WIFI_NVS_ENABLED: n                   # Disable WiFi NVS to save memory during init
       
       # Memory protection and debugging - Essential for LoadProhibited prevention
       CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "128"          # Large event queue
@@ -93,11 +104,14 @@ esp32:
       CONFIG_PM_ENABLE: n                                # Disable power management
       CONFIG_ESP32_ENABLE_RTC_CLK_XTAL_32K: n            # Disable 32K crystal
       
-      # Enhanced memory debugging for LoadProhibited troubleshooting
-      CONFIG_HEAP_POISONING_COMPREHENSIVE: y             # Full heap poisoning
-      CONFIG_HEAP_TRACING_STANDALONE: y                  # Standalone heap tracing
-      CONFIG_HEAP_TRACING_STACK_DEPTH: "16"              # Deep stack tracing
-      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: y         # Abort on memory failure
+      # Memory debugging optimized for initialization success
+      # CRITICAL FIX: Comprehensive heap poisoning uses significant memory during init
+      # Changed to light poisoning to prevent "Mem alloc fail" during startup
+      CONFIG_HEAP_POISONING_LIGHT: y                     # Light heap poisoning (less memory overhead)
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: n             # Disable comprehensive (high memory usage)
+      CONFIG_HEAP_TRACING_STANDALONE: n                  # Disable standalone tracing (saves memory)
+      CONFIG_HEAP_TRACING_STACK_DEPTH: "4"               # Minimal stack tracing (reduced from 16)
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: n         # Allow graceful handling of allocation failures
       
       # Flash and partition optimizations
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y                  # Ensure 4MB flash
@@ -183,8 +197,13 @@ binary_sensor:
     lambda: |-
       bool wifi_ok = wifi::global_wifi_component->is_connected();
       size_t free_heap = esp_get_free_heap_size();
+      size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      
+      // Enhanced health check including memory fragmentation
       bool heap_ok = free_heap > 25000; // At least 25KB free heap for ESP-IDF 5.3.2
-      return wifi_ok && heap_ok;
+      bool fragmentation_ok = largest_block > 5000; // Ensure reasonable largest block
+      
+      return wifi_ok && heap_ok && fragmentation_ok;
 
 sensor:
   - platform: template
@@ -195,10 +214,27 @@ sensor:
     update_interval: 30s
     lambda: |-
       size_t free_heap = esp_get_free_heap_size();
+      size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      
+      // Enhanced logging for memory allocation failure prevention
       if (free_heap < 20000) {
-        ESP_LOGW("memory", "Critical heap memory: %zu bytes free", free_heap);
+        ESP_LOGW("memory", "Critical heap memory: %zu bytes free, %zu largest block", free_heap, largest_block);
       }
+      if (largest_block < 768) {
+        ESP_LOGE("memory", "Fragmented memory: largest block %zu bytes (need 768+)", largest_block);
+      }
+      
       return free_heap;
+
+  - platform: template
+    name: "DSCAlarm Largest Free Block"
+    id: largest_free_block_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 30s
+    lambda: |-
+      size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      return largest_block;
 
   - platform: template
     name: "DSCAlarm Stack High Water Mark"
@@ -220,15 +256,32 @@ interval:
       - lambda: |-
           size_t free_heap = esp_get_free_heap_size();
           size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+          size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
           
-          // Enhanced monitoring for ESP-IDF 5.3.2 stability
+          // Enhanced monitoring for ESP-IDF 5.3.2 stability and allocation failure prevention
           if (free_heap < 15000) {
-            ESP_LOGE("system_health", "Critical memory condition - free heap: %zu bytes", free_heap);
+            ESP_LOGE("system_health", "Critical memory condition - free heap: %zu bytes, largest block: %zu bytes", 
+                     free_heap, largest_block);
+            
+            // Test if we can still allocate the problematic 768 bytes
+            void* test_alloc = heap_caps_malloc(768, MALLOC_CAP_8BIT);
+            if (test_alloc == nullptr) {
+              ESP_LOGE("system_health", "CRITICAL: Cannot allocate 768 bytes - memory allocation will fail!");
+            } else {
+              heap_caps_free(test_alloc);
+            }
+            
             // Consider restart if critically low
             if (free_heap < 10000) {
               ESP_LOGE("system_health", "Emergency restart due to memory exhaustion");
               App.safe_reboot();
             }
+          }
+          
+          // Check for memory fragmentation issues
+          if (largest_block < 2000 && free_heap > 20000) {
+            ESP_LOGW("system_health", "Memory fragmentation detected - heap: %zu, largest: %zu", 
+                     free_heap, largest_block);
           }
           
           if (stack_hwm < 512) {
