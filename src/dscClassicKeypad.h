@@ -111,7 +111,7 @@
   #ifndef Serial
   extern Stream Serial;
   #endif
-#else
+#elif defined(ARDUINO)
   // Arduino framework include
   #include <Arduino.h>
 #endif

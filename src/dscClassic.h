@@ -27,7 +27,9 @@
   #ifdef ESP_IDF_VERSION
     #include <esp_attr.h>
     #include <esp_timer.h>
-    #include <esp_rom_delay.h>
+    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+      #include <esp_rom_delay.h>
+    #endif
     #include <freertos/portmacro.h>
   #endif
   #include <stdio.h>
@@ -83,7 +85,12 @@
   inline void delayMicroseconds(unsigned long us) {
     #if defined(ESP32) || defined(ESP_PLATFORM)
       // Use ESP32 ROM function for precise microsecond delays
-      esp_rom_delay_us(us);
+      #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+        esp_rom_delay_us(us);
+      #else
+        // Fallback for older ESP-IDF versions
+        vTaskDelay(pdMS_TO_TICKS((us + 999) / 1000)); // Convert to ms, round up
+      #endif
     #else
       // Use standard library for other platforms
       std::this_thread::sleep_for(std::chrono::microseconds(us));
@@ -121,7 +128,7 @@
   #ifndef Serial
   extern Stream Serial;
   #endif
-#else
+#elif defined(ARDUINO)
   // Arduino framework include
   #include <Arduino.h>
 #endif
