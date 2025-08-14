@@ -129,6 +129,20 @@ class dscClassicInterface {
     int year;
     bool setTime(unsigned int year, byte month, byte day, byte hour, byte minute, const char* accessCode, byte timePartition = 1);
 
+    // ESP32 safety variables - moved to public for external wrapper access
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    static volatile bool esp32_hardware_initialized;
+    static volatile bool esp32_timers_configured;
+    static volatile unsigned long esp32_init_timestamp;
+    
+    // ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
+    #ifdef DSC_ESP_IDF_5_3_PLUS
+    static volatile bool esp32_esp_idf_timer_ready;
+    static volatile bool esp32_system_fully_initialized;
+    static volatile unsigned long esp32_stabilization_timestamp;
+    #endif
+    #endif
+
   private:
 
     void processPanelStatus();
@@ -145,18 +159,6 @@ class dscClassicInterface {
     #if defined(ESP32) || defined(ESP_PLATFORM)
     static hw_timer_t * timer1;
     static portMUX_TYPE timer1Mux;
-    
-    // Additional ESP32 safety variables to prevent LoadProhibited crashes
-    static volatile bool esp32_hardware_initialized;
-    static volatile bool esp32_timers_configured;
-    static volatile unsigned long esp32_init_timestamp;
-    
-    // ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
-    #ifdef DSC_ESP_IDF_5_3_PLUS
-    static volatile bool esp32_esp_idf_timer_ready;
-    static volatile bool esp32_system_fully_initialized;
-    static volatile unsigned long esp32_stabilization_timestamp;
-    #endif
     #endif
 
     Stream* stream;
