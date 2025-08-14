@@ -63,19 +63,32 @@ void dscKeybusInterface::begin(Stream &_stream) {
     extern void dsc_manual_static_variables_init();
     dsc_manual_static_variables_init();
     
+    // Add a small delay to ensure memory writes are visible
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    delayMicroseconds(100);
+    #endif
+    
     // If still not initialized after manual call, there's a deeper issue
     if (!dsc_static_variables_initialized) {
       _stream.println(F("ERROR: Static variables not initialized - aborting begin()"));
       return;  // Abort initialization to prevent LoadProhibited crash
     } else {
-      _stream.println(F("WARNING: Used fallback static variable initialization"));
+      _stream.println(F("INFO: Used fallback static variable initialization"));
     }
+  } else {
+    _stream.println(F("INFO: Static variables initialized normally"));
   }
   
   // Additional safety: verify that essential static variables are properly initialized
   if (timer1 == (hw_timer_t*)0xcececece || timer1 == (hw_timer_t*)0xa5a5a5a5) {
     _stream.println(F("ERROR: timer1 has uninitialized memory pattern - aborting"));
     return;  // Abort to prevent LoadProhibited crash
+  }
+  
+  // Additional check: ensure timer1 is NULL (safe initialized state)
+  if (timer1 != nullptr) {
+    _stream.println(F("WARNING: timer1 was not NULL, reinitializing"));
+    timer1 = nullptr;  // Reset to safe state
   }
 #endif
   

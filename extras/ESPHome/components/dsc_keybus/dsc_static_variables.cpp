@@ -308,30 +308,47 @@ volatile unsigned long dscKeybusInterface::esp32_stabilization_timestamp = 0;
 // Pattern: __attribute__((constructor)) enhanced for proper initialization sequencing
 void __attribute__((constructor(101))) dsc_complete_static_init() {
     // Step 1: Initialize the most critical variables with safe defaults first
-    dsc_static_variables_initialized = false;  // Start with false
+    dsc_static_variables_initialized = false;  // Start with false to indicate work in progress
     
-    // Step 2: Initialize ESP-IDF 5.3+ specific variables if they exist
+    // Step 2: Explicit timer variable initialization for LoadProhibited crash prevention
+    // The timer variables are already defined above in their respective sections
+    // This constructor just ensures they have safe values when accessed by ISRs
+    
+    // No need for extern declarations here since the variables are defined in this same file
+    // The timer variables are initialized to safe values in their definitions above
+    
+    // Step 3: Initialize ESP-IDF 5.3+ specific variables if they exist
     #if defined(DSC_ESP_IDF_5_3_PLUS) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0))
     dsc_esp_idf_timer_system_ready = true;     // Safe default, will be verified later
     dsc_esp_idf_init_delay_timestamp = 0;      // Will be set when timer system is ready
     #endif
     
-    // Step 3: Mark initialization as complete - LAST step
+    // Step 4: Force memory barrier to ensure all writes are completed before marking as done
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    __sync_synchronize();
+    #endif
+    
+    // Step 5: Mark initialization as complete - LAST step
     dsc_static_variables_initialized = true;
 }
 
 // Manual initialization function that can be called as a fallback
 void dsc_manual_static_variables_init() {
+    // CRITICAL: Set this immediately to prevent recursive calls
     dsc_static_variables_initialized = true;
+    
+    // All static variables are already defined with safe default values in this file
+    // The key insight is that the timer variables are already initialized to nullptr
+    // and portMUX_INITIALIZER_UNLOCKED in their definitions above
     
     #if defined(DSC_ESP_IDF_5_3_PLUS) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0))
     dsc_esp_idf_timer_system_ready = true;     
     dsc_esp_idf_init_delay_timestamp = 0;
+    #endif
     
-    // VALIDATION: Keep reference to esp_timer_create for validation pattern matching
-    // The actual test_timer validation is deferred to component setup phase for safety
-    esp_timer_handle_t test_timer = nullptr;  // Used for validation but not executed
-    (void)test_timer;  // Suppress unused variable warning
+    // Force memory barrier to ensure all writes are visible
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    __sync_synchronize();
     #endif
 }
 
