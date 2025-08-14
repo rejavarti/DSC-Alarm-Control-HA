@@ -117,7 +117,7 @@ volatile unsigned long dscClassicInterface::writeCompleteTime = 0;
 
 // ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
 // These MUST be initialized to prevent memory access violations during ISR execution
-// The 0xa5a5a5a5 and 0xcececece patterns indicate these variables were accessed before initialization
+// The 0xa5a5a5a5, 0xcececece, and 0xcecececc patterns indicate these variables were accessed before initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
 
 // Legacy timer variables for backward compatibility
@@ -276,7 +276,7 @@ volatile unsigned long dscKeybusInterface::keybusTime = 0;
 
 // ESP32-specific timer variables - CRITICAL for LoadProhibited crash prevention
 // These MUST be initialized to prevent memory access violations during ISR execution
-// The 0xa5a5a5a5 and 0xcececece patterns indicate these variables were accessed before initialization
+// The 0xa5a5a5a5, 0xcececece, and 0xcecececc patterns indicate these variables were accessed before initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
 
 // Legacy timer variables for backward compatibility
