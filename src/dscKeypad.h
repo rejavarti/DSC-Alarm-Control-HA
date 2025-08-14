@@ -21,7 +21,10 @@
 #define dscKeypad_h
 
 #include <cstdint>
-#if (defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ESP32) && !defined(ESP8266) && !defined(__AVR__))) && !defined(ARDUINO)
+#if defined(ARDUINO)
+// For Arduino builds, include Arduino framework
+#include <Arduino.h>
+#elif (defined(ESP_IDF_VERSION) || (defined(PLATFORMIO) && !defined(ESP32) && !defined(ESP8266) && !defined(__AVR__)))
   // ESP-IDF framework includes or native build (not Arduino platforms)
   #ifdef ESP_IDF_VERSION
     #include <esp_attr.h>
@@ -118,11 +121,11 @@
   #define HEX 16
   #define DEC 10
   
+#endif
+
+#if !defined(ARDUINO)
   // Global Serial object
   extern Stream Serial;
-#elif defined(ARDUINO)
-  // Arduino framework include
-  #include <Arduino.h>
 #endif
 
 // Compatible type definitions
