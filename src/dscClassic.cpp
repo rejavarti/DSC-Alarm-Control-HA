@@ -189,6 +189,24 @@ dscClassicInterface::dscClassicInterface(byte setClockPin, byte setReadPin, byte
 
 
 void dscClassicInterface::begin(Stream &_stream) {
+  // CRITICAL: Verify static variables are properly initialized before proceeding
+  // This prevents LoadProhibited crashes (0xcececece pattern) during initialization
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+  // For Arduino builds, static variables are defined in this file
+  // Perform explicit initialization check to prevent uninitialized memory access
+  if ((uintptr_t)&panelBufferLength == 0xcececece || (uintptr_t)&panelBufferLength == 0xa5a5a5a5) {
+    _stream.println(F("ERROR: Static variables not properly initialized - preventing LoadProhibited crash"));
+    return;
+  }
+#else
+  // For ESPHome builds, verify the external initialization flag
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    _stream.println(F("ERROR: Static variables not initialized - deferring DSC Classic interface setup"));
+    return;
+  }
+#endif
+
   // Validate pins are properly configured
   if (dscClockPin == 255 || dscReadPin == 255 || dscPC16Pin == 255) {
     _stream.println(F("ERROR: Invalid pin configuration for DSC Classic interface"));
@@ -313,8 +331,13 @@ void dscClassicInterface::stop() {
 
   // Disables esp32 timer1
   #elif defined(ESP32)
-  timerAlarmDisable(timer1);
-  timerEnd(timer1);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) during cleanup
+  if (timer1 != nullptr) {
+    timerAlarmDisable(timer1);
+    timerEnd(timer1);
+    timer1 = nullptr;  // Reset to safe state after cleanup
+  }
   #endif
 
   // Disables the Keybus clock pin interrupt

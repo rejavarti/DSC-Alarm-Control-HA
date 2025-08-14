@@ -160,8 +160,13 @@ void dscClassicInterface::stop() {
 
   // Disables esp32 timer1
   #elif defined(ESP32)
-  timerAlarmDisable(timer1);
-  timerEnd(timer1);
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) during cleanup
+  if (timer1 != nullptr) {
+    timerAlarmDisable(timer1);
+    timerEnd(timer1);
+    timer1 = nullptr;  // Reset to safe state after cleanup
+  }
   #endif
 
   // Disables the Keybus clock pin interrupt
