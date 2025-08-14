@@ -22,9 +22,10 @@
 
 #include <cstdint>
 #include <cstring>
-#if defined(ESP_IDF_VERSION) && !defined(ARDUINO)
-  // ESP-IDF framework includes or native build (not Arduino platforms)
-  #ifdef ESP_IDF_VERSION
+#include "dsc_arduino_compatibility.h"
+  // Non-Arduino environments - provide Arduino compatibility
+  #if defined(ESP_IDF_VERSION)
+    // ESP-IDF framework includes
     #include <esp_attr.h>
     #include <esp_timer.h>
     #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
@@ -33,7 +34,6 @@
     #include <freertos/portmacro.h>
   #endif
   #include <stdio.h>
-  #include <cstring>
   #include <chrono>
   #include <thread>
   
@@ -124,13 +124,9 @@
   #define HEX 16
   #define DEC 10
   
-  // Global Serial object - only declare if not already provided by Arduino framework
-  #ifndef Serial
-  extern Stream Serial;
-  #endif
-#elif defined(ARDUINO)
-  // Arduino framework include
-  #include <Arduino.h>
+  // Global Serial object
+  static Stream _serial_instance;
+  static Stream& Serial = _serial_instance;
 #endif
 
 // Compatible type definitions
@@ -282,6 +278,18 @@ class dscClassicInterface {
     #if defined(ESP32)
     static hw_timer_t * timer1;
     static portMUX_TYPE timer1Mux;
+    
+    // Additional ESP32 safety variables to prevent LoadProhibited crashes
+    static volatile bool esp32_hardware_initialized;
+    static volatile bool esp32_timers_configured;
+    static volatile unsigned long esp32_init_timestamp;
+    
+    // ESP-IDF 5.3.2+ specific variables for enhanced crash prevention
+    #ifdef DSC_ESP_IDF_5_3_PLUS
+    static volatile bool esp32_esp_idf_timer_ready;
+    static volatile bool esp32_system_fully_initialized;
+    static volatile unsigned long esp32_stabilization_timestamp;
+    #endif
     #endif
 
     Stream* stream;
