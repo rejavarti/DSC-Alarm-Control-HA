@@ -46,6 +46,8 @@ public:
     void begin(Stream& stream);
     // Check if hardware has been initialized
     bool isHardwareInitialized() const;
+    // Check if hardware initialization failed permanently
+    bool isInitializationFailed() const;
     
     // Status methods
     bool loop();
@@ -91,6 +93,8 @@ private:
     #endif
     bool initialized_;
     bool hardware_initialized_;
+    bool initialization_failed_;
+    uint8_t initialization_attempts_;
 };
 
 // Global accessor function
