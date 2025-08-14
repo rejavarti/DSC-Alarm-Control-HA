@@ -153,17 +153,21 @@
     // For ESP32/ESP-IDF, use FreeRTOS delay
     #include <freertos/FreeRTOS.h>
     #include <freertos/task.h>
-    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
-      #include <esp_rom_delay.h>
+    // Try to include esp_rom_delay.h only if available
+    #ifdef __has_include
+      #if __has_include(<esp_rom_delay.h>)
+        #include <esp_rom_delay.h>
+        #define DSC_HAS_ESP_ROM_DELAY 1
+      #endif
     #endif
     inline void delay(unsigned long ms) { 
       vTaskDelay(pdMS_TO_TICKS(ms));
     }
     inline void delayMicroseconds(unsigned long us) {
-      #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+      #ifdef DSC_HAS_ESP_ROM_DELAY
         esp_rom_delay_us(us);
       #else
-        // Fallback for older ESP-IDF versions
+        // Fallback for older ESP-IDF versions or when esp_rom_delay.h is not available
         vTaskDelay(pdMS_TO_TICKS((us + 999) / 1000)); // Convert to ms, round up
       #endif
     }
