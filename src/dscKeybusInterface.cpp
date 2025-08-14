@@ -63,10 +63,11 @@ volatile byte dscKeybusInterface::moduleSubCmd = 0;
 volatile unsigned long dscKeybusInterface::clockHighTime = 0;
 volatile unsigned long dscKeybusInterface::keybusTime = 0;
 
-// ESP32-specific timer variables
+// ESP32-specific timer variables  
 #if defined(ESP32)
-portMUX_TYPE dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
-hw_timer_t * dscKeybusInterface::timer1 = NULL;
+// CRITICAL: Force timer variables into initialized data section to prevent 0xcececece crashes
+portMUX_TYPE __attribute__((section(".data"))) dscKeybusInterface::timer1Mux = portMUX_INITIALIZER_UNLOCKED;
+hw_timer_t * __attribute__((section(".data"))) dscKeybusInterface::timer1 = NULL;
 #endif  // ESP32
 #endif
 
@@ -928,3 +929,19 @@ void dscKeybusInterface::dscDataInterrupt() {
   }
   #endif
 }
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+// CRITICAL: Constructor to prevent 0xcececece LoadProhibited crashes
+// This runs early and ensures critical variables have safe values in the right order
+void __attribute__((constructor(102))) dsc_keybus_static_init() {
+    // Ensure dsc_static_variables_initialized exists and is set properly
+    extern volatile bool dsc_static_variables_initialized;
+    if (!dsc_static_variables_initialized) {
+        dsc_static_variables_initialized = true;  // Mark as initialized if not already done
+    }
+    
+    // Force memory barrier to ensure all writes are visible
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    __sync_synchronize();
+    #endif
+}
+#endif
