@@ -71,7 +71,8 @@ void dscClassicInterface::begin(Stream &_stream) {
   }
   
   // Additional safety: verify that essential static variables are properly initialized
-  if (timer1 == (hw_timer_t*)0xcececece || timer1 == (hw_timer_t*)0xa5a5a5a5) {
+  // Check for all known uninitialized memory patterns including 0xcecececc variant
+  if (timer1 == (hw_timer_t*)0xcececece || timer1 == (hw_timer_t*)0xa5a5a5a5 || timer1 == (hw_timer_t*)0xcecececc) {
     _stream.println(F("ERROR: timer1 has uninitialized memory pattern - aborting"));
     return;  // Abort to prevent LoadProhibited crash
   }
