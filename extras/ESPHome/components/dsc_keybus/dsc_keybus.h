@@ -31,6 +31,20 @@
 #define DSC_DEFAULT_PC16_PIN 17   // ESP32 GPIO 17
 #endif
 
+// ESP-IDF 5.3.2+ LoadProhibited crash prevention variables
+#if defined(ESP32) || defined(ESP_PLATFORM)
+// External declarations for ESP-IDF 5.3+ and static variable initialization
+extern volatile bool dsc_static_variables_initialized;
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+extern volatile bool dsc_esp_idf_timer_system_ready;
+extern volatile unsigned long dsc_esp_idf_init_delay_timestamp;
+#endif
+
+// Manual initialization function for fallback
+extern void dsc_manual_static_variables_init();
+#endif
+
 namespace esphome {
 #ifdef USE_API
 namespace api {

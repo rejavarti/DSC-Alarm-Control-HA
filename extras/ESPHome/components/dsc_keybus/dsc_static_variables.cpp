@@ -56,6 +56,9 @@ volatile bool __attribute__((section(".data"))) dsc_static_variables_initialized
 #ifndef DSC_ESP_IDF_5_3_PLUS
 #define DSC_ESP_IDF_5_3_PLUS
 #endif
+#ifndef DSC_ESP_IDF_5_3_PLUS_COMPONENT
+#define DSC_ESP_IDF_5_3_PLUS_COMPONENT
+#endif
 volatile bool __attribute__((section(".data"))) dsc_esp_idf_timer_system_ready = false;
 volatile unsigned long __attribute__((section(".data"))) dsc_esp_idf_init_delay_timestamp = 0;
 #endif
@@ -306,6 +309,7 @@ volatile unsigned long dscKeybusInterface::esp32_stabilization_timestamp = 0;
 // CRITICAL: Single constructor to prevent 0xcececece LoadProhibited crashes
 // This runs early and ensures critical variables have safe values in the right order
 // Pattern: __attribute__((constructor)) enhanced for proper initialization sequencing
+// Priority 101 ensures this runs before other constructors that might access these variables
 void __attribute__((constructor(101))) dsc_complete_static_init() {
     // Step 1: Initialize the most critical variables with safe defaults first
     dsc_static_variables_initialized = false;  // Start with false to indicate work in progress
@@ -319,7 +323,7 @@ void __attribute__((constructor(101))) dsc_complete_static_init() {
     
     // Step 3: Initialize ESP-IDF 5.3+ specific variables if they exist
     #if defined(DSC_ESP_IDF_5_3_PLUS) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0))
-    dsc_esp_idf_timer_system_ready = true;     // Safe default, will be verified later
+    dsc_esp_idf_timer_system_ready = false;    // Start conservatively - will be verified later
     dsc_esp_idf_init_delay_timestamp = 0;      // Will be set when timer system is ready
     #endif
     
@@ -342,7 +346,7 @@ void dsc_manual_static_variables_init() {
     // and portMUX_INITIALIZER_UNLOCKED in their definitions above
     
     #if defined(DSC_ESP_IDF_5_3_PLUS) || (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0))
-    dsc_esp_idf_timer_system_ready = true;     
+    dsc_esp_idf_timer_system_ready = false;   // Conservative default - will be verified later
     dsc_esp_idf_init_delay_timestamp = 0;
     #endif
     
