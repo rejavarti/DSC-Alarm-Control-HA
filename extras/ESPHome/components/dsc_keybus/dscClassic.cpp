@@ -18,6 +18,7 @@
  */
 
 #include "esphome/core/defines.h"
+#include "dsc_keybus.h"  // For LoadProhibited crash prevention declarations
 #include "dsc_arduino_compatibility.h"
 
 #if defined(dscClassicSeries)
@@ -52,13 +53,12 @@ void dscClassicInterface::begin(Stream &_stream) {
   // CRITICAL: Check for static variable initialization before proceeding
   // This prevents LoadProhibited crashes (0xcececece pattern) during ESP32 initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
-  extern volatile bool dsc_static_variables_initialized;
+  // dsc_static_variables_initialized is now declared in dsc_keybus.h
   
   // SAFETY FALLBACK: If constructors haven't run yet, force initialization now
   // This handles edge cases where begin() is called very early in boot sequence
   if (!dsc_static_variables_initialized) {
-    // Declare and call the manual initialization function as fallback
-    extern void dsc_manual_static_variables_init();
+    // dsc_manual_static_variables_init is now declared in dsc_keybus.h
     dsc_manual_static_variables_init();
     
     // If still not initialized after manual call, there's a deeper issue

@@ -36,10 +36,8 @@ void DSCKeybusComponent::setup() {
   #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
   ESP_LOGD(TAG, "ESP-IDF 5.3.2+ detected - applying enhanced LoadProhibited crash prevention");
   
+  // ESP-IDF 5.3+ specific variables are now declared in dsc_keybus.h
   // Initialize timestamp now that ESP timer system is safely available
-  extern volatile bool dsc_esp_idf_timer_system_ready;
-  extern volatile unsigned long dsc_esp_idf_init_delay_timestamp;
-  
   // Initialize timestamp if not already set (constructor couldn't safely do this)
   if (dsc_esp_idf_init_delay_timestamp == 0) {
     dsc_esp_idf_init_delay_timestamp = esp_timer_get_time() / 1000;
@@ -121,8 +119,7 @@ void DSCKeybusComponent::loop() {
 #ifdef ESP32
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
     // Additional ESP-IDF 5.3.2+ specific readiness checks
-    extern volatile bool dsc_esp_idf_timer_system_ready;
-    extern volatile unsigned long dsc_esp_idf_init_delay_timestamp;
+    // ESP-IDF 5.3+ specific variables are now declared in dsc_keybus.h
     
     // Initialize timestamp if not set yet (safety fallback)
     if (dsc_esp_idf_init_delay_timestamp == 0) {
