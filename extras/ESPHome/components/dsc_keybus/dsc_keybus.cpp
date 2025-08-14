@@ -221,6 +221,16 @@ void DSCKeybusComponent::loop() {
     }
     #endif
     
+    // CRITICAL FIX: Add rate limiting to prevent rapid retry attempts
+    // This prevents overwhelming the system with back-to-back hardware initialization attempts
+    // that could contribute to the infinite loop condition
+    static uint32_t last_begin_attempt = 0;
+    uint32_t now = millis();
+    if (now - last_begin_attempt < 1000) {  // Minimum 1 second between attempts
+      return;  // Wait before attempting initialization again
+    }
+    last_begin_attempt = now;
+    
     getDSC().begin();
     
     // Check if initialization succeeded or failed permanently

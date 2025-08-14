@@ -95,6 +95,11 @@ private:
     bool hardware_initialized_;
     bool initialization_failed_;
     uint8_t initialization_attempts_;
+    
+    // CRITICAL FIX: Add persistent failure tracking to survive ESP32 restarts
+    // This addresses LoadProhibited crashes that cause restarts and reset static variables
+    uint32_t first_initialization_attempt_time_;
+    bool checkPersistentFailure();
 };
 
 // Global accessor function
