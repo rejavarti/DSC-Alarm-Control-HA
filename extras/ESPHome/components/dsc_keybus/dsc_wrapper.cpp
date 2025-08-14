@@ -35,7 +35,7 @@ DSCWrapper& DSCWrapper::getInstance() {
     return instance;
 }
 
-DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false), hardware_initialized_(false) {
+DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false), hardware_initialized_(false), initialization_failed_(false), initialization_attempts_(0) {
 }
 
 DSCWrapper::~DSCWrapper() {
@@ -54,48 +54,104 @@ void DSCWrapper::init(uint8_t clockPin, uint8_t readPin, uint8_t writePin, uint8
 }
 
 void DSCWrapper::begin() {
+    // Prevent infinite initialization attempts by checking failure state
+    if (initialization_failed_ || hardware_initialized_) {
+        return;  // Already failed or already initialized
+    }
+
     if (dsc_interface_ && !hardware_initialized_) {
+        initialization_attempts_++;
+        
+        // Limit initialization attempts to prevent infinite loops
+        if (initialization_attempts_ > 3) {
+            initialization_failed_ = true;
+            return;  // Give up after 3 attempts
+        }
+        
         // Critical safety check for ESP32 LoadProhibited prevention
         // The 0xcececece pattern indicates static variables accessed before ready
 #if defined(ESP32) || defined(ESP_PLATFORM)
         // Ensure we have adequate heap memory before hardware initialization
         size_t free_heap = esp_get_free_heap_size();
         if (free_heap < 15000) {  // Less than 15KB free
-            return;  // Abort hardware initialization - insufficient memory
+            return;  // Abort hardware initialization - insufficient memory (will retry next loop)
         }
         
         // Additional safety: check that timer variables are properly initialized
         // This prevents the LoadProhibited crash at 0xcececece address
         if (!initialized_) {
-            return;  // Interface not properly initialized - abort
+            return;  // Interface not properly initialized - abort (will retry next loop)
         }
 #endif
         
         // Initialize hardware with protection against early access
         dsc_interface_->begin();
+        
+        // Verify that hardware initialization actually succeeded
+#if defined(ESP32) || defined(ESP_PLATFORM)
+        #ifdef dscClassicSeries
+        if (dsc_interface_->esp32_hardware_initialized) {
+            hardware_initialized_ = true;
+        }
+        #else
+        if (dsc_interface_->esp32_hardware_initialized) {
+            hardware_initialized_ = true;
+        }
+        #endif
+#else
+        // For non-ESP32 platforms, assume success if no exception thrown
         hardware_initialized_ = true;
+#endif
     }
 }
 
 void DSCWrapper::begin(Stream& stream) {
+    // Prevent infinite initialization attempts by checking failure state
+    if (initialization_failed_ || hardware_initialized_) {
+        return;  // Already failed or already initialized
+    }
+
     if (dsc_interface_ && !hardware_initialized_) {
+        initialization_attempts_++;
+        
+        // Limit initialization attempts to prevent infinite loops
+        if (initialization_attempts_ > 3) {
+            initialization_failed_ = true;
+            return;  // Give up after 3 attempts
+        }
+        
         // Critical safety check for ESP32 LoadProhibited prevention
 #if defined(ESP32) || defined(ESP_PLATFORM)
         // Ensure we have adequate heap memory before hardware initialization
         size_t free_heap = esp_get_free_heap_size();
         if (free_heap < 15000) {  // Less than 15KB free
-            return;  // Abort hardware initialization - insufficient memory
+            return;  // Abort hardware initialization - insufficient memory (will retry next loop)
         }
         
         // Additional safety: check that timer variables are properly initialized
         if (!initialized_) {
-            return;  // Interface not properly initialized - abort
+            return;  // Interface not properly initialized - abort (will retry next loop)
         }
 #endif
         
         // Initialize hardware with protection against early access
         dsc_interface_->begin(stream);
+        
+        // Verify that hardware initialization actually succeeded
+#if defined(ESP32) || defined(ESP_PLATFORM)
+        #ifdef dscClassicSeries
+        if (dsc_interface_->esp32_hardware_initialized) {
+            hardware_initialized_ = true;
+        }
+        #else
+        if (dsc_interface_->esp32_hardware_initialized) {
+            hardware_initialized_ = true;
+        }
+        #endif
+#else
+        // For non-ESP32 platforms, assume success if no exception thrown
         hardware_initialized_ = true;
+#endif
     }
 }
 
@@ -122,6 +178,10 @@ void DSCWrapper::stop() {
 
 bool DSCWrapper::isHardwareInitialized() const {
     return hardware_initialized_;
+}
+
+bool DSCWrapper::isInitializationFailed() const {
+    return initialization_failed_;
 }
 
 void DSCWrapper::write(const char* keys) {

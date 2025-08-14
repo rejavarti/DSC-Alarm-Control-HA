@@ -137,7 +137,7 @@ void DSCKeybusComponent::setup() {
 void DSCKeybusComponent::loop() {
   // Enhanced initialization for ESP-IDF 5.3.2+ to prevent LoadProhibited crashes
   // The 0xcececece pattern indicates hardware initialization attempted too early
-  if (!getDSC().isHardwareInitialized()) {
+  if (!getDSC().isHardwareInitialized() && !getDSC().isInitializationFailed()) {
     ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware...");
     
 #if defined(ESP32) || defined(ESP_PLATFORM)
@@ -222,7 +222,26 @@ void DSCKeybusComponent::loop() {
     #endif
     
     getDSC().begin();
-    ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
+    
+    // Check if initialization succeeded or failed permanently
+    if (getDSC().isHardwareInitialized()) {
+      ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
+    } else if (getDSC().isInitializationFailed()) {
+      ESP_LOGE(TAG, "DSC Keybus hardware initialization failed permanently after multiple attempts");
+      ESP_LOGE(TAG, "Check hardware connections, timer configuration, and heap memory");
+    }
+  }
+  
+  // Handle permanent initialization failure
+  if (getDSC().isInitializationFailed()) {
+    // Log error periodically but don't spam logs
+    static uint32_t last_error_log = 0;
+    uint32_t now = millis();
+    if (now - last_error_log > 30000) {  // Every 30 seconds
+      ESP_LOGE(TAG, "DSC Keybus hardware initialization has failed - component non-functional");
+      last_error_log = now;
+    }
+    return;  // Skip processing if initialization failed permanently
   }
   
   // Process keybus data only if hardware is initialized and not force disconnected
