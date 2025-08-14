@@ -412,6 +412,24 @@ void dscKeypadInterface::dscClockInterrupt() {
 void dscKeypadInterface::dscClockInterrupt() {
 #endif
 
+  // CRITICAL: ESP32/ESP-IDF LoadProhibited crash protection
+  #if defined(ESP32) || defined(ESP_IDF_VERSION)
+  // Early safety check to prevent LoadProhibited crashes
+  // Verify that static variables and timer are ready before proceeding
+  extern volatile bool dsc_static_variables_initialized;
+  if (!dsc_static_variables_initialized) {
+    return;  // Abort ISR execution if not ready
+  }
+  
+  #if defined(ESP32)
+  // Safety check: Ensure timer1 is properly initialized before use
+  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+  if (timer1 == (hw_timer_t*)0xcececece || timer1 == (hw_timer_t*)0xa5a5a5a5 || timer1 == (hw_timer_t*)0xcecececc) {
+    return;  // Abort if timer has uninitialized memory pattern
+  }
+  #endif
+  #endif
+
   // Toggles the clock pin for the length of a panel command
   if (clockCycleCount < clockCycleTotal) {
     static bool clockHigh = true;
