@@ -15,9 +15,8 @@
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
 #include <esp_timer.h>      // For high-resolution timer
 #include <esp_app_desc.h>   // For application descriptor
-#ifndef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-#define DSC_ESP_IDF_5_3_PLUS_COMPONENT
-#endif
+// Note: DSC_ESP_IDF_5_3_PLUS_COMPONENT is now defined via ESPHome config
+// Removed redundant #define to prevent redefinition warnings
 #endif
 
 namespace esphome {
