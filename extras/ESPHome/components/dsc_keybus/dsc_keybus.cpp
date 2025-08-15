@@ -163,6 +163,13 @@ void DSCKeybusComponent::setup() {
 }
 
 void DSCKeybusComponent::loop() {
+  // CRITICAL FIX: Skip hardware initialization completely in standalone mode
+  if (standalone_mode_) {
+    // In standalone mode, we don't need to do any hardware initialization
+    // Just process any simulated events or maintain connection status
+    return;
+  }
+  
   // Enhanced initialization for ESP-IDF 5.3.2+ to prevent LoadProhibited crashes
   // The 0xcececece pattern indicates hardware initialization attempted too early
   if (!getDSC().isHardwareInitialized() && !getDSC().isInitializationFailed()) {
@@ -280,8 +287,9 @@ void DSCKeybusComponent::loop() {
     required_delay = 3000;  // 3 seconds for ESP-IDF 5.3.2+ (increased from 2s)
     #endif
     
-    // CRITICAL FIX: Prevent infinite loop by implementing faster permanent failure detection
-    if (initialization_failures >= 3) {  // Reduce from 5 to 3 attempts for faster detection
+    // CRITICAL FIX: Prevent infinite loop by implementing permanent failure detection
+    // Use more tolerant timing for real DSC panel connections
+    if (initialization_failures >= 5) {  // Revert to 5 attempts to allow for real panel connection delays
       // Log error periodically but don't spam logs
       static uint32_t last_permanent_failure_log = 0;
       if (current_time - last_permanent_failure_log > 30000) {  // Every 30 seconds
@@ -472,13 +480,13 @@ void DSCKeybusComponent::loop() {
       yield();  // Allow IDLE task to run
       #endif
       
-      if (rate_limit_count > 50) {  // CRITICAL FIX: Reduce from 100 to 50 attempts for faster failure detection
+      if (rate_limit_count > 100) {  // Revert to 100 attempts to allow more time for real panel connections
         ESP_LOGE(TAG, "Hardware initialization rate limiting exceeded maximum attempts (%u) - forcing continuation", rate_limit_count);
         ESP_LOGW(TAG, "This usually indicates no DSC panel is connected - consider enabling standalone_mode: true");
         rate_limit_count = 0;  // Reset counter
       } else {
-        if (should_log && rate_limit_count % 10 == 0) {  // CRITICAL FIX: Reduce logging frequency from every 25 to every 10
-          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/50)", rate_limit_count);
+        if (should_log && rate_limit_count % 25 == 0) {  // Revert to every 25 attempts
+          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/100)", rate_limit_count);
         }
         return;  // Wait before attempting initialization again
       }
@@ -529,8 +537,8 @@ void DSCKeybusComponent::loop() {
     total_loop_attempts++;
     
     // If we've had too many actual initialization attempts, something is wrong - give up
-    // CRITICAL FIX: Reduce maximum attempts from 500 to 100 to prevent overwhelming the system
-    if (total_loop_attempts > 100 || (current_time - first_loop_attempt_time > 20000 && total_loop_attempts > 25)) {
+    // CRITICAL FIX: Revert to more tolerant limits for real panel connections
+    if (total_loop_attempts > 500 || (current_time - first_loop_attempt_time > 30000 && total_loop_attempts > 50)) {
       ESP_LOGE(TAG, "DSC hardware initialization exceeded maximum loop attempts (%u attempts over %u ms) - marking as permanently failed to prevent infinite loop", 
                total_loop_attempts, current_time - first_loop_attempt_time);
       ESP_LOGW(TAG, "If no DSC panel is connected, enable standalone_mode: true in your configuration");
