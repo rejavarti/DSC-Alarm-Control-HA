@@ -25,7 +25,7 @@
 
 #include "dscKeybus.h"
 
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP_PLATFORM)
 #include <esp_task_wdt.h>  // For ESP32 watchdog timer management to prevent freezing
 #endif
 
@@ -118,7 +118,7 @@ void dscKeybusInterface::begin(Stream &_stream) {
   timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
 
   // esp32 timer1 calls dscDataInterrupt() from dscClockInterrupt()
-  #elif defined(ESP32)
+  #elif defined(ESP32) || defined(ESP_PLATFORM)
   // Ensure timer1Mux is properly initialized before timer operations
   // This prevents LoadProhibited crashes (0xcececece pattern) during ISR execution
   if (timer1 != nullptr) {
@@ -198,7 +198,7 @@ void dscKeybusInterface::stop() {
   timer1_detachInterrupt();
 
   // Disables esp32 timer1
-  #elif defined(ESP32)
+  #elif defined(ESP32) || defined(ESP_PLATFORM)
   // Safety check: Only disable timer if it's properly initialized
   // This prevents additional crashes during cleanup
   if (timer1 != nullptr) {
