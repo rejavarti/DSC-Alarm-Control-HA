@@ -116,11 +116,31 @@ void DSCKeybusComponent::loop() {
   // Enhanced initialization for ESP-IDF 5.3.2+ to prevent LoadProhibited crashes
   // The 0xcececece pattern indicates hardware initialization attempted too early
   if (!getDSC().isHardwareInitialized() && !getDSC().isInitializationFailed()) {
+    // CRITICAL FIX: Add master circuit breaker to prevent infinite loop at the component level
+    // This catches any condition that causes rapid loop() calls and eventual system lockup
+    static uint32_t total_loop_attempts = 0;
+    static uint32_t first_loop_attempt_time = 0;
+    uint32_t current_time = millis();
+    
+    // Record first attempt time
+    if (first_loop_attempt_time == 0) {
+      first_loop_attempt_time = current_time;
+    }
+    
+    total_loop_attempts++;
+    
+    // If we've had too many loop attempts in a short time, something is wrong - give up
+    if (total_loop_attempts > 1000 || (current_time - first_loop_attempt_time > 60000 && total_loop_attempts > 100)) {
+      ESP_LOGE(TAG, "DSC hardware initialization exceeded maximum loop attempts (%u attempts over %u ms) - marking as permanently failed to prevent infinite loop", 
+               total_loop_attempts, current_time - first_loop_attempt_time);
+      getDSC().markInitializationFailed();
+      return;
+    }
+    
     // CRITICAL FIX: Prevent infinite loop logging by adding rate limiting
     static uint32_t last_debug_log = 0;
-    uint32_t current_time = millis();
     if (current_time - last_debug_log >= 5000) {  // Log every 5 seconds max
-      ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware...");
+      ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware... (attempt %u)", total_loop_attempts);
       last_debug_log = current_time;
     }
     
@@ -242,7 +262,15 @@ void DSCKeybusComponent::loop() {
       return;  // Still waiting for system to stabilize
     }
     
-    ESP_LOGD(TAG, "System stabilized - initializing DSC Keybus hardware (timers, interrupts)...");
+    // CRITICAL FIX: Add rate limiting to the "System stabilized" message to prevent infinite log spam
+    // This addresses the core issue where early returns bypass the main rate limiting code
+    static uint32_t last_system_stabilized_log = 0;
+    uint32_t current_time_for_log = millis();
+    bool should_log = current_time_for_log - last_system_stabilized_log >= 5000;
+    if (should_log) {
+      ESP_LOGD(TAG, "System stabilized - initializing DSC Keybus hardware (timers, interrupts)...");
+      last_system_stabilized_log = current_time_for_log;
+    }
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
     // ESP-IDF 5.3.2+ specific timer system readiness verification (moved from setup())
@@ -254,7 +282,9 @@ void DSCKeybusComponent::loop() {
       
       // Only attempt timer verification every 2 seconds to avoid overwhelming the system
       if (current_time_for_timer - last_timer_ready_log >= 2000) {
-        ESP_LOGD(TAG, "Verifying ESP-IDF 5.3.2+ timer system readiness...");
+        if (should_log) {
+          ESP_LOGD(TAG, "Verifying ESP-IDF 5.3.2+ timer system readiness...");
+        }
         
         // Verify that the ESP timer system is fully operational
         esp_timer_handle_t test_timer = nullptr;
@@ -282,11 +312,35 @@ void DSCKeybusComponent::loop() {
             ESP_LOGW(TAG, "Timer system check exceeded 60 seconds - forcing continuation to prevent infinite loop");
             ::dsc_esp_idf_timer_system_ready = true;  // Force continuation
           } else {
-            return;  // Wait for timer system to be verified as ready (don't reset init_attempt_time)
+            // CRITICAL FIX: Add circuit breaker to prevent infinite waiting for timer system readiness
+            static uint32_t timer_wait_count = 0;
+            timer_wait_count++;
+            if (timer_wait_count > 50) {  // After 50 attempts, force continue to break infinite loop
+              ESP_LOGE(TAG, "Timer system readiness check exceeded maximum attempts (%u) - forcing continuation", timer_wait_count);
+              ::dsc_esp_idf_timer_system_ready = true;  // Force continuation to break loop
+              timer_wait_count = 0;  // Reset counter
+            } else {
+              if (should_log) {
+                ESP_LOGD(TAG, "Timer system not ready, waiting... (attempt %u/50)", timer_wait_count);
+              }
+              return;  // Wait for timer system to be verified as ready (don't reset init_attempt_time)
+            }
           }
         }
       } else {
-        return;  // Still within rate limit period (don't reset init_attempt_time)
+        // CRITICAL FIX: Add circuit breaker to prevent infinite waiting due to timer rate limiting
+        static uint32_t timer_rate_limit_count = 0;
+        timer_rate_limit_count++;
+        if (timer_rate_limit_count > 100) {  // After 100 rate-limited attempts, force continue
+          ESP_LOGE(TAG, "Timer system rate limiting exceeded maximum attempts (%u) - forcing continuation", timer_rate_limit_count);
+          ::dsc_esp_idf_timer_system_ready = true;  // Force continuation to break loop
+          timer_rate_limit_count = 0;  // Reset counter
+        } else {
+          if (should_log) {
+            ESP_LOGD(TAG, "Timer system rate limited, waiting... (attempt %u/100)", timer_rate_limit_count);
+          }
+          return;  // Still within rate limit period (don't reset init_attempt_time)
+        }
       }
     }
     #endif
@@ -351,7 +405,18 @@ void DSCKeybusComponent::loop() {
     static uint32_t last_begin_attempt = 0;
     uint32_t now = millis();
     if (now - last_begin_attempt < 1000) {  // Minimum 1 second between attempts
-      return;  // Wait before attempting initialization again
+      // CRITICAL FIX: Add circuit breaker to prevent infinite rate limiting
+      static uint32_t rate_limit_count = 0;
+      rate_limit_count++;
+      if (rate_limit_count > 200) {  // After 200 rate-limited attempts, force continue
+        ESP_LOGE(TAG, "Hardware initialization rate limiting exceeded maximum attempts (%u) - forcing continuation", rate_limit_count);
+        rate_limit_count = 0;  // Reset counter
+      } else {
+        if (should_log && rate_limit_count % 50 == 0) {
+          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/200)", rate_limit_count);
+        }
+        return;  // Wait before attempting initialization again
+      }
     }
     last_begin_attempt = now;
     
@@ -367,13 +432,24 @@ void DSCKeybusComponent::loop() {
       // CRITICAL FIX: DO NOT reset init_attempt_time - this causes infinite loop
       // Instead, wait longer before retrying to allow memory to be freed
       static uint32_t memory_retry_delay = 0;
+      static uint32_t memory_retry_count = 0;
       if (memory_retry_delay == 0) {
         memory_retry_delay = current_time;
       }
       if (current_time - memory_retry_delay < 5000) {  // Wait 5 seconds before retrying
+        memory_retry_count++;
+        if (memory_retry_count > 100) {  // After 100 memory retry attempts, give up
+          ESP_LOGE(TAG, "Memory availability check exceeded maximum attempts (%u) - marking as permanently failed", memory_retry_count);
+          getDSC().markInitializationFailed();
+          return;
+        }
+        if (should_log && memory_retry_count % 25 == 0) {
+          ESP_LOGD(TAG, "Memory too low, waiting for memory to be freed... (attempt %u/100)", memory_retry_count);
+        }
         return;
       }
       memory_retry_delay = 0;  // Reset retry delay for next memory issue
+      memory_retry_count = 0;  // Reset retry count
     }
     
     ESP_LOGD(TAG, "System ready - calling getDSC().begin() with %zu bytes free heap", final_heap_check);
