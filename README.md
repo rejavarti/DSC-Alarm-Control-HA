@@ -47,7 +47,39 @@ The `extras/ESPHome/DscAlarm.yaml` configuration provides:
 
 **ANSWER: YES! You should definitely still use it.**
 
-The ESP-IDF 5.3.2 LoadProhibited fix is the **most comprehensive and current solution**:
+The ESP-IDF 5.3.2 LoadProhibited fix is the **most comprehensive and current solution**.
+
+## 🎯 NEW: Comprehensive Configuration with ALL Fixes
+
+**For users who want EVERYTHING in one configuration file:**
+
+**File**: `extras/ESPHome/DSCAlarm_Comprehensive_All_Fixes.yaml`
+
+This new configuration incorporates **ALL fixes and features** from the repository:
+- ✅ **ESP-IDF 5.3.2 LoadProhibited crash fix** (complete crash prevention)
+- ✅ **Memory allocation failure prevention** (heap optimization)  
+- ✅ **Classic AND PowerSeries support** (automatic compatibility)
+- ✅ **Live alarm functionality** (Fire, Aux, Panic emergency buttons)
+- ✅ **Complete zone monitoring** (up to 16 zones with alarm status)
+- ✅ **Multi-partition support** (up to 4 partitions)
+- ✅ **System health monitoring** (memory, WiFi, connectivity diagnostics)
+- ✅ **Watchdog protection** (prevents crashes and infinite loops)
+- ✅ **Enhanced stability fixes** (timer fixes, CPU optimization)
+
+**Usage**:
+```yaml
+# Simply use this file as your ESPHome configuration
+<<: !include extras/ESPHome/DSCAlarm_Comprehensive_All_Fixes.yaml
+
+# Customize for your setup:
+# 1. Set series_type: "PowerSeries" or "Classic" 
+# 2. Configure zone names for your actual zones
+# 3. Add your secrets (WiFi, access codes)
+```
+
+See `extras/ESPHome/COMPREHENSIVE_CONFIG_GUIDE.md` for detailed setup instructions.
+
+The ESP-IDF 5.3.2 LoadProhibited fix benefits:
 - ✅ **Includes all previous fixes** and extends them with advanced protections
 - ✅ **Works seamlessly** with all repository improvements and recent changes
 - ✅ **Prevents multiple crash types**: 0xcececece LoadProhibited, memory allocation failures, timer system crashes
@@ -81,6 +113,8 @@ The ESP-IDF 5.3.2 LoadProhibited fix is the **most comprehensive and current sol
 - `ESPHOME_COMPLETE_SETUP_GUIDE.md` - **NEW**: Complete hardware and software setup documentation (answers hardware requirements, wiring, step-by-step process)
 - `ESPHOME_MIGRATION_GUIDE.md` - **UPDATED**: Migration guide from deprecated MQTT YAML entities
 - `ESP_IDF_5_3_LOADPROHIBITED_FIX_GUIDANCE.md` - **NEW**: Definitive guide on ESP-IDF 5.3 LoadProhibited fix compatibility and usage
+- `extras/ESPHome/DSCAlarm_Comprehensive_All_Fixes.yaml` - **NEW**: All-in-one configuration with every fix and feature
+- `extras/ESPHome/COMPREHENSIVE_CONFIG_GUIDE.md` - **NEW**: Setup guide for the comprehensive configuration
 
 ## What Changed
 
