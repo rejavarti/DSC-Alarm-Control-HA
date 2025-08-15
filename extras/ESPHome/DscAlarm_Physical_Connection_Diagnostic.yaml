@@ -16,11 +16,8 @@ substitutions:
 
 esphome:
   name: dscalarm-diagnostic
-  # DSC Classic series build flag - Enable if using Classic panels (PC1500, PC1550, etc.)
-  # Comment out the next 3 lines if using PowerSeries panels (PC1555, PC1832, etc.)
-  platformio_options:
-    build_flags:
-      - -DdscClassicSeries
+  # DSC Classic series build flag is automatically set by the component based on series_type below
+  # No manual build flags needed - the component handles this automatically
 
 external_components:
   - source:
