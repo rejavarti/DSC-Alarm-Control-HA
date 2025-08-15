@@ -1,0 +1,461 @@
+substitutions:
+  accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
+
+# DSC ALARM PHYSICAL CONNECTION DIAGNOSTIC CONFIGURATION
+# IMPORTANT: This configuration is specifically designed for troubleshooting physical connection issues
+# when the DSC panel is physically connected but not communicating properly with the ESP32
+#
+# Expected physical connections for ESP32:
+#   DSC Yellow (Clock) → ESP32 GPIO 18 (via 33kΩ resistor)
+#   DSC Green (Data)   → ESP32 GPIO 19 (via 33kΩ resistor)  
+#   DSC Black (Ground) → ESP32 GND
+#   DSC Red (12V)      → NOT connected to ESP32 (separate power supply recommended)
+#
+# For DSC Classic series only:
+#   DSC Brown (PC-16)  → ESP32 GPIO 17 (via 1kΩ resistor)
+
+esphome:
+  name: dscalarm-diagnostic
+  # DSC Classic series build flag - Enable if using Classic panels (PC1500, PC1550, etc.)
+  # Comment out the next 3 lines if using PowerSeries panels (PC1555, PC1832, etc.)
+  platformio_options:
+    build_flags:
+      - -DdscClassicSeries
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "DSCalarm-Diagnostic"
+    password: !secret wifi_password
+
+logger:
+  baud_rate: 0
+  level: VERBOSE  # Maximum verbosity for diagnostic purposes
+
+api:
+  encryption:
+    key: !secret encryption_key
+
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username  
+  password: !secret mqtt_password
+  discovery: true
+  discovery_prefix: homeassistant
+  topic_prefix: esphome/dscalarm-diagnostic
+   
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
+   
+status_led:
+  pin:
+    number: GPIO2
+    inverted: yes
+
+# DIAGNOSTIC DSC KEYBUS CONFIGURATION
+dsc_keybus:
+  id: dsc_interface
+  access_code: "$accessCode"
+  series_type: "Classic"  # Change to "PowerSeries" if using PowerSeries panels
+  standalone_mode: false  # FALSE for physical panel connection diagnosis
+  debug: 3  # MAXIMUM DEBUG - Shows all packets for troubleshooting
+  # PIN CONFIGURATION - Verify these match your physical wiring:
+  clock_pin: 18    # DSC Yellow wire → ESP32 GPIO 18 (via 33kΩ resistor)
+  read_pin: 19     # DSC Green wire → ESP32 GPIO 19 (via 33kΩ resistor)  
+  write_pin: 21    # DSC Green wire write (shared with read_pin, via 33kΩ resistor)
+  pc16_pin: 17     # DSC Brown wire → ESP32 GPIO 17 (DSC Classic only, via 1kΩ resistor)
+  on_system_status_change:
+    then:
+      - text_sensor.template.publish:
+          id: system_status
+          state: !lambda 'return status;'
+      - lambda: |-
+          ESP_LOGI("dsc_diagnostic", "System status changed: %s", status.c_str());
+  on_partition_status_change:
+    then:
+      - lambda: |-
+          ESP_LOGI("dsc_diagnostic", "Partition %d status changed: %s", partition, status.c_str());
+          switch(partition) {
+            case 1: id(p1).publish_state(status); break;
+            case 2: id(p2).publish_state(status); break;
+          }
+  on_partition_msg_change:
+    then:
+      - lambda: |-
+          ESP_LOGI("dsc_diagnostic", "Partition %d message changed: %s", partition, msg.c_str());
+          switch(partition) {
+            case 1: id(m1).publish_state(msg); break;
+            case 2: id(m2).publish_state(msg); break;
+          }
+  on_trouble_status_change:
+    then:
+      - binary_sensor.template.publish:
+          id: t1
+          state: !lambda 'return trouble;'
+      - lambda: |-
+          ESP_LOGI("dsc_diagnostic", "Trouble status changed: %s", trouble ? "ACTIVE" : "CLEAR");
+  on_fire_status_change:
+    then:
+      - lambda: |-
+          ESP_LOGI("dsc_diagnostic", "Fire status changed for partition %d: %s", partition, fire ? "ACTIVE" : "CLEAR");
+          switch(partition) {
+            case 1: id(f1).publish_state(fire); break;
+          }
+  on_zone_status_change:
+    then:
+      - lambda: |-
+          ESP_LOGI("dsc_diagnostic", "Zone %d status changed: %s", zone, open ? "OPEN" : "CLOSED");
+          switch(zone) {
+            case 1: id(z1).publish_state(open); break;
+            case 2: id(z2).publish_state(open); break;
+            case 3: id(z3).publish_state(open); break;
+            case 4: id(z4).publish_state(open); break;
+            case 5: id(z5).publish_state(open); break;
+            case 6: id(z6).publish_state(open); break;
+            case 7: id(z7).publish_state(open); break;
+            case 8: id(z8).publish_state(open); break;
+          }
+  on_zone_alarm_change:
+    then:
+      - lambda: |-
+          ESP_LOGI("dsc_diagnostic", "Zone %d alarm status changed: %s", zone, open ? "ALARM" : "NORMAL");
+          switch(zone) {
+            case 1: id(za1).publish_state(open); break;
+            case 2: id(za2).publish_state(open); break;
+            case 3: id(za3).publish_state(open); break;
+            case 4: id(za4).publish_state(open); break;
+            case 5: id(za5).publish_state(open); break;
+            case 6: id(za6).publish_state(open); break;
+            case 7: id(za7).publish_state(open); break;
+            case 8: id(za8).publish_state(open); break;
+          }
+
+# DIAGNOSTIC SENSORS - Monitor connection status and pin states
+binary_sensor:
+  # Zone status sensors (basic set for testing)
+  - platform: template
+    id: z1
+    name: "Zone 1"
+    device_class: door
+  - platform: template
+    id: z2
+    name: "Zone 2"
+    device_class: door
+  - platform: template
+    id: z3
+    name: "Zone 3"
+    device_class: door
+  - platform: template
+    id: z4
+    name: "Zone 4"
+    device_class: window
+  - platform: template
+    id: z5
+    name: "Zone 5"
+    device_class: window
+  - platform: template
+    id: z6
+    name: "Zone 6"
+    device_class: window
+  - platform: template
+    id: z7
+    name: "Zone 7"
+    device_class: motion
+  - platform: template
+    id: z8
+    name: "Zone 8"
+    device_class: motion
+    
+  # Zone alarm status sensors
+  - platform: template
+    id: za1
+    name: "Zone 1 Alarm"
+    device_class: safety
+  - platform: template
+    id: za2
+    name: "Zone 2 Alarm"
+    device_class: safety
+  - platform: template
+    id: za3
+    name: "Zone 3 Alarm"
+    device_class: safety
+  - platform: template
+    id: za4
+    name: "Zone 4 Alarm"
+    device_class: safety
+  - platform: template
+    id: za5
+    name: "Zone 5 Alarm"
+    device_class: safety
+  - platform: template
+    id: za6
+    name: "Zone 6 Alarm"
+    device_class: safety
+  - platform: template
+    id: za7
+    name: "Zone 7 Alarm"
+    device_class: safety
+  - platform: template
+    id: za8
+    name: "Zone 8 Alarm"
+    device_class: safety
+    
+  # System status sensors
+  - platform: template
+    id: t1
+    name: "DSC Trouble Status"
+    device_class: problem
+    
+  - platform: template
+    id: f1
+    device_class: safety
+    name: "DSC Fire Status"
+    
+  # System connectivity monitoring
+  - platform: status
+    name: "DSC System Online"
+    id: system_status_sensor
+    device_class: connectivity
+    
+  # DSC Keybus connection status diagnostic
+  - platform: template
+    name: "DSC Keybus Connected"
+    id: keybus_connected_sensor
+    device_class: connectivity
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+      
+  # DSC Buffer overflow detection
+  - platform: template
+    name: "DSC Buffer Overflow"
+    id: buffer_overflow_sensor  
+    device_class: problem
+    lambda: |-
+      return id(dsc_interface).getBufferOverflow();
+
+  # PIN STATE DIAGNOSTICS - Monitor actual GPIO pin states
+  - platform: gpio
+    name: "DSC Clock Pin State"
+    id: clock_pin_state
+    pin:
+      number: 18
+      mode: INPUT
+    device_class: connectivity
+    
+  - platform: gpio
+    name: "DSC Data Pin State" 
+    id: data_pin_state
+    pin:
+      number: 19
+      mode: INPUT
+    device_class: connectivity
+
+text_sensor:
+  - platform: template
+    id: system_status
+    name: "DSC System Status"
+    icon: "mdi:shield"
+  - platform: template
+    id: p1
+    name: "DSC Partition 1 Status"
+    icon: "mdi:shield"
+  - platform: template
+    id: p2
+    name: "DSC Partition 2 Status"
+    icon: "mdi:shield"  
+  - platform: template
+    id: m1
+    name: "DSC Partition 1 Message"
+    icon: "mdi:alert-box"
+  - platform: template
+    id: m2
+    name: "DSC Partition 2 Message"
+    icon: "mdi:alert-box"
+    
+  # DIAGNOSTIC INFORMATION
+  - platform: version
+    name: "DSC ESPHome Version"
+    icon: "mdi:tag"
+    
+  - platform: wifi_info
+    ip_address:
+      name: "DSC IP Address"
+    ssid:
+      name: "DSC WiFi SSID"
+    mac_address:
+      name: "DSC MAC Address"
+      
+  # Connection diagnostic information
+  - platform: template
+    name: "DSC Connection Status"
+    id: connection_diagnostic
+    icon: "mdi:connection"
+    lambda: |-
+      if (id(dsc_interface).getKeybusConnected()) {
+        return {"Connected and communicating"};
+      } else {
+        return {"Not connected - check wiring and power"};
+      }
+      
+  # Pin voltage diagnostic (theoretical - shows if pins are floating)
+  - platform: template
+    name: "DSC Wiring Diagnostic" 
+    id: wiring_diagnostic
+    icon: "mdi:cable-data"
+    lambda: |-
+      bool clock_state = id(clock_pin_state).state;
+      bool data_state = id(data_pin_state).state;
+      
+      if (!clock_state && !data_state) {
+        return {"Both pins LOW - check power to DSC panel"};
+      } else if (clock_state && data_state) {
+        return {"Both pins HIGH - normal idle state"};
+      } else if (!clock_state) {
+        return {"Clock pin LOW - possible wiring issue"};
+      } else if (!data_state) {
+        return {"Data pin LOW - possible wiring issue"};
+      }
+      return {"Pin states unknown"};
+
+sensor:
+  # System diagnostics
+  - platform: uptime
+    name: "DSC Uptime"
+    id: uptime_seconds
+    update_interval: 60s
+    icon: "mdi:timer-outline"
+    unit_of_measurement: s
+    device_class: duration
+    state_class: total_increasing
+  
+  - platform: wifi_signal
+    name: "DSC WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    unit_of_measurement: dBm
+    device_class: signal_strength
+    state_class: measurement
+    icon: "mdi:wifi-strength-2"
+    
+  - platform: template
+    name: "DSC Free Heap"
+    id: free_heap_sensor
+    update_interval: 60s
+    unit_of_measurement: "bytes"
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      return esp_get_free_heap_size();
+
+# ENHANCED DIAGNOSTIC LOGGING
+interval:
+  # Keybus status monitoring every 30 seconds
+  - interval: 30s
+    then:
+      - lambda: |-
+          bool connected = id(dsc_interface).getKeybusConnected();
+          bool overflow = id(dsc_interface).getBufferOverflow();
+          bool clock_pin = id(clock_pin_state).state;
+          bool data_pin = id(data_pin_state).state;
+          
+          ESP_LOGI("dsc_diagnostic", "=== DSC CONNECTION DIAGNOSTIC ===");
+          ESP_LOGI("dsc_diagnostic", "Keybus Connected: %s", connected ? "YES" : "NO");
+          ESP_LOGI("dsc_diagnostic", "Buffer Overflow: %s", overflow ? "YES" : "NO");
+          ESP_LOGI("dsc_diagnostic", "Clock Pin (GPIO18): %s", clock_pin ? "HIGH" : "LOW");
+          ESP_LOGI("dsc_diagnostic", "Data Pin (GPIO19): %s", data_pin ? "HIGH" : "LOW");
+          ESP_LOGI("dsc_diagnostic", "Free Heap: %d bytes", esp_get_free_heap_size());
+          ESP_LOGI("dsc_diagnostic", "WiFi RSSI: %.1f dBm", wifi::global_wifi_component->wifi_rssi());
+          
+          if (!connected) {
+            ESP_LOGW("dsc_diagnostic", "DSC panel not responding - check:");
+            ESP_LOGW("dsc_diagnostic", "1. Power to DSC panel (should be 12V on keybus)");
+            ESP_LOGW("dsc_diagnostic", "2. Physical wiring: Yellow→GPIO18, Green→GPIO19, Black→GND");
+            ESP_LOGW("dsc_diagnostic", "3. Resistors: 33kΩ on Clock and Data lines");
+            ESP_LOGW("dsc_diagnostic", "4. Panel series type: Classic vs PowerSeries");
+            if (clock_pin && data_pin) {
+              ESP_LOGW("dsc_diagnostic", "Pins are HIGH (good) but no communication - likely panel power or resistor issue");
+            } else {
+              ESP_LOGW("dsc_diagnostic", "Pins are LOW - check panel power and ground connections");
+            }
+          } else {
+            ESP_LOGI("dsc_diagnostic", "DSC panel communication is working correctly!");
+          }
+          ESP_LOGI("dsc_diagnostic", "================================");
+
+  # Pin state change monitoring
+  - interval: 10s
+    then:
+      - lambda: |-
+          static bool last_clock_state = false;
+          static bool last_data_state = false;
+          static bool first_run = true;
+          
+          bool current_clock = id(clock_pin_state).state;
+          bool current_data = id(data_pin_state).state;
+          
+          if (first_run || current_clock != last_clock_state || current_data != last_data_state) {
+            ESP_LOGI("dsc_pin_monitor", "Pin State Change - Clock: %s, Data: %s", 
+              current_clock ? "HIGH" : "LOW", current_data ? "HIGH" : "LOW");
+            
+            last_clock_state = current_clock;
+            last_data_state = current_data;
+            first_run = false;
+          }
+
+button:
+  # System restart for diagnostic purposes
+  - platform: restart
+    name: "DSC System Restart"
+    id: restart_switch
+    
+  # Manual connection test
+  - platform: template
+    name: "DSC Test Connection"
+    id: test_connection_button
+    icon: "mdi:test-tube"
+    on_press:
+      - lambda: |-
+          ESP_LOGI("dsc_test", "=== MANUAL CONNECTION TEST ===");
+          ESP_LOGI("dsc_test", "Testing DSC keybus communication...");
+          
+          // Force a connection status check
+          bool connected = id(dsc_interface).getKeybusConnected();
+          ESP_LOGI("dsc_test", "Connection test result: %s", connected ? "SUCCESS" : "FAILED");
+          
+          if (!connected) {
+            ESP_LOGW("dsc_test", "Connection test failed - see diagnostic logs above");
+          }
+          ESP_LOGI("dsc_test", "============================");
+
+switch:
+  # Connection control for testing
+  - platform: template
+    name: "DSC Connection Control"
+    id: connection_control_switch
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+    icon: "mdi:shield-link-variant"
+    turn_on_action:
+      - logger.log: "Attempting to restart DSC connection..."
+      - switch.toggle: restart_switch
+    turn_off_action:
+      - logger.log: "Stopping DSC connection for diagnostic..."
+      - lambda: |-
+          // This will stop the DSC interface temporarily
+          ESP_LOGI("dsc_diagnostic", "Connection control switched OFF - stopping DSC interface");
