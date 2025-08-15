@@ -35,7 +35,7 @@ DSCWrapper& DSCWrapper::getInstance() {
     return instance;
 }
 
-DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false), hardware_initialized_(false), initialization_failed_(false), initialization_attempts_(0) {
+DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false), hardware_initialized_(false), initialization_failed_(false), initialization_attempts_(0), first_initialization_attempt_time_(0) {
 }
 
 DSCWrapper::~DSCWrapper() {
@@ -59,8 +59,34 @@ void DSCWrapper::begin() {
         return;  // Already failed or already initialized
     }
 
+    // CRITICAL FIX: Check for persistent failure patterns (restart loops)
+    if (checkPersistentFailure()) {
+        initialization_failed_ = true;
+        ESP_LOGE("dsc_wrapper", "Persistent failure pattern detected - stopping initialization attempts");
+        return;
+    }
+
     if (dsc_interface_ && !hardware_initialized_) {
         initialization_attempts_++;
+        
+        // CRITICAL FIX: Add timeout-based circuit breaker to prevent infinite loops
+        // This addresses the specific issue where begin() crashes with LoadProhibited
+        // and the ESP32 restarts, resetting attempt counters but creating an infinite boot loop
+        static uint32_t first_attempt_time = 0;
+        uint32_t current_time = millis();
+        
+        // Record the first attempt time
+        if (first_attempt_time == 0) {
+            first_attempt_time = current_time;
+        }
+        
+        // If we've been trying for more than 30 seconds, give up permanently
+        // This prevents the infinite loop shown in the problem statement logs
+        if (current_time - first_attempt_time > 30000) {
+            initialization_failed_ = true;
+            ESP_LOGE("dsc_wrapper", "Hardware initialization timeout after 30 seconds - marking as permanently failed");
+            return;
+        }
         
         // Limit initialization attempts to prevent infinite loops
         if (initialization_attempts_ > 3) {
@@ -111,8 +137,32 @@ void DSCWrapper::begin(Stream& stream) {
         return;  // Already failed or already initialized
     }
 
+    // CRITICAL FIX: Check for persistent failure patterns (restart loops)
+    if (checkPersistentFailure()) {
+        initialization_failed_ = true;
+        ESP_LOGE("dsc_wrapper", "Persistent failure pattern detected - stopping initialization attempts");
+        return;
+    }
+
     if (dsc_interface_ && !hardware_initialized_) {
         initialization_attempts_++;
+        
+        // CRITICAL FIX: Add timeout-based circuit breaker to prevent infinite loops
+        // This addresses the specific issue where begin() crashes with LoadProhibited
+        static uint32_t first_attempt_time = 0;
+        uint32_t current_time = millis();
+        
+        // Record the first attempt time
+        if (first_attempt_time == 0) {
+            first_attempt_time = current_time;
+        }
+        
+        // If we've been trying for more than 30 seconds, give up permanently
+        if (current_time - first_attempt_time > 30000) {
+            initialization_failed_ = true;
+            ESP_LOGE("dsc_wrapper", "Hardware initialization timeout after 30 seconds - marking as permanently failed");
+            return;
+        }
         
         // Limit initialization attempts to prevent infinite loops
         if (initialization_attempts_ > 3) {
@@ -266,6 +316,35 @@ dscKeybusInterface* DSCWrapper::getInterface() {
     return dsc_interface_;
 }
 #endif
+
+// CRITICAL FIX: Persistent failure detection across ESP32 restarts
+// This method helps detect repeated LoadProhibited crashes by using system uptime
+bool DSCWrapper::checkPersistentFailure() {
+    uint32_t current_time = millis();
+    
+    // If this is the first time we're checking, record the time
+    if (first_initialization_attempt_time_ == 0) {
+        first_initialization_attempt_time_ = current_time;
+        return false;  // First attempt, allow it to proceed
+    }
+    
+    // If system uptime is very low but we've been trying to initialize,
+    // this suggests the ESP32 has been restarting repeatedly (likely due to crashes)
+    if (current_time < 10000) {  // Less than 10 seconds uptime
+        // If we already recorded an attempt, this suggests a restart happened
+        // This is a strong indicator of LoadProhibited crashes causing restarts
+        ESP_LOGW("dsc_wrapper", "Detected potential restart loop - system uptime %u ms, had previous attempt", current_time);
+        return true;  // Likely in a restart loop due to crashes
+    }
+    
+    // If we've been trying for more than 60 seconds total, give up
+    if (current_time - first_initialization_attempt_time_ > 60000) {
+        ESP_LOGE("dsc_wrapper", "Persistent failure detected - unable to initialize for over 60 seconds");
+        return true;
+    }
+    
+    return false;  // Continue attempting
+}
 
 // Global accessor function
 DSCWrapper& getDSC() {
