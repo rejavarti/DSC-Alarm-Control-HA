@@ -128,13 +128,13 @@ async def to_code(config):
     # Prevent multiple definition of static variables - critical for ESPHome builds
     cg.add_define("DSC_STATIC_VARIABLES_DEFINED")
     
-    # NOTE: LoadProhibited crash prevention flags should be defined in YAML configuration
-    # to avoid redefinition warnings. The YAML build_flags section should include:
-    # - -DDSC_LOADPROHIBITED_CRASH_FIX
-    # - -DDSC_ESP_IDF_5_3_PLUS  
-    # - -DDSC_ESP_IDF_5_3_PLUS_COMPONENT
-    # - -DDSC_ENHANCED_MEMORY_SAFETY
-    # - -DDSC_TIMER_MODE_ESP_IDF
+    # CRITICAL: Enable LoadProhibited crash prevention flags automatically
+    # These flags activate the comprehensive fix for ESP32 0xcececece pattern crashes
+    cg.add_define("DSC_LOADPROHIBITED_CRASH_FIX")        # Main crash fix flag
+    cg.add_define("DSC_ESP_IDF_5_3_PLUS")                # ESP-IDF 5.3+ optimizations  
+    cg.add_define("DSC_ESP_IDF_5_3_PLUS_COMPONENT")      # Component-specific ESP-IDF 5.3+ flag
+    cg.add_define("DSC_ENHANCED_MEMORY_SAFETY")          # Enhanced memory safety checks
+    cg.add_define("DSC_TIMER_MODE_ESP_IDF")              # Use ESP-IDF timer mode for compatibility
     
     # Set up triggers
     for conf in config.get(CONF_ON_SYSTEM_STATUS_CHANGE, []):
