@@ -24,7 +24,31 @@ namespace dsc_keybus {
 
 static const char *const TAG = "dsc_keybus";
 
+// CRITICAL FIX: Setup state tracking variables to prevent infinite loop
+static bool setup_complete = false;
+static bool setup_in_progress = false;
+static uint8_t setup_failures = 0;
+
 void DSCKeybusComponent::setup() {
+  if (setup_complete) {
+    return;  // Setup already completed successfully - don't run again
+  }
+  
+  if (setup_in_progress) {
+    return;  // Setup is already in progress - don't start another one
+  }
+  
+  if (setup_failures >= 10) {
+    static uint32_t last_failure_log = 0;
+    uint32_t now = millis();
+    if (now - last_failure_log > 30000) {  // Log every 30 seconds
+      ESP_LOGE(TAG, "DSC setup has failed %d times - giving up to prevent infinite loop", setup_failures);
+      last_failure_log = now;
+    }
+    return;  // Too many failures, stop trying
+  }
+  
+  setup_in_progress = true;  // Mark setup as in progress
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
 
 #if defined(ESP32) || defined(ESP_PLATFORM)
@@ -47,6 +71,7 @@ void DSCKeybusComponent::setup() {
   unsigned long current_time_ms = esp_timer_get_time() / 1000;
   if (current_time_ms - ::dsc_esp_idf_init_delay_timestamp < 2000) {  // 2 second minimum delay
     ESP_LOGD(TAG, "Insufficient stabilization time since ESP-IDF init - deferring setup");
+    setup_in_progress = false;  // Reset progress flag
     return;  // Wait longer for system stabilization
   }
   #endif
@@ -108,6 +133,11 @@ void DSCKeybusComponent::setup() {
   
   this->force_disconnect_ = false;
   getDSC().resetStatus();
+
+  // CRITICAL FIX: Mark setup as complete successfully
+  setup_complete = true;
+  setup_in_progress = false;
+  setup_failures = 0;  // Reset failure counter on successful setup
 
   ESP_LOGCONFIG(TAG, "DSC Keybus Interface setup complete (hardware init deferred to loop())");
 }
@@ -200,12 +230,15 @@ void DSCKeybusComponent::loop() {
       }
     } else {
       ESP_LOGW(TAG, "Critical: Cannot allocate 768 bytes - system memory critically low, free heap: %zu bytes", free_heap);
+      setup_failures++;
+      setup_in_progress = false;
       return;  // Defer setup if we can't allocate the size that was failing
     }
     
     if (free_heap < min_heap) {
       ESP_LOGW(TAG, "Insufficient heap for hardware init: %zu bytes free (need %zu) - delaying", 
                free_heap, min_heap);
+      setup_in_progress = false;
       return;  // Defer hardware initialization until heap is stable
     }
 #endif
@@ -406,7 +439,16 @@ void DSCKeybusComponent::loop() {
       }
       
       dsc_esp_timer::dsc_timer_end();  // Clean up test initialization
-      ESP_LOGD(TAG, "ESP-IDF timer system pre-initialization successful after %u attempts", timer_init_attempts);
+      
+      // CRITICAL FIX: Add rate limiting to prevent infinite log spam
+      static uint32_t last_success_log = 0;
+      static bool timer_init_completed = false;
+      
+      if (!timer_init_completed || (current_time - last_success_log > 10000)) {  // Log success only once or every 10 seconds
+        ESP_LOGD(TAG, "ESP-IDF timer system pre-initialization successful after %u attempts", timer_init_attempts);
+        last_success_log = current_time;
+        timer_init_completed = true;
+      }
       
       // Reset counters on success
       timer_init_attempts = 0;

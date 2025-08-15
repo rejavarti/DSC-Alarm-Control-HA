@@ -95,7 +95,8 @@ esp32:
       CONFIG_ESP32_PANIC_PRINT_REBOOT: n                 # Don't auto-reboot on panic
       
       # Watchdog configuration - ESSENTIAL for ESP-IDF 5.3.2 stability
-      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "120"               # 2 minute timeout for init
+      # CRITICAL FIX: Increase timeout to prevent WiFi connection watchdog panics
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "180"               # 3 minute timeout for WiFi connection (increased from 120s)
       CONFIG_ESP_TASK_WDT_EN: y                          # Enable task watchdog
       CONFIG_ESP_TASK_WDT_INIT: y                        # Initialize early
       CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y        # Monitor idle tasks
@@ -103,7 +104,7 @@ esp32:
       
       # Interrupt watchdog for DSC real-time requirements
       CONFIG_ESP_INT_WDT_EN: y                           # Enable interrupt watchdog
-      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "5000"              # 5 second interrupt timeout
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "10000"             # 10 second interrupt timeout (increased from 5s)
       CONFIG_ESP_INT_WDT_CHECK_CPU1: y                   # Monitor both cores
       
       # Power management disabled for consistent DSC timing
@@ -154,7 +155,19 @@ wifi:
   # Enhanced WiFi stability for ESP-IDF 5.3.2
   power_save_mode: NONE  # Disable power saving for consistent DSC timing
   fast_connect: true     # Speed up connection
-  reboot_timeout: 0s     # Disable WiFi reboot timeout
+  reboot_timeout: 300s   # CRITICAL FIX: Increase reboot timeout to 5 minutes (was 0s)
+  output_power: 20.0     # Maximum WiFi output power for better range/stability
+  
+  # Enable Access Point mode as fallback if main WiFi fails
+  ap:
+    ssid: "DSC-Alarm-Fallback"
+    password: "fallback123"
+  
+  # Manual IP configuration can improve connection stability (optional)
+  # manual_ip:
+  #   static_ip: 192.168.1.150
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
 
 # Enhanced logging for LoadProhibited crash diagnosis
 logger:
