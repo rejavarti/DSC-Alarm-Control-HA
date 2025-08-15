@@ -453,7 +453,7 @@ switch:
     icon: "mdi:shield-link-variant"
     turn_on_action:
       - logger.log: "Attempting to restart DSC connection..."
-      - switch.toggle: restart_switch
+      - button.press: restart_switch
     turn_off_action:
       - logger.log: "Stopping DSC connection for diagnostic..."
       - lambda: |-
