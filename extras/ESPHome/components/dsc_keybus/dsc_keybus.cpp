@@ -92,30 +92,8 @@ void DSCKeybusComponent::setup() {
     ESP_LOGD(TAG, "Available heap memory: %zu bytes", free_heap);
   }
   
-  // Additional ESP-IDF 5.3.2+ system readiness checks
-  #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-  // ESP-IDF 5.3.2+ specific readiness verification
-  // Use global extern declaration from dsc_keybus.h
-  
-  // Verify that the ESP timer system is fully operational
-  esp_timer_handle_t test_timer = nullptr;
-  esp_timer_create_args_t test_args = {
-    .callback = nullptr,
-    .arg = nullptr,
-    .dispatch_method = ESP_TIMER_TASK,
-    .name = "dsc_setup_test"
-  };
-  
-  esp_err_t timer_test = esp_timer_create(&test_args, &test_timer);
-  if (timer_test != ESP_OK || test_timer == nullptr) {
-    ESP_LOGW(TAG, "ESP timer system not fully ready (error %d) - deferring setup", timer_test);
-    return;  // Timer system not ready
-  } else {
-    esp_timer_delete(test_timer);  // Clean up test timer
-    ESP_LOGD(TAG, "ESP timer system verified operational");
-    ::dsc_esp_idf_timer_system_ready = true;  // Mark timer system as ready
-  }
-  #endif
+  // Note: Timer system readiness verification moved to loop() method
+  // This prevents infinite loops when setup() returns early due to stabilization delays
   
 #endif
   
@@ -249,11 +227,49 @@ void DSCKeybusComponent::loop() {
     ESP_LOGD(TAG, "System stabilized - initializing DSC Keybus hardware (timers, interrupts)...");
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-    // ESP-IDF 5.3.2+ specific readiness checks before hardware initialization
-    // Use global extern declaration from dsc_keybus.h
+    // ESP-IDF 5.3.2+ specific timer system readiness verification (moved from setup())
+    // This prevents infinite loops by allowing retries in the main loop
     if (!::dsc_esp_idf_timer_system_ready) {
-      ESP_LOGW(TAG, "ESP-IDF 5.3.2+ timer system not ready - deferring hardware init");
-      return;  // Wait for timer system to be verified as ready
+      // CRITICAL FIX: Add rate limiting to prevent infinite log spam
+      static uint32_t last_timer_ready_log = 0;
+      uint32_t current_time_for_timer = millis();
+      
+      // Only attempt timer verification every 2 seconds to avoid overwhelming the system
+      if (current_time_for_timer - last_timer_ready_log >= 2000) {
+        ESP_LOGD(TAG, "Verifying ESP-IDF 5.3.2+ timer system readiness...");
+        
+        // Verify that the ESP timer system is fully operational
+        esp_timer_handle_t test_timer = nullptr;
+        esp_timer_create_args_t test_args = {
+          .callback = nullptr,
+          .arg = nullptr,
+          .dispatch_method = ESP_TIMER_TASK,
+          .name = "dsc_loop_test"
+        };
+        
+        esp_err_t timer_test = esp_timer_create(&test_args, &test_timer);
+        if (timer_test == ESP_OK && test_timer != nullptr) {
+          esp_timer_delete(test_timer);  // Clean up test timer
+          ::dsc_esp_idf_timer_system_ready = true;  // Mark timer system as ready
+          ESP_LOGD(TAG, "ESP timer system verified operational in loop()");
+        } else {
+          ESP_LOGW(TAG, "ESP-IDF 5.3.2+ timer system not ready - deferring hardware init (error: %d)", timer_test);
+          last_timer_ready_log = current_time_for_timer;
+          
+          // CRITICAL FIX: Add fallback timeout to prevent infinite waiting
+          static uint32_t first_timer_check = 0;
+          if (first_timer_check == 0) {
+            first_timer_check = current_time_for_timer;
+          } else if (current_time_for_timer - first_timer_check > 60000) {  // After 60 seconds, force continue
+            ESP_LOGW(TAG, "Timer system check exceeded 60 seconds - forcing continuation to prevent infinite loop");
+            ::dsc_esp_idf_timer_system_ready = true;  // Force continuation
+          } else {
+            return;  // Wait for timer system to be verified as ready (don't reset init_attempt_time)
+          }
+        }
+      } else {
+        return;  // Still within rate limit period (don't reset init_attempt_time)
+      }
     }
     #endif
     
