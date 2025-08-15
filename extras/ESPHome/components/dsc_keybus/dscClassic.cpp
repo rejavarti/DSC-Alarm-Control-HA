@@ -27,7 +27,7 @@
 
 #include "dscClassic.h"
 
-#if defined(ESP32)
+#if defined(ESP32) || defined(ESP_PLATFORM)
 // Include ESP32 watchdog timer for preventing timeouts during initialization
 #include <esp_task_wdt.h>
 // Static variables are now defined in dsc_static_variables.cpp to prevent LoadProhibited crashes
@@ -101,7 +101,7 @@ void dscClassicInterface::begin(Stream &_stream) {
   timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
 
   // esp32 timer1 calls dscDataInterrupt() from dscClockInterrupt()
-  #elif defined(ESP32)
+  #elif defined(ESP32) || defined(ESP_PLATFORM)
   // Reset watchdog at start of ESP32 timer initialization
   esp_task_wdt_reset();
   
