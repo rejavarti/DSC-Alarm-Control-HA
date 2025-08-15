@@ -20,6 +20,7 @@
 #include "esphome/core/defines.h"
 #include "dsc_keybus.h"  // For LoadProhibited crash prevention declarations
 #include "dsc_arduino_compatibility.h"
+#include "dsc_esp_idf_timer_fix.h"  // ESP-IDF timer compatibility layer
 
 #if defined(dscClassicSeries)
 
@@ -105,19 +106,19 @@ void dscClassicInterface::begin(Stream &_stream) {
   // Reset watchdog at start of ESP32 timer initialization
   esp_task_wdt_reset();
   
-  // Clean up any existing timer first
+  // Clean up any existing timer first using ESP-IDF compatibility layer
   if (timer1 != nullptr) {
-    timerEnd(timer1);
+    dsc_esp_timer::dsc_timer_end();
     timer1 = nullptr;
   }
   
-  // Initialize timer with error checking and retry logic
+  // Initialize timer with error checking and retry logic using ESP-IDF compatibility
   int retry_count = 0;
   const int max_retries = 3;
   
-  while (retry_count < max_retries && timer1 == nullptr) {
-    timer1 = timerBegin(1, 80, true);
-    if (timer1 == nullptr) {
+  while (retry_count < max_retries && !dsc_esp_timer::dsc_timer_is_initialized()) {
+    bool timer_success = dsc_esp_timer::dsc_timer_begin(1, 80, &dscDataInterrupt);
+    if (!timer_success) {
       retry_count++;
       if (stream && retry_count >= max_retries) {
         stream->println(F("ERROR: Failed to initialize ESP32 timer1 after retries"));
@@ -133,19 +134,20 @@ void dscClassicInterface::begin(Stream &_stream) {
     esp_task_wdt_reset();
   }
   
-  if (timer1 != nullptr) {
-    timerStop(timer1);
-    timerAttachInterrupt(timer1, &dscDataInterrupt, true);
-    timerAlarmWrite(timer1, 250, true);
-    timerAlarmEnable(timer1);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_stop();
+    dsc_esp_timer::dsc_timer_set_alarm(250);
+    dsc_esp_timer::dsc_timer_enable_alarm();
     
     // Reset watchdog after timer configuration
     esp_task_wdt_reset();
     
     // Mark ESP32 timers as configured
     esp32_timers_configured = true;
+    // Update timer1 handle for compatibility with existing code
+    timer1 = (hw_timer_t*)0x1; // Non-null marker since actual handle is managed by compatibility layer
   } else {
-    if (stream) stream->println(F("ERROR: timer1 is null after initialization"));
+    if (stream) stream->println(F("ERROR: timer1 initialization failed"));
     return;
   }
   #endif
@@ -180,13 +182,13 @@ void dscClassicInterface::stop() {
   timer1_disable();
   timer1_detachInterrupt();
 
-  // Disables esp32 timer1
+  // Disables esp32 timer1 using ESP-IDF compatibility layer
   #elif defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) during cleanup
-  if (timer1 != nullptr) {
-    timerAlarmDisable(timer1);
-    timerEnd(timer1);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_disable_alarm();
+    dsc_esp_timer::dsc_timer_end();
     timer1 = nullptr;  // Reset to safe state after cleanup
   }
   #endif
@@ -220,10 +222,10 @@ bool dscClassicInterface::loop() {
 
   // Checks if Keybus data is detected and sets a status flag if data is not detected for 3s
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portENTER_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_enter_critical();
   }
   #else
   noInterrupts();
@@ -233,10 +235,10 @@ bool dscClassicInterface::loop() {
   else keybusConnected = true;
 
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
-    portEXIT_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_exit_critical();
   }
   #else
   interrupts();
@@ -268,10 +270,10 @@ bool dscClassicInterface::loop() {
 
   // Resets counters when the buffer is cleared
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portENTER_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_enter_critical();
   }
   #else
   noInterrupts();
@@ -283,10 +285,10 @@ bool dscClassicInterface::loop() {
   }
 
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
-    portEXIT_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_exit_critical();
   }
   #else
   interrupts();
@@ -1167,11 +1169,11 @@ void dscClassicInterface::dscClockInterrupt() {
     return;  // Abort ISR execution if not ready
   }
   
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
-    timerStart(timer1);
-    portENTER_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_start();
+    dsc_esp_timer::dsc_timer_enter_critical();
   } else {
     return;  // Abort if timer is not properly initialized
   }
@@ -1214,10 +1216,10 @@ void dscClassicInterface::dscClockInterrupt() {
     }
   }
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
-    portEXIT_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_exit_critical();
   }
   #endif
 }
@@ -1237,11 +1239,11 @@ void IRAM_ATTR dscClassicInterface::dscDataInterrupt() {
     return;  // Abort ISR execution if not ready
   }
   
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
-    timerStop(timer1);
-    portENTER_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_stop();
+    dsc_esp_timer::dsc_timer_enter_critical();
   } else {
     return;  // Abort if timer is not properly initialized
   }
@@ -1374,10 +1376,10 @@ void dscClassicInterface::dscDataInterrupt() {
 
   }
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
+  // Safety check: Ensure timer is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
-    portEXIT_CRITICAL(&timer1Mux);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_exit_critical();
   }
   #endif
 }
