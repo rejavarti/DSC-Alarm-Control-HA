@@ -170,9 +170,7 @@ wifi:
   reboot_timeout: 300s   # CRITICAL FIX: Increase reboot timeout to 5 minutes (was 0s)
   output_power: 20.0     # Maximum WiFi output power for better range/stability
   
-  # CRITICAL FIX: Add connection timeout and retry settings to prevent watchdog timeout
-  # during initial WiFi connection phase
-  connection_timeout: 60s    # Allow up to 60 seconds for initial connection
+  # Note: WiFi connection timeout is handled by reboot_timeout above (300s)
   
   # Enable Access Point mode as fallback if main WiFi fails
   ap:
