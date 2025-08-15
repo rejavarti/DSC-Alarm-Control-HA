@@ -405,7 +405,18 @@ void DSCKeybusComponent::loop() {
     static uint32_t last_begin_attempt = 0;
     uint32_t now = millis();
     if (now - last_begin_attempt < 1000) {  // Minimum 1 second between attempts
-      return;  // Wait before attempting initialization again
+      // CRITICAL FIX: Add circuit breaker to prevent infinite rate limiting
+      static uint32_t rate_limit_count = 0;
+      rate_limit_count++;
+      if (rate_limit_count > 200) {  // After 200 rate-limited attempts, force continue
+        ESP_LOGE(TAG, "Hardware initialization rate limiting exceeded maximum attempts (%u) - forcing continuation", rate_limit_count);
+        rate_limit_count = 0;  // Reset counter
+      } else {
+        if (should_log && rate_limit_count % 50 == 0) {
+          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/200)", rate_limit_count);
+        }
+        return;  // Wait before attempting initialization again
+      }
     }
     last_begin_attempt = now;
     
@@ -421,13 +432,24 @@ void DSCKeybusComponent::loop() {
       // CRITICAL FIX: DO NOT reset init_attempt_time - this causes infinite loop
       // Instead, wait longer before retrying to allow memory to be freed
       static uint32_t memory_retry_delay = 0;
+      static uint32_t memory_retry_count = 0;
       if (memory_retry_delay == 0) {
         memory_retry_delay = current_time;
       }
       if (current_time - memory_retry_delay < 5000) {  // Wait 5 seconds before retrying
+        memory_retry_count++;
+        if (memory_retry_count > 100) {  // After 100 memory retry attempts, give up
+          ESP_LOGE(TAG, "Memory availability check exceeded maximum attempts (%u) - marking as permanently failed", memory_retry_count);
+          getDSC().markInitializationFailed();
+          return;
+        }
+        if (should_log && memory_retry_count % 25 == 0) {
+          ESP_LOGD(TAG, "Memory too low, waiting for memory to be freed... (attempt %u/100)", memory_retry_count);
+        }
         return;
       }
       memory_retry_delay = 0;  // Reset retry delay for next memory issue
+      memory_retry_count = 0;  // Reset retry count
     }
     
     ESP_LOGD(TAG, "System ready - calling getDSC().begin() with %zu bytes free heap", final_heap_check);
