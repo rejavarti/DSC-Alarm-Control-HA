@@ -252,7 +252,7 @@ binary_sensor:
       // System is healthy if WiFi connected, API connected, and no buffer overflow
       bool wifi_ok = wifi::global_wifi_component->is_connected();
       bool api_ok = api::global_api_server->is_connected();
-      bool heap_ok = esp_get_free_heap_size() > 10000; // At least 10KB free
+      bool heap_ok = system_get_free_heap_size() > 10000; // At least 10KB free (ESP8266 function)
       return wifi_ok && api_ok && heap_ok;
     
   # DSC Keybus connection status  
@@ -344,7 +344,7 @@ sensor:
     state_class: measurement
     icon: "mdi:memory"
     lambda: |-
-      return esp_get_free_heap_size();
+      return system_get_free_heap_size(); // ESP8266 function
       
   # WiFi reconnection counter
   - platform: template
@@ -368,7 +368,7 @@ interval:
           // Update system health status
           bool wifi_ok = wifi::global_wifi_component->is_connected();
           bool api_ok = api::global_api_server->is_connected(); 
-          bool heap_ok = esp_get_free_heap_size() > 10000;
+          bool heap_ok = system_get_free_heap_size() > 10000; // ESP8266 function
           bool system_ok = wifi_ok && api_ok && heap_ok;
           
           id(system_healthy_sensor).publish_state(system_ok);
