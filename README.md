@@ -20,7 +20,25 @@ See `MQTT_ENTITY_MIGRATION_GUIDE.md` for complete migration instructions.
    - **Alternative**: Use Home Assistant UI to manually configure MQTT entities
 3. **YAML Configuration**: Only use the provided YAML files for template sensors, automations, and scripts (no longer for MQTT entities)
 4. **Validate**: Run `python3 validate_config.py` to check your configuration
-5. **Deploy**: Add supported sections (templates, automations) to your `configuration.yaml`
+5. **Clean Build** (if needed): Run `./clean_build.sh` to clean ESPHome build caches
+6. **Deploy**: Add supported sections (templates, automations) to your `configuration.yaml`
+
+## Script Execution Guide
+
+### Python Scripts
+```bash
+python3 validate_config.py        # Configuration validation
+python3 test_watchdog_timeout_fix.py  # Test fixes
+```
+
+### Bash Scripts
+```bash
+./clean_build.sh                  # Clean ESPHome build directories
+# OR
+bash clean_build.sh
+```
+
+⚠️ **Important**: Don't run bash scripts with Python (`python3 clean_build.sh` will fail)
 
 ## Security
 

@@ -1,6 +1,13 @@
 #!/bin/bash
 # ESPHome Clean Build Script
 # Cleans all build caches to prevent compilation issues from corrupted files
+#
+# USAGE:
+#   ./clean_build.sh        (recommended)
+#   bash clean_build.sh     (alternative)
+#
+# DO NOT run with: python3 clean_build.sh
+# This is a bash script, not a Python script!
 
 set -e
 
