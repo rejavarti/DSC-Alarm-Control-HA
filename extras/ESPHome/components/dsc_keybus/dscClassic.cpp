@@ -28,6 +28,8 @@
 #include "dscClassic.h"
 
 #if defined(ESP32)
+// Include ESP32 watchdog timer for preventing timeouts during initialization
+#include <esp_task_wdt.h>
 // Static variables are now defined in dsc_static_variables.cpp to prevent LoadProhibited crashes
 // Removing duplicate definitions - timer1 and timer1Mux are defined there
 #endif
@@ -100,6 +102,9 @@ void dscClassicInterface::begin(Stream &_stream) {
 
   // esp32 timer1 calls dscDataInterrupt() from dscClockInterrupt()
   #elif defined(ESP32)
+  // Reset watchdog at start of ESP32 timer initialization
+  esp_task_wdt_reset();
+  
   // Clean up any existing timer first
   if (timer1 != nullptr) {
     timerEnd(timer1);
@@ -118,8 +123,14 @@ void dscClassicInterface::begin(Stream &_stream) {
         stream->println(F("ERROR: Failed to initialize ESP32 timer1 after retries"));
         return;
       }
+      
+      // Reset watchdog during retry delay to prevent timeout
+      esp_task_wdt_reset();
       delay(10);  // Small delay before retry
     }
+    
+    // Reset watchdog after each timer initialization attempt
+    esp_task_wdt_reset();
   }
   
   if (timer1 != nullptr) {
@@ -127,6 +138,9 @@ void dscClassicInterface::begin(Stream &_stream) {
     timerAttachInterrupt(timer1, &dscDataInterrupt, true);
     timerAlarmWrite(timer1, 250, true);
     timerAlarmEnable(timer1);
+    
+    // Reset watchdog after timer configuration
+    esp_task_wdt_reset();
     
     // Mark ESP32 timers as configured
     esp32_timers_configured = true;
@@ -136,6 +150,11 @@ void dscClassicInterface::begin(Stream &_stream) {
   }
   #endif
 
+  // Reset watchdog before interrupt attachment (critical step)
+  #if defined(ESP32) || defined(ESP_PLATFORM)
+  esp_task_wdt_reset();
+  #endif
+
   // Generates an interrupt when the Keybus clock rises or falls - requires a hardware interrupt pin on Arduino/AVR
   attachInterrupt(digitalPinToInterrupt(dscClockPin), dscClockInterrupt, CHANGE);
   
@@ -143,6 +162,9 @@ void dscClassicInterface::begin(Stream &_stream) {
   // Mark hardware as initialized only after successful completion
   esp32_hardware_initialized = true;
   esp32_init_timestamp = millis();
+  
+  // Final watchdog reset after successful hardware initialization
+  esp_task_wdt_reset();
 #endif
 }
 

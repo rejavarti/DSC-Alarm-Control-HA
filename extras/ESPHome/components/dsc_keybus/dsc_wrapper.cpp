@@ -100,6 +100,9 @@ void DSCWrapper::begin() {
         // Critical safety check for ESP32 LoadProhibited prevention
         // The 0xcececece pattern indicates static variables accessed before ready
 #if defined(ESP32) || defined(ESP_PLATFORM)
+        // Reset watchdog before memory and safety checks
+        esp_task_wdt_reset();
+        
         // Ensure we have adequate heap memory before hardware initialization
         size_t free_heap = esp_get_free_heap_size();
         if (free_heap < 15000) {  // Less than 15KB free
@@ -111,10 +114,18 @@ void DSCWrapper::begin() {
         if (!initialized_) {
             return;  // Interface not properly initialized - abort (will retry next loop)
         }
+        
+        // Reset watchdog before calling hardware initialization
+        esp_task_wdt_reset();
 #endif
         
         // Initialize hardware with protection against early access
         dsc_interface_->begin();
+        
+        // Reset watchdog after hardware initialization
+#if defined(ESP32) || defined(ESP_PLATFORM)
+        esp_task_wdt_reset();
+#endif
         
         // Verify that hardware initialization actually succeeded
 #if defined(ESP32) || defined(ESP_PLATFORM)
@@ -175,6 +186,9 @@ void DSCWrapper::begin(Stream& stream) {
         
         // Critical safety check for ESP32 LoadProhibited prevention
 #if defined(ESP32) || defined(ESP_PLATFORM)
+        // Reset watchdog before memory and safety checks
+        esp_task_wdt_reset();
+        
         // Ensure we have adequate heap memory before hardware initialization
         size_t free_heap = esp_get_free_heap_size();
         if (free_heap < 15000) {  // Less than 15KB free
@@ -185,10 +199,18 @@ void DSCWrapper::begin(Stream& stream) {
         if (!initialized_) {
             return;  // Interface not properly initialized - abort (will retry next loop)
         }
+        
+        // Reset watchdog before calling hardware initialization
+        esp_task_wdt_reset();
 #endif
         
         // Initialize hardware with protection against early access
         dsc_interface_->begin(stream);
+        
+        // Reset watchdog after hardware initialization
+#if defined(ESP32) || defined(ESP_PLATFORM)
+        esp_task_wdt_reset();
+#endif
         
         // Verify that hardware initialization actually succeeded
 #if defined(ESP32) || defined(ESP_PLATFORM)

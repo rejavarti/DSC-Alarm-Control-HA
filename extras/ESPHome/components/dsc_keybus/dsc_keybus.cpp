@@ -233,6 +233,11 @@ void DSCKeybusComponent::loop() {
         ESP_LOGD(TAG, "Waiting for stabilization: %u ms elapsed, need %u ms", 
                  current_time - init_attempt_time, required_delay);
         last_timing_log = current_time;
+        
+        // Reset watchdog during stabilization delay
+        #if defined(ESP32) || defined(ESP_PLATFORM)
+        esp_task_wdt_reset();
+        #endif
       }
       return;  // Still waiting for system to stabilize
     }
@@ -337,8 +342,18 @@ void DSCKeybusComponent::loop() {
     
     ESP_LOGD(TAG, "System ready - calling getDSC().begin() with %zu bytes free heap", final_heap_check);
     
+    // Reset watchdog before critical hardware initialization
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    esp_task_wdt_reset();
+    #endif
+    
     // Call DSC hardware initialization (no exceptions thrown by this method)
     getDSC().begin();
+    
+    // Reset watchdog after hardware initialization attempt
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    esp_task_wdt_reset();
+    #endif
     
     // Check if initialization succeeded or failed permanently
     if (getDSC().isHardwareInitialized()) {

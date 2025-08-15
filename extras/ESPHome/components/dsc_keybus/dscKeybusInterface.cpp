@@ -52,6 +52,11 @@ dscKeybusInterface::dscKeybusInterface(byte setClockPin, byte setReadPin, byte s
 
 
 void dscKeybusInterface::begin(Stream &_stream) {
+#ifdef ESP32
+  // Reset watchdog at start of hardware initialization
+  esp_task_wdt_reset();
+#endif
+
   // CRITICAL: Check for static variable initialization before proceeding
   // This prevents LoadProhibited crashes (0xcececece pattern) during ESP32 initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
@@ -133,9 +138,14 @@ void dscKeybusInterface::begin(Stream &_stream) {
         stream->println(F("ERROR: Failed to initialize ESP32 timer1 after retries"));
         return;
       }
-      // Small delay before retry
-      delay(10);
+      
+      // Reset watchdog during retry delay to prevent timeout
+      esp_task_wdt_reset();
+      delay(10);  // Small delay before retry
     }
+    
+    // Reset watchdog after each timer initialization attempt
+    esp_task_wdt_reset();
   }
   
   // Configure timer safely - ensure timer1 is valid before each operation
@@ -145,12 +155,20 @@ void dscKeybusInterface::begin(Stream &_stream) {
     timerAlarmWrite(timer1, 250, true);
     timerAlarmEnable(timer1);
     
+    // Reset watchdog after timer configuration
+    esp_task_wdt_reset();
+    
     // Mark ESP32 timers as configured
     esp32_timers_configured = true;
   } else {
     if (stream) stream->println(F("ERROR: timer1 is null after initialization"));
     return;
   }
+  #endif
+
+  // Reset watchdog before interrupt attachment (critical step)
+  #ifdef ESP32
+  esp_task_wdt_reset();
   #endif
 
   // CRITICAL: Only attach clock interrupt AFTER timer is fully configured
@@ -161,6 +179,9 @@ void dscKeybusInterface::begin(Stream &_stream) {
   // Mark hardware as initialized only after successful completion
   esp32_hardware_initialized = true;
   esp32_init_timestamp = millis();
+  
+  // Final watchdog reset after successful hardware initialization
+  esp_task_wdt_reset();
 #endif
 }
 
