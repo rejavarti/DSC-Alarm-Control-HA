@@ -29,6 +29,17 @@ esp32:
       CONFIG_ESP32_WIFI_RX_BUFFER_NUM: "16"     # Increase WiFi RX buffers
       CONFIG_ESP32_WIFI_TX_BUFFER_NUM: "16"     # Increase WiFi TX buffers
       
+      # CPU frequency configuration - CRITICAL for performance
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y      # Run at 240MHz for maximum performance
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"  # Set CPU frequency to 240MHz
+      # Ensure other CPU frequency options are disabled
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n       # Disable 80MHz option
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n      # Disable 160MHz option
+      
+      # Crystal frequency configuration (required for 240MHz)
+      CONFIG_ESP32_XTAL_FREQ_40: y              # Use 40MHz crystal (required for 240MHz)
+      CONFIG_ESP32_XTAL_FREQ_26: n              # Disable 26MHz crystal option
+      
       # Memory management optimizations
       CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "64"  # Default is 32, increase for DSC events
       CONFIG_FREERTOS_HZ: "1000"                # 1ms tick rate for responsive DSC processing

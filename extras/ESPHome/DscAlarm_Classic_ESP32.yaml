@@ -61,6 +61,16 @@ esp32:
       CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "64"  # Increase event queue
       CONFIG_FREERTOS_HZ: "1000"                # 1ms tick for responsive DSC processing
       
+      # CPU frequency configuration - CRITICAL for performance
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y      # Run at 240MHz for maximum performance
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"  # Set CPU frequency to 240MHz
+      # Ensure other CPU frequency options are explicitly disabled
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n       # Disable 80MHz option
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n      # Disable 160MHz option
+      # Crystal frequency configuration (required for stable 240MHz operation)
+      CONFIG_ESP32_XTAL_FREQ_40: y              # Use 40MHz crystal (required for 240MHz)
+      CONFIG_ESP32_XTAL_FREQ_26: n              # Disable 26MHz crystal option
+      
       # Watchdog timer configurations
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"       # 30 second timeout
       CONFIG_ESP_TASK_WDT_EN: y                 # Enable watchdog

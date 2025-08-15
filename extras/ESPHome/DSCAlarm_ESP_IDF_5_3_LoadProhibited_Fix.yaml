@@ -66,6 +66,12 @@ esp32:
       # Memory management optimizations for LoadProhibited crash prevention
       CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y               # Maximum CPU frequency
       CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      # Ensure other CPU frequency options are explicitly disabled
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n                 # Disable 80MHz option  
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n                # Disable 160MHz option
+      # Crystal frequency configuration (required for stable 240MHz operation)
+      CONFIG_ESP32_XTAL_FREQ_40: y                        # Use 40MHz crystal (required for 240MHz)
+      CONFIG_ESP32_XTAL_FREQ_26: n                        # Disable 26MHz crystal option
       CONFIG_FREERTOS_HZ: "1000"                         # 1ms tick for DSC timing
       
       # Enhanced WiFi task configuration to prevent memory conflicts during init
