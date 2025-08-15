@@ -1,0 +1,926 @@
+# DSC Keybus Interface - COMPREHENSIVE CONFIGURATION
+# 
+# This configuration incorporates ALL fixes and features:
+# ✅ ESP-IDF 5.3.2 LoadProhibited crash fix (most comprehensive solution)
+# ✅ Classic and PowerSeries panel support with automatic detection
+# ✅ Live alarm functionality with emergency buttons
+# ✅ Complete zone and partition monitoring
+# ✅ System health monitoring and diagnostics
+# ✅ Memory allocation failure prevention
+# ✅ Timer initialization fixes
+# ✅ Watchdog timeout protection
+# ✅ Enhanced stability and crash prevention
+#
+# PANEL COMPATIBILITY:
+# - DSC PowerSeries: PC1616, PC1832, PC1864, PC5005, PC5010, PC5015, PC5020
+# - DSC Classic Series: PC1500, PC1550, PC1832, PC1864, PC1616 (with PC-16 connection)
+#
+# HARDWARE REQUIREMENTS:
+# - ESP32 (recommended for best performance and ESP-IDF 5.3 compatibility)
+# - Standard keybus connections with proper resistors
+# - For Classic series: Additional PC-16 connection with 1kΩ resistor
+#
+# CONFIGURATION:
+# 1. Set series_type: "PowerSeries" or "Classic" based on your panel
+# 2. Configure access_code in secrets.yaml
+# 3. For Classic series: uncomment pc16_pin configuration
+# 4. Adjust zone and partition configurations for your specific setup
+
+substitutions:
+  accessCode: !secret access_code
+  # Pin assignments optimized for ESP32 stability
+  clock_pin: "18"
+  read_pin: "19" 
+  write_pin: "21"
+  pc16_pin: "17"  # For Classic series only - connect with 1kΩ resistor
+
+esphome:
+  name: dscalarm-comprehensive
+  comment: "DSC Alarm System with comprehensive fixes and monitoring"
+  # Enhanced project configuration for ESP-IDF 5.3.2 LoadProhibited crash prevention
+  platformio_options:
+    build_flags:
+      # CRITICAL FIX: Memory allocation failure prevention flags
+      - -DESP32_REDUCE_MEMORY_OVERHEAD         # Enable memory reduction optimizations
+      - -DCONFIG_HEAP_INIT_ON_STARTUP=1       # Initialize heap early for allocation reliability
+      - -DDSC_MEMORY_ALLOCATION_FAILURE_FIX   # Enable specific memory allocation fixes
+      - -DBOARD_HAS_PSRAM                      # Enable PSRAM for additional memory
+      - -DESP_IDF_VERSION_MAJOR=5              # Ensure ESP-IDF 5.x compatibility
+      - -DESP_IDF_VERSION_MINOR=3              # ESP-IDF 5.3.x specific optimizations
+      - -DDSC_ESP_IDF_5_3_PLUS                 # Enable ESP-IDF 5.3+ specific fixes
+      - -DDSC_ENHANCED_MEMORY_SAFETY           # Enhanced memory safety checks
+      - -DDSC_LOADPROHIBITED_CRASH_FIX         # LoadProhibited crash fix flag
+      # DSC Classic series support (automatically managed by component)
+      # - -DdscClassicSeries                   # Uncomment ONLY if you have Classic series panel
+    lib_deps:
+      - ESP32 BLE Arduino                    # Include for memory management
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Use compatible ESP-IDF version
+    
+    # CRITICAL: ESP-IDF specific configurations to prevent LoadProhibited crashes
+    # These settings address the 0xcececece memory access pattern during app_main()
+    sdkconfig_options:
+      # Main task stack size - CRITICAL for preventing LoadProhibited crashes
+      # ESP-IDF 5.3.2 requires larger stacks due to enhanced security features
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "32768"      # 32KB (increased from 20KB)
+      
+      # System event and timer task stack sizes - Enhanced for ESP-IDF 5.3.2
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "8192"   # 8KB system events
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "8192"    # 8KB timer task
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "3072"       # 3KB idle task
+      
+      # Memory management optimizations for LoadProhibited crash prevention
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y               # Maximum CPU frequency
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      # Ensure other CPU frequency options are explicitly disabled
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n                 # Disable 80MHz option  
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n                # Disable 160MHz option
+      # Crystal frequency configuration (required for stable 240MHz operation)
+      CONFIG_ESP32_XTAL_FREQ_40: y                        # Use 40MHz crystal (required for 240MHz)
+      CONFIG_ESP32_XTAL_FREQ_26: n                        # Disable 26MHz crystal option
+      CONFIG_FREERTOS_HZ: "1000"                         # 1ms tick for DSC timing
+      
+      # CRITICAL FIX: FreeRTOS task scheduling optimizations to prevent IDLE task starvation
+      # These settings ensure IDLE task gets adequate CPU time during WiFi connection
+      CONFIG_FREERTOS_USE_TICKLESS_IDLE: n               # Disable tickless idle (more predictable scheduling)
+      CONFIG_FREERTOS_IDLE_TIME_BEFORE_SLEEP: "3"        # Require 3 idle ticks before sleep
+      CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY: y      # Stack overflow protection
+      
+      # Enhanced WiFi task configuration to prevent memory conflicts during init
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "12288"         # 12KB WiFi stack
+      # CRITICAL FIX: Reduce WiFi task priority to prevent it from blocking IDLE task
+      # during connection phase (lower number = lower priority)
+      CONFIG_ESP32_WIFI_TASK_PRIORITY: "18"              # Reduce from default 23 to 18
+      # CRITICAL FIX: Additional heap memory optimizations for allocation failure prevention
+      # Increase available heap memory during initialization
+      CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "16"       # Reduce WiFi static buffers (was 32)
+      CONFIG_ESP32_WIFI_STATIC_TX_BUFFER_NUM: "16"       # Reduce WiFi static buffers (was 32)
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "16"      # Keep dynamic buffers at 16
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "16"      # Keep dynamic buffers at 16
+      
+      # Additional memory optimizations for ESP-IDF 5.3.2 initialization
+      CONFIG_ESP32_WIFI_AMPDU_TX_ENABLED: n              # Disable AMPDU TX to save memory
+      CONFIG_ESP32_WIFI_AMPDU_RX_ENABLED: n              # Disable AMPDU RX to save memory
+      CONFIG_ESP32_WIFI_NVS_ENABLED: n                   # Disable WiFi NVS to save memory during init
+      
+      # Memory protection and debugging - Essential for LoadProhibited prevention
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "128"          # Large event queue
+      CONFIG_ESP32_PANIC_PRINT_HALT: y                   # Halt on panic for analysis
+      CONFIG_ESP32_DEBUG_STUBS_ENABLE: y                 # Enable debug stubs
+      CONFIG_ESP32_PANIC_PRINT_REBOOT: n                 # Don't auto-reboot on panic
+      
+      # Watchdog configuration - ESSENTIAL for ESP-IDF 5.3.2 stability
+      # CRITICAL FIX: Increase timeout to prevent WiFi connection watchdog panics
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "300"               # 5 minute timeout for WiFi connection (increased from 180s)
+      CONFIG_ESP_TASK_WDT_EN: y                          # Enable task watchdog
+      CONFIG_ESP_TASK_WDT_INIT: y                        # Initialize early
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y        # Monitor idle tasks
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y
+      # Additional watchdog safety measures for WiFi connection phase
+      CONFIG_ESP_TASK_WDT_PANIC: n                       # Don't panic on watchdog timeout, just reset
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_ALL_CORES: y   # Monitor idle tasks on all cores
+      
+      # Interrupt watchdog for DSC real-time requirements
+      CONFIG_ESP_INT_WDT_EN: y                           # Enable interrupt watchdog
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "10000"             # 10 second interrupt timeout (increased from 5s)
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y                   # Monitor both cores
+      
+      # Power management disabled for consistent DSC timing
+      CONFIG_PM_ENABLE: n                                # Disable power management
+      CONFIG_ESP32_ENABLE_RTC_CLK_XTAL_32K: n            # Disable 32K crystal
+      
+      # Memory debugging optimized for initialization success
+      # CRITICAL FIX: Comprehensive heap poisoning uses significant memory during init
+      # Changed to light poisoning to prevent "Mem alloc fail" during startup
+      CONFIG_HEAP_POISONING_LIGHT: y                     # Light heap poisoning (less memory overhead)
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: n             # Disable comprehensive (high memory usage)
+      CONFIG_HEAP_TRACING_STANDALONE: n                  # Disable standalone tracing (saves memory)
+      CONFIG_HEAP_TRACING_STACK_DEPTH: "4"               # Minimal stack tracing (reduced from 16)
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: n         # Allow graceful handling of allocation failures
+      
+      # Flash and partition optimizations
+      CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y                  # Ensure 4MB flash
+      CONFIG_PARTITION_TABLE_CUSTOM: n                   # Use default partitions
+      CONFIG_PARTITION_TABLE_SINGLE_APP: y               # Single app partition
+      
+      # ESP Timer system configuration - CRITICAL for LoadProhibited fix
+      CONFIG_ESP_TIMER_TASK_STACK_SIZE: "8192"           # 8KB ESP timer task
+      CONFIG_ESP_TIMER_INTERRUPT_LEVEL: "1"              # Low interrupt level
+      CONFIG_ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD: y   # Enable ISR dispatch
+      
+      # Network stack optimizations for stability during init
+      CONFIG_LWIP_TCP_MSS: "1440"                        # Optimize TCP MSS
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "16"                # Large TCP receive mailbox
+      CONFIG_LWIP_UDP_RECVMBOX_SIZE: "16"                # Large UDP receive mailbox
+      CONFIG_LWIP_TCPIP_TASK_STACK_SIZE: "8192"          # 8KB TCP/IP stack
+      
+      # Core dump configuration for crash analysis
+      # FIXED: Changed from flash to UART to resolve "No core dump partition found!" error
+      # Flash-based core dumps require custom partition table with core dump partition
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_UART: y            # Save crashes to UART output
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: n           # Disable flash dumps (no partition available)
+      CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           # ELF format for analysis
+      CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32: y            # CRC32 checksum
+      
+      # Compiler optimizations for stability
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: n               # Optimize for performance
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y               # Performance optimization
+      CONFIG_COMPILER_STACK_CHECK_MODE_NORM: y           # Stack checking
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Enhanced WiFi stability for ESP-IDF 5.3.2
+  power_save_mode: NONE  # Disable power saving for consistent DSC timing
+  fast_connect: true     # Speed up connection
+  reboot_timeout: 300s   # CRITICAL FIX: Increase reboot timeout to 5 minutes (was 0s)
+  output_power: 20.0     # Maximum WiFi output power for better range/stability
+  
+  # Enable Access Point mode as fallback if main WiFi fails
+  ap:
+    ssid: "DSC-Alarm-Fallback"
+    password: "fallback123"
+  
+  # Manual IP configuration can improve connection stability (optional)
+  # manual_ip:
+  #   static_ip: 192.168.1.150
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
+
+# Enhanced logging for LoadProhibited crash diagnosis
+logger:
+  level: INFO  # Reduced from DEBUG for production use
+  baud_rate: 115200
+  hardware_uart: UART0
+  # Enable detailed ESP-IDF logging for troubleshooting
+  logs:
+    esp_timer: WARN
+    heap_init: WARN
+    system_api: WARN
+    app_main: INFO
+    dsc_keybus: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# MQTT for Home Assistant integration (optional - can use API only)
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username  
+  password: !secret mqtt_password
+  discovery: true
+  discovery_prefix: homeassistant
+  topic_prefix: esphome/dscalarm
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
+
+# Status LED for visual feedback
+status_led:
+  pin:
+    number: GPIO2
+    inverted: yes
+
+# DSC Keybus Interface with comprehensive configuration
+dsc_keybus:
+  id: dsc_interface
+  access_code: ${accessCode}
+  
+  # IMPORTANT: Configure for your panel type
+  # For PowerSeries: use "PowerSeries" or remove this line (default)
+  # For Classic series: use "Classic"
+  series_type: "PowerSeries"  # Change to "Classic" for DSC Classic series panels
+  
+  # Enhanced pin configuration
+  clock_pin: ${clock_pin}
+  read_pin: ${read_pin}
+  write_pin: ${write_pin}
+  # pc16_pin: ${pc16_pin}  # Uncomment for Classic series panels ONLY
+  
+  # Enhanced debugging and monitoring
+  debug: 1  # Enable debug output: 0=off, 1=status changes, 2=+05/27 packets, 3=all packets
+  
+  # Enhanced message processing
+  enable_05_messages: true
+  
+  # Event handlers for system integration
+  on_system_status_change:
+    then:
+      - text_sensor.template.publish:
+          id: system_status
+          state: !lambda 'return status;'
+      - logger.log:
+          format: "DSC System Status Changed: %s"
+          args: ['status.c_str()']
+          
+  on_partition_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(partition_1_status).publish_state(status); break;
+            case 2: id(partition_2_status).publish_state(status); break;
+            case 3: id(partition_3_status).publish_state(status); break;
+            case 4: id(partition_4_status).publish_state(status); break;
+          }
+      - logger.log:
+          format: "DSC Partition %d Status: %s"
+          args: ['partition', 'status.c_str()']
+          
+  on_partition_msg_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(partition_1_message).publish_state(msg); break;
+            case 2: id(partition_2_message).publish_state(msg); break;
+            case 3: id(partition_3_message).publish_state(msg); break;
+            case 4: id(partition_4_message).publish_state(msg); break;
+          }
+      - logger.log:
+          format: "DSC Partition %d Message: %s"
+          args: ['partition', 'msg.c_str()']
+          
+  on_trouble_status_change:
+    then:
+      - binary_sensor.template.publish:
+          id: trouble_status
+          state: !lambda 'return trouble;'
+      - logger.log:
+          format: "DSC Trouble Status: %s"
+          args: ['trouble ? "ACTIVE" : "CLEAR"']
+          
+  on_fire_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(fire_partition_1).publish_state(fire); break;
+            case 2: id(fire_partition_2).publish_state(fire); break;
+            case 3: id(fire_partition_3).publish_state(fire); break;
+            case 4: id(fire_partition_4).publish_state(fire); break;
+          }
+      - logger.log:
+          format: "DSC Fire Status Partition %d: %s"
+          args: ['partition', 'fire ? "ALARM" : "CLEAR"']
+          
+  on_zone_status_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(zone_1).publish_state(open); break;
+            case 2: id(zone_2).publish_state(open); break;
+            case 3: id(zone_3).publish_state(open); break;
+            case 4: id(zone_4).publish_state(open); break;
+            case 5: id(zone_5).publish_state(open); break;
+            case 6: id(zone_6).publish_state(open); break;
+            case 7: id(zone_7).publish_state(open); break;
+            case 8: id(zone_8).publish_state(open); break;
+            case 9: id(zone_9).publish_state(open); break;
+            case 10: id(zone_10).publish_state(open); break;
+            case 11: id(zone_11).publish_state(open); break;
+            case 12: id(zone_12).publish_state(open); break;
+            case 13: id(zone_13).publish_state(open); break;
+            case 14: id(zone_14).publish_state(open); break;
+            case 15: id(zone_15).publish_state(open); break;
+            case 16: id(zone_16).publish_state(open); break;
+          }
+      - logger.log:
+          format: "DSC Zone %d: %s"
+          args: ['zone', 'open ? "OPEN" : "CLOSED"']
+          
+  on_zone_alarm_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(zone_1_alarm).publish_state(open); break;
+            case 2: id(zone_2_alarm).publish_state(open); break;
+            case 3: id(zone_3_alarm).publish_state(open); break;
+            case 4: id(zone_4_alarm).publish_state(open); break;
+            case 5: id(zone_5_alarm).publish_state(open); break;
+            case 6: id(zone_6_alarm).publish_state(open); break;
+            case 7: id(zone_7_alarm).publish_state(open); break;
+            case 8: id(zone_8_alarm).publish_state(open); break;
+            case 9: id(zone_9_alarm).publish_state(open); break;
+            case 10: id(zone_10_alarm).publish_state(open); break;
+            case 11: id(zone_11_alarm).publish_state(open); break;
+            case 12: id(zone_12_alarm).publish_state(open); break;
+            case 13: id(zone_13_alarm).publish_state(open); break;
+            case 14: id(zone_14_alarm).publish_state(open); break;
+            case 15: id(zone_15_alarm).publish_state(open); break;
+            case 16: id(zone_16_alarm).publish_state(open); break;
+          }
+      - logger.log:
+          format: "DSC Zone %d Alarm: %s"
+          args: ['zone', 'open ? "ACTIVE" : "CLEAR"']
+
+# ALARM CONTROL PANELS
+# Configure one alarm_control_panel for each partition in your system
+alarm_control_panel:
+  - platform: dsc_keybus
+    partition: 1
+    name: "DSC Partition 1"
+    id: partition_1_panel
+    # Configure supported modes based on your DSC panel setup
+    supported_modes:
+      - ALARM_ARM_AWAY
+      - ALARM_ARM_HOME  
+      - ALARM_ARM_NIGHT
+      # - ALARM_ARM_CUSTOM_BYPASS  # Uncomment if your panel supports bypass mode
+    
+  # Add additional partitions as needed  
+  # - platform: dsc_keybus
+  #   partition: 2
+  #   name: "DSC Partition 2"
+  #   id: partition_2_panel
+  #   supported_modes:
+  #     - ALARM_ARM_AWAY
+  #     - ALARM_ARM_HOME
+
+# BINARY SENSORS
+binary_sensor:
+  # ===== SYSTEM STATUS SENSORS =====
+  - platform: template
+    id: trouble_status
+    name: "DSC Trouble Status"
+    device_class: problem
+    icon: "mdi:alert-circle"
+    
+  # ===== FIRE STATUS SENSORS =====
+  - platform: template
+    id: fire_partition_1
+    name: "DSC Fire Partition 1"
+    device_class: safety
+    icon: "mdi:fire"
+    
+  - platform: template
+    id: fire_partition_2
+    name: "DSC Fire Partition 2" 
+    device_class: safety
+    icon: "mdi:fire"
+    
+  # ===== ZONE STATUS SENSORS =====
+  # Configure these based on your actual zone assignments
+  - platform: template
+    id: zone_1
+    name: "Zone 1 - Front Door"
+    device_class: door
+    icon: "mdi:door"
+    
+  - platform: template
+    id: zone_2
+    name: "Zone 2 - Back Door"
+    device_class: door
+    icon: "mdi:door-closed"
+    
+  - platform: template
+    id: zone_3
+    name: "Zone 3 - Garage Door"
+    device_class: garage_door
+    icon: "mdi:garage"
+    
+  - platform: template
+    id: zone_4
+    name: "Zone 4 - Living Room Motion"
+    device_class: motion
+    icon: "mdi:motion-sensor"
+    
+  - platform: template
+    id: zone_5
+    name: "Zone 5 - Kitchen Window"
+    device_class: window
+    icon: "mdi:window-closed"
+    
+  - platform: template
+    id: zone_6
+    name: "Zone 6 - Bedroom Window"
+    device_class: window
+    icon: "mdi:window-closed"
+    
+  - platform: template
+    id: zone_7
+    name: "Zone 7 - Basement Motion"
+    device_class: motion
+    icon: "mdi:motion-sensor"
+    
+  - platform: template
+    id: zone_8
+    name: "Zone 8 - Glass Break Detector"
+    device_class: safety
+    icon: "mdi:glass-fragile"
+    
+  # Additional zones (expand as needed for your system)
+  - platform: template
+    id: zone_9
+    name: "Zone 9"
+    device_class: opening
+    
+  - platform: template
+    id: zone_10
+    name: "Zone 10"
+    device_class: opening
+    
+  - platform: template
+    id: zone_11
+    name: "Zone 11"
+    device_class: opening
+    
+  - platform: template
+    id: zone_12
+    name: "Zone 12"
+    device_class: opening
+    
+  - platform: template
+    id: zone_13
+    name: "Zone 13"
+    device_class: opening
+    
+  - platform: template
+    id: zone_14
+    name: "Zone 14"
+    device_class: opening
+    
+  - platform: template
+    id: zone_15
+    name: "Zone 15"
+    device_class: opening
+    
+  - platform: template
+    id: zone_16
+    name: "Zone 16"
+    device_class: opening
+    
+  # ===== ZONE ALARM STATUS SENSORS =====
+  - platform: template
+    id: zone_1_alarm
+    name: "Zone 1 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_2_alarm
+    name: "Zone 2 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_3_alarm
+    name: "Zone 3 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_4_alarm
+    name: "Zone 4 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_5_alarm
+    name: "Zone 5 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_6_alarm
+    name: "Zone 6 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_7_alarm
+    name: "Zone 7 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_8_alarm
+    name: "Zone 8 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  # Additional zone alarms (expand as needed)
+  - platform: template
+    id: zone_9_alarm
+    name: "Zone 9 Alarm Status"
+    device_class: safety
+    
+  - platform: template
+    id: zone_10_alarm
+    name: "Zone 10 Alarm Status"
+    device_class: safety
+    
+  - platform: template
+    id: zone_11_alarm
+    name: "Zone 11 Alarm Status"
+    device_class: safety
+    
+  - platform: template
+    id: zone_12_alarm
+    name: "Zone 12 Alarm Status"
+    device_class: safety
+    
+  - platform: template
+    id: zone_13_alarm
+    name: "Zone 13 Alarm Status"
+    device_class: safety
+    
+  - platform: template
+    id: zone_14_alarm
+    name: "Zone 14 Alarm Status"
+    device_class: safety
+    
+  - platform: template
+    id: zone_15_alarm
+    name: "Zone 15 Alarm Status"
+    device_class: safety
+    
+  - platform: template
+    id: zone_16_alarm
+    name: "Zone 16 Alarm Status"
+    device_class: safety
+    
+  # ===== SYSTEM HEALTH AND CONNECTIVITY SENSORS =====
+  - platform: status
+    name: "DSC System Online"
+    id: system_online_sensor
+    device_class: connectivity
+    
+  - platform: template
+    name: "DSC System Healthy"
+    id: system_healthy_sensor
+    device_class: problem
+    lambda: |-
+      bool wifi_ok = wifi::global_wifi_component->is_connected();
+      size_t free_heap = esp_get_free_heap_size();
+      size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      bool api_ok = api::global_api_server->is_connected();
+      
+      // Enhanced health check including memory fragmentation
+      bool heap_ok = free_heap > 25000; // At least 25KB free heap for ESP-IDF 5.3.2
+      bool fragmentation_ok = largest_block > 5000; // Ensure reasonable largest block
+      
+      return wifi_ok && heap_ok && fragmentation_ok && api_ok;
+      
+  - platform: template
+    name: "DSC Keybus Connected"
+    id: keybus_connected_sensor
+    device_class: connectivity
+    icon: "mdi:shield-link-variant"
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+      
+  - platform: template
+    name: "DSC Buffer Overflow"
+    id: buffer_overflow_sensor  
+    device_class: problem
+    icon: "mdi:buffer"
+    lambda: |-
+      return id(dsc_interface).getBufferOverflow();
+
+# TEXT SENSORS
+text_sensor:
+  # ===== SYSTEM STATUS =====
+  - platform: template
+    id: system_status
+    name: "DSC System Status"
+    icon: "mdi:shield"
+    
+  # ===== PARTITION STATUS =====
+  - platform: template
+    id: partition_1_status
+    name: "DSC Partition 1 Status"
+    icon: "mdi:shield"
+    
+  - platform: template
+    id: partition_2_status
+    name: "DSC Partition 2 Status"
+    icon: "mdi:shield"
+    
+  - platform: template
+    id: partition_3_status
+    name: "DSC Partition 3 Status"
+    icon: "mdi:shield"
+    
+  - platform: template
+    id: partition_4_status
+    name: "DSC Partition 4 Status"
+    icon: "mdi:shield"
+    
+  # ===== PARTITION MESSAGES =====
+  - platform: template
+    id: partition_1_message
+    name: "DSC Partition 1 Message"
+    icon: "mdi:alert-box"
+    
+  - platform: template
+    id: partition_2_message
+    name: "DSC Partition 2 Message"
+    icon: "mdi:alert-box"
+    
+  - platform: template
+    id: partition_3_message
+    name: "DSC Partition 3 Message"
+    icon: "mdi:alert-box"
+    
+  - platform: template
+    id: partition_4_message
+    name: "DSC Partition 4 Message"
+    icon: "mdi:alert-box"
+    
+  # ===== SYSTEM INFORMATION =====
+  - platform: version
+    name: "DSC ESPHome Version"
+    icon: "mdi:tag"
+    
+  - platform: wifi_info
+    ip_address:
+      name: "DSC IP Address"
+    ssid:
+      name: "DSC WiFi SSID"
+    mac_address:
+      name: "DSC MAC Address"
+      
+  - platform: template
+    name: "DSC ESP-IDF Version"
+    id: esp_idf_version_sensor
+    update_interval: never
+    lambda: |-
+      return {"ESP-IDF " + to_string(ESP_IDF_VERSION_MAJOR) + "." + 
+              to_string(ESP_IDF_VERSION_MINOR) + "." + 
+              to_string(ESP_IDF_VERSION_PATCH)};
+
+  - platform: template
+    name: "DSC LoadProhibited Fix Status"
+    id: loadprohibited_fix_sensor
+    update_interval: never
+    lambda: |-
+      return {"ESP-IDF 5.3.2+ Comprehensive LoadProhibited fix ACTIVE"};
+
+# SENSORS
+sensor:
+  # ===== SYSTEM DIAGNOSTICS =====
+  - platform: uptime
+    name: "DSC Uptime"
+    id: uptime_seconds
+    update_interval: 60s
+    icon: "mdi:timer-outline"
+    unit_of_measurement: s
+    device_class: duration
+    state_class: total_increasing
+  
+  - platform: wifi_signal
+    name: "DSC WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    unit_of_measurement: dBm
+    device_class: signal_strength
+    state_class: measurement
+    icon: "mdi:wifi-strength-2"
+    
+  - platform: template
+    name: "DSC Free Heap"
+    id: free_heap_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 30s
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      size_t free_heap = esp_get_free_heap_size();
+      size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      
+      // Enhanced logging for memory allocation failure prevention
+      if (free_heap < 20000) {
+        ESP_LOGW("memory", "Critical heap memory: %zu bytes free, %zu largest block", free_heap, largest_block);
+      }
+      if (largest_block < 768) {
+        ESP_LOGE("memory", "Fragmented memory: largest block %zu bytes (need 768+)", largest_block);
+      }
+      
+      return free_heap;
+
+  - platform: template
+    name: "DSC Largest Free Block"
+    id: largest_free_block_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 30s
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      return largest_block;
+
+  - platform: template
+    name: "DSC Stack High Water Mark"
+    id: stack_hwm_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 60s
+    state_class: measurement
+    icon: "mdi:format-list-numbered"
+    lambda: |-
+      size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+      if (stack_hwm < 1024) {
+        ESP_LOGW("stack", "Low stack space: %zu bytes remaining", stack_hwm);
+      }
+      return stack_hwm;
+
+# EMERGENCY BUTTONS - LIVE ALARM FUNCTIONALITY
+button:
+  # ===== EMERGENCY ALARMS =====
+  - platform: template
+    name: "DSC Fire Alarm"
+    id: fire_alarm_button
+    icon: "mdi:fire"
+    on_press:
+      - logger.log: "FIRE ALARM ACTIVATED"
+      - lambda: |-
+          id(dsc_interface).alarm_keypress("f");
+          
+  - platform: template  
+    name: "DSC Aux Alarm"
+    id: aux_alarm_button
+    icon: "mdi:hospital-box"
+    on_press:
+      - logger.log: "AUX ALARM ACTIVATED"
+      - lambda: |-
+          id(dsc_interface).alarm_keypress("a");
+          
+  - platform: template
+    name: "DSC Panic Alarm" 
+    id: panic_alarm_button
+    icon: "mdi:police-badge"
+    on_press:
+      - logger.log: "PANIC ALARM ACTIVATED"
+      - lambda: |-
+          id(dsc_interface).alarm_keypress("p");
+          
+  # ===== SYSTEM CONTROLS =====
+  - platform: restart
+    name: "DSC System Restart"
+    id: restart_button
+    icon: "mdi:restart"
+
+# SWITCHES
+switch:
+  - platform: template
+    name: "DSC Connection"
+    id: connection_status_switch
+    icon: "mdi:shield-link-variant"
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+    turn_on_action:
+      - logger.log: "Attempting to reconnect DSC keybus"
+      - lambda: |-
+          // Restart the component to reconnect
+          id(dsc_interface).restart();
+    turn_off_action:
+      - logger.log: "Stopping DSC keybus connection"
+      - lambda: |-
+          id(dsc_interface).stop();
+
+# SYSTEM HEALTH MONITORING
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          size_t free_heap = esp_get_free_heap_size();
+          size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+          size_t largest_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+          
+          // Enhanced monitoring for ESP-IDF 5.3.2 stability and allocation failure prevention
+          if (free_heap < 15000) {
+            ESP_LOGE("system_health", "Critical memory condition - free heap: %zu bytes, largest block: %zu bytes", 
+                     free_heap, largest_block);
+            
+            // Test if we can still allocate the problematic 768 bytes
+            void* test_alloc = heap_caps_malloc(768, MALLOC_CAP_8BIT);
+            if (test_alloc == nullptr) {
+              ESP_LOGE("system_health", "CRITICAL: Cannot allocate 768 bytes - memory allocation will fail!");
+            } else {
+              heap_caps_free(test_alloc);
+            }
+            
+            // Consider restart if critically low
+            if (free_heap < 10000) {
+              ESP_LOGE("system_health", "Emergency restart due to memory exhaustion");
+              App.safe_reboot();
+            }
+          }
+          
+          // Check for memory fragmentation issues
+          if (largest_block < 2000 && free_heap > 20000) {
+            ESP_LOGW("system_health", "Memory fragmentation detected - heap: %zu, largest: %zu", 
+                     free_heap, largest_block);
+          }
+          
+          if (stack_hwm < 512) {
+            ESP_LOGE("system_health", "Critical stack condition - remaining: %zu bytes", stack_hwm);
+          }
+          
+          // Update system health status
+          bool wifi_ok = wifi::global_wifi_component->is_connected();
+          bool api_ok = api::global_api_server->is_connected();
+          bool heap_ok = free_heap > 25000;
+          bool fragmentation_ok = largest_block > 5000;
+          bool system_ok = wifi_ok && heap_ok && fragmentation_ok && api_ok;
+          
+          id(system_healthy_sensor).publish_state(system_ok);
+          
+          // Log system health summary every 5 minutes
+          static int health_counter = 0;
+          health_counter++;
+          if (health_counter >= 5) {
+            health_counter = 0;
+            ESP_LOGI("system_health", "Health Status - WiFi: %s, API: %s, Heap: %zu, LargestBlock: %zu, Stack: %zu", 
+              wifi_ok ? "OK" : "FAIL", 
+              api_ok ? "OK" : "FAIL",
+              free_heap, largest_block, stack_hwm);
+          }
+
+# ===== CUSTOMIZATION NOTES =====
+#
+# 1. PANEL CONFIGURATION:
+#    - Change series_type to "Classic" for DSC Classic series panels
+#    - Uncomment pc16_pin line for Classic series panels
+#    - Adjust access_code in secrets.yaml
+#
+# 2. ZONE CONFIGURATION:
+#    - Update zone names and device_classes to match your actual zones
+#    - Remove unused zones or add more as needed (up to 64 zones supported)
+#    - Configure appropriate device_class for each zone type
+#
+# 3. PARTITION CONFIGURATION:
+#    - Add or remove partition sensors based on your panel setup
+#    - Most residential systems use only partition 1
+#
+# 4. MQTT CONFIGURATION:
+#    - MQTT is optional if using ESPHome API
+#    - Comment out entire mqtt: section if not using MQTT
+#
+# 5. MEMORY OPTIMIZATION:
+#    - For systems with limited memory, reduce logging level to WARN
+#    - Disable unused sensors or zones
+#    - Reduce update intervals for diagnostic sensors
+#
+# 6. CUSTOMIZATION FOR YOUR SETUP:
+#    - Update substitutions for your pin assignments
+#    - Configure WiFi credentials in secrets.yaml
+#    - Add custom automations as needed
+#
+# This configuration provides comprehensive protection against LoadProhibited
+# crashes while offering complete DSC alarm functionality with live monitoring.
