@@ -350,7 +350,12 @@ void DSCKeybusComponent::loop() {
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
     // Pre-initialize the enhanced timer system for ESP-IDF 5.3.2+
-    ESP_LOGD(TAG, "Pre-initializing ESP-IDF 5.3.2+ timer system for DSC interface");
+    // CRITICAL FIX: Add rate limiting to prevent infinite log spam
+    static uint32_t last_pre_init_log = 0;
+    if (current_time - last_pre_init_log >= 5000) {  // Log every 5 seconds max
+      ESP_LOGD(TAG, "Pre-initializing ESP-IDF 5.3.2+ timer system for DSC interface");
+      last_pre_init_log = current_time;
+    }
     if (!dsc_esp_timer::dsc_timer_is_initialized()) {
       // CRITICAL FIX: Add circuit breaker for timer pre-initialization failures
       static uint32_t timer_init_attempts = 0;
