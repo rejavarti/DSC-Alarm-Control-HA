@@ -197,11 +197,24 @@ void DSCKeybusComponent::loop() {
     // Enhanced stabilization timing with longer delays for ESP-IDF 5.3.2+
     static uint32_t init_attempt_time = 0;
     static bool init_timing_logged = false;
+    static uint8_t initialization_failures = 0;
+    static uint32_t last_failure_time = 0;
     uint32_t required_delay = 1000;  // Default 1 second
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
     required_delay = 2000;  // 2 seconds for ESP-IDF 5.3.2+
     #endif
+    
+    // CRITICAL FIX: Prevent infinite loop by implementing permanent failure after too many attempts
+    if (initialization_failures >= 5) {
+      // Log error periodically but don't spam logs
+      static uint32_t last_permanent_failure_log = 0;
+      if (current_time - last_permanent_failure_log > 30000) {  // Every 30 seconds
+        ESP_LOGE(TAG, "DSC hardware initialization permanently failed after %d attempts - stopping retries", initialization_failures);
+        last_permanent_failure_log = current_time;
+      }
+      return;  // Permanently failed, stop attempting
+    }
     
     if (init_attempt_time == 0) {
       init_attempt_time = current_time;
@@ -280,8 +293,10 @@ void DSCKeybusComponent::loop() {
       // Attempt to initialize the enhanced timer system
       bool timer_ready = dsc_esp_timer::dsc_timer_begin(1, 80, nullptr);
       if (!timer_ready) {
-        ESP_LOGW(TAG, "Failed to pre-initialize ESP-IDF timer system - retrying next loop");
-        init_attempt_time = 0;  // Reset to retry
+        ESP_LOGW(TAG, "Failed to pre-initialize ESP-IDF timer system - will retry on next stabilization cycle");
+        initialization_failures++;
+        last_failure_time = current_time;
+        // CRITICAL FIX: DO NOT reset init_attempt_time - let stabilization complete and then retry
         return;
       }
       dsc_esp_timer::dsc_timer_end();  // Clean up test initialization
@@ -305,11 +320,19 @@ void DSCKeybusComponent::loop() {
     // Final memory validation before hardware initialization
     size_t final_heap_check = esp_get_free_heap_size();
     if (final_heap_check < 15000) {  // Conservative minimum for hardware init
-      ESP_LOGW(TAG, "System memory too low for safe hardware init: %zu bytes - aborting attempt", final_heap_check);
-      // Reset timing to retry later when more memory is available
-      init_attempt_time = 0;
-      init_timing_logged = false;
-      return;
+      ESP_LOGW(TAG, "System memory too low for safe hardware init: %zu bytes - will retry after delay", final_heap_check);
+      initialization_failures++;
+      last_failure_time = current_time;
+      // CRITICAL FIX: DO NOT reset init_attempt_time - this causes infinite loop
+      // Instead, wait longer before retrying to allow memory to be freed
+      static uint32_t memory_retry_delay = 0;
+      if (memory_retry_delay == 0) {
+        memory_retry_delay = current_time;
+      }
+      if (current_time - memory_retry_delay < 5000) {  // Wait 5 seconds before retrying
+        return;
+      }
+      memory_retry_delay = 0;  // Reset retry delay for next memory issue
     }
     
     ESP_LOGD(TAG, "System ready - calling getDSC().begin() with %zu bytes free heap", final_heap_check);
@@ -320,12 +343,26 @@ void DSCKeybusComponent::loop() {
     // Check if initialization succeeded or failed permanently
     if (getDSC().isHardwareInitialized()) {
       ESP_LOGI(TAG, "DSC Keybus hardware initialization complete");
+      initialization_failures = 0;  // Reset failure counter on success
     } else if (getDSC().isInitializationFailed()) {
       ESP_LOGE(TAG, "DSC Keybus hardware initialization failed permanently after multiple attempts");
       ESP_LOGE(TAG, "Check hardware connections, timer configuration, and heap memory");
+      initialization_failures = 5;  // Set to maximum to stop future attempts
     } else {
       // Initialization is still in progress or failed but might retry
-      ESP_LOGW(TAG, "DSC hardware initialization status unclear - will retry next loop");
+      initialization_failures++;
+      ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/5) - will retry after delay", initialization_failures);
+      
+      // Add exponential backoff delay to prevent rapid retries
+      static uint32_t unclear_retry_delay = 0;
+      if (unclear_retry_delay == 0) {
+        unclear_retry_delay = current_time;
+      }
+      uint32_t backoff_delay = 2000 * initialization_failures;  // 2s, 4s, 6s, 8s, 10s
+      if (current_time - unclear_retry_delay < backoff_delay) {
+        return;  // Wait before retrying
+      }
+      unclear_retry_delay = 0;  // Reset for next unclear status
     }
   }
   
