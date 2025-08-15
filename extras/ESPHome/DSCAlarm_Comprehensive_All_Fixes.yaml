@@ -412,6 +412,18 @@ binary_sensor:
     device_class: safety
     icon: "mdi:fire"
     
+  - platform: template
+    id: fire_partition_3
+    name: "DSC Fire Partition 3"
+    device_class: safety
+    icon: "mdi:fire"
+    
+  - platform: template
+    id: fire_partition_4
+    name: "DSC Fire Partition 4" 
+    device_class: safety
+    icon: "mdi:fire"
+    
   # ===== ZONE STATUS SENSORS =====
   # Configure these based on your actual zone assignments
   - platform: template
