@@ -164,6 +164,13 @@ If you're on an older HA version and need the legacy entities, use that file wit
 
 ## Common Issues
 
+### Script Execution Errors
+**Problem**: Getting `SyntaxError: invalid syntax` when running `python3 clean_build.sh`
+**Solution**: 
+- Use `./clean_build.sh` or `bash clean_build.sh` instead
+- `clean_build.sh` is a bash script, not a Python script
+- See the "Script Execution Guide" section above for correct usage
+
 ### MQTT Entities Not Working
 **Problem**: YAML MQTT entities are deprecated in Home Assistant.
 **Solution**: See `MQTT_ENTITY_MIGRATION_GUIDE.md` for migration to ESPHome or UI configuration.
