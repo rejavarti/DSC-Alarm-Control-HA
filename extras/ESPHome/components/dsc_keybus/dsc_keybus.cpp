@@ -278,14 +278,8 @@ void DSCKeybusComponent::loop() {
     
     ESP_LOGD(TAG, "System ready - calling getDSC().begin() with %zu bytes free heap", final_heap_check);
     
-    bool init_success = false;
-    try {
-      getDSC().begin();
-      init_success = true;
-    } catch (...) {
-      ESP_LOGE(TAG, "Exception during DSC hardware initialization");
-      init_success = false;
-    }
+    // Call DSC hardware initialization (no exceptions thrown by this method)
+    getDSC().begin();
     
     // Check if initialization succeeded or failed permanently
     if (getDSC().isHardwareInitialized()) {
