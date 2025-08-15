@@ -138,7 +138,13 @@ void DSCKeybusComponent::loop() {
   // Enhanced initialization for ESP-IDF 5.3.2+ to prevent LoadProhibited crashes
   // The 0xcececece pattern indicates hardware initialization attempted too early
   if (!getDSC().isHardwareInitialized() && !getDSC().isInitializationFailed()) {
-    ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware...");
+    // CRITICAL FIX: Prevent infinite loop logging by adding rate limiting
+    static uint32_t last_debug_log = 0;
+    uint32_t current_time = millis();
+    if (current_time - last_debug_log >= 5000) {  // Log every 5 seconds max
+      ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware...");
+      last_debug_log = current_time;
+    }
     
 #if defined(ESP32) || defined(ESP_PLATFORM)
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
@@ -157,6 +163,12 @@ void DSCKeybusComponent::loop() {
       ESP_LOGD(TAG, "ESP-IDF 5.3.2+ stabilization period not complete - delaying hardware init");
       return;  // Wait longer for complete system stabilization
     }
+    #else
+    // FALLBACK: When DSC_ESP_IDF_5_3_PLUS_COMPONENT is not defined, provide basic compatibility
+    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+    // For ESP-IDF 5.3+, ensure minimal initialization without complex timer checks
+    ESP_LOGD(TAG, "Fallback mode: ESP-IDF 5.3+ detected, using simplified initialization");
+    #endif
     #endif
     
     // Enhanced heap stability check with stricter requirements
@@ -167,6 +179,16 @@ void DSCKeybusComponent::loop() {
     min_heap = 35000;  // Stricter requirement for ESP-IDF 5.3.2+ hardware init
     #endif
     
+    // CRITICAL FIX: Add 768-byte test allocation as per ESP-IDF 5.3.2 memory fix documentation
+    void* test_alloc = heap_caps_malloc(768, MALLOC_CAP_8BIT);
+    if (test_alloc != nullptr) {
+      heap_caps_free(test_alloc);
+      ESP_LOGD(TAG, "768-byte test allocation successful, free heap: %zu bytes", free_heap);
+    } else {
+      ESP_LOGW(TAG, "Critical: Cannot allocate 768 bytes - system memory critically low, free heap: %zu bytes", free_heap);
+      return;  // Defer setup if we can't allocate the size that was failing
+    }
+    
     if (free_heap < min_heap) {
       ESP_LOGW(TAG, "Insufficient heap for hardware init: %zu bytes free (need %zu) - delaying", 
                free_heap, min_heap);
@@ -176,7 +198,7 @@ void DSCKeybusComponent::loop() {
     
     // Enhanced stabilization timing with longer delays for ESP-IDF 5.3.2+
     static uint32_t init_attempt_time = 0;
-    uint32_t current_time = millis();
+    static bool init_timing_logged = false;
     uint32_t required_delay = 1000;  // Default 1 second
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
@@ -185,12 +207,22 @@ void DSCKeybusComponent::loop() {
     
     if (init_attempt_time == 0) {
       init_attempt_time = current_time;
-      ESP_LOGD(TAG, "Scheduling hardware initialization after %u ms system stabilization", required_delay);
+      if (!init_timing_logged) {
+        ESP_LOGD(TAG, "Scheduling hardware initialization after %u ms system stabilization", required_delay);
+        init_timing_logged = true;
+      }
       return;  // Wait for next loop iteration
     }
     
     // Wait for the required stabilization period
     if (current_time - init_attempt_time < required_delay) {
+      // Add diagnostic logging for timing delays (rate limited)
+      static uint32_t last_timing_log = 0;
+      if (current_time - last_timing_log >= 2000) {  // Every 2 seconds
+        ESP_LOGD(TAG, "Waiting for stabilization: %u ms elapsed, need %u ms", 
+                 current_time - init_attempt_time, required_delay);
+        last_timing_log = current_time;
+      }
       return;  // Still waiting for system to stabilize
     }
     
@@ -231,7 +263,29 @@ void DSCKeybusComponent::loop() {
     }
     last_begin_attempt = now;
     
-    getDSC().begin();
+    // CRITICAL FIX: Add comprehensive memory and system checks before hardware init
+    ESP_LOGD(TAG, "Attempting DSC hardware initialization - checking system readiness...");
+    
+    // Final memory validation before hardware initialization
+    size_t final_heap_check = esp_get_free_heap_size();
+    if (final_heap_check < 15000) {  // Conservative minimum for hardware init
+      ESP_LOGW(TAG, "System memory too low for safe hardware init: %zu bytes - aborting attempt", final_heap_check);
+      // Reset timing to retry later when more memory is available
+      init_attempt_time = 0;
+      init_timing_logged = false;
+      return;
+    }
+    
+    ESP_LOGD(TAG, "System ready - calling getDSC().begin() with %zu bytes free heap", final_heap_check);
+    
+    bool init_success = false;
+    try {
+      getDSC().begin();
+      init_success = true;
+    } catch (...) {
+      ESP_LOGE(TAG, "Exception during DSC hardware initialization");
+      init_success = false;
+    }
     
     // Check if initialization succeeded or failed permanently
     if (getDSC().isHardwareInitialized()) {
@@ -239,6 +293,9 @@ void DSCKeybusComponent::loop() {
     } else if (getDSC().isInitializationFailed()) {
       ESP_LOGE(TAG, "DSC Keybus hardware initialization failed permanently after multiple attempts");
       ESP_LOGE(TAG, "Check hardware connections, timer configuration, and heap memory");
+    } else {
+      // Initialization is still in progress or failed but might retry
+      ESP_LOGW(TAG, "DSC hardware initialization status unclear - will retry next loop");
     }
   }
   

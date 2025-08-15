@@ -1,6 +1,11 @@
 # Prerequisites
 *.d
 
+# Test files and binaries (local testing)
+test_memory_allocation_fix
+test_memory_allocation_fix.cpp
+validate_memory_fix.py
+
 # Compiled Object files
 *.slo
 *.lo
