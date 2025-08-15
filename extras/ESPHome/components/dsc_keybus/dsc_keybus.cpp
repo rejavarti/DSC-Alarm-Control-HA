@@ -295,17 +295,53 @@ void DSCKeybusComponent::loop() {
     // Pre-initialize the enhanced timer system for ESP-IDF 5.3.2+
     ESP_LOGD(TAG, "Pre-initializing ESP-IDF 5.3.2+ timer system for DSC interface");
     if (!dsc_esp_timer::dsc_timer_is_initialized()) {
+      // CRITICAL FIX: Add circuit breaker for timer pre-initialization failures
+      static uint32_t timer_init_attempts = 0;
+      static uint32_t first_timer_init_attempt = 0;
+      
+      // Record first attempt time
+      if (first_timer_init_attempt == 0) {
+        first_timer_init_attempt = current_time;
+      }
+      
+      // Check if we've exceeded reasonable retry limits
+      timer_init_attempts++;
+      if (timer_init_attempts > 10 || (current_time - first_timer_init_attempt > 120000)) {
+        ESP_LOGE(TAG, "Enhanced timer system initialization permanently failed after %u attempts over %u ms", 
+                 timer_init_attempts, current_time - first_timer_init_attempt);
+        ESP_LOGE(TAG, "ESP-IDF 5.3.2+ timer compatibility issue - marking initialization as permanently failed");
+        
+        // Mark initialization as permanently failed to break infinite loop
+        getDSC().markInitializationFailed();
+        return;
+      }
+      
       // Attempt to initialize the enhanced timer system
       bool timer_ready = dsc_esp_timer::dsc_timer_begin(1, 80, nullptr);
       if (!timer_ready) {
-        ESP_LOGW(TAG, "Failed to pre-initialize ESP-IDF timer system - will retry on next stabilization cycle");
+        ESP_LOGW(TAG, "Failed to pre-initialize ESP-IDF timer system (attempt %u/10) - will retry after delay", timer_init_attempts);
         initialization_failures++;
         last_failure_time = current_time;
-        // CRITICAL FIX: DO NOT reset init_attempt_time - let stabilization complete and then retry
+        
+        // Add exponential backoff for timer initialization failures
+        static uint32_t timer_retry_delay = 0;
+        if (timer_retry_delay == 0) {
+          timer_retry_delay = current_time;
+        }
+        uint32_t backoff_delay = 5000 + (1000 * timer_init_attempts);  // 6s, 7s, 8s, etc.
+        if (current_time - timer_retry_delay < backoff_delay) {
+          return;  // Wait before retrying
+        }
+        timer_retry_delay = 0;  // Reset for next attempt
         return;
       }
+      
       dsc_esp_timer::dsc_timer_end();  // Clean up test initialization
-      ESP_LOGD(TAG, "ESP-IDF timer system pre-initialization successful");
+      ESP_LOGD(TAG, "ESP-IDF timer system pre-initialization successful after %u attempts", timer_init_attempts);
+      
+      // Reset counters on success
+      timer_init_attempts = 0;
+      first_timer_init_attempt = 0;
     }
     #endif
     
