@@ -129,8 +129,16 @@ void DSCKeybusComponent::loop() {
     
     total_loop_attempts++;
     
+    // CRITICAL FIX: Add watchdog reset and yield for every loop attempt to prevent task watchdog timeout
+    // The IDLE task needs CPU time to reset the task watchdog - this ensures it gets a chance to run
+#if defined(ESP32) || defined(ESP_PLATFORM)
+    esp_task_wdt_reset();  // Reset watchdog for every loop iteration
+    yield();  // Allow other tasks (including IDLE) to run
+#endif
+    
     // If we've had too many loop attempts in a short time, something is wrong - give up
-    if (total_loop_attempts > 1000 || (current_time - first_loop_attempt_time > 60000 && total_loop_attempts > 100)) {
+    // CRITICAL FIX: Reduce maximum attempts from 1000 to 500 to prevent overwhelming the system
+    if (total_loop_attempts > 500 || (current_time - first_loop_attempt_time > 30000 && total_loop_attempts > 50)) {
       ESP_LOGE(TAG, "DSC hardware initialization exceeded maximum loop attempts (%u attempts over %u ms) - marking as permanently failed to prevent infinite loop", 
                total_loop_attempts, current_time - first_loop_attempt_time);
       getDSC().markInitializationFailed();
@@ -143,6 +151,12 @@ void DSCKeybusComponent::loop() {
       ESP_LOGD(TAG, "System fully ready - initializing DSC Keybus hardware... (attempt %u)", total_loop_attempts);
       last_debug_log = current_time;
     }
+    
+    // CRITICAL FIX: Add watchdog reset and yield after debug logging
+#if defined(ESP32) || defined(ESP_PLATFORM)
+    esp_task_wdt_reset();
+    yield();  // Allow IDLE task to run
+#endif
     
 #if defined(ESP32) || defined(ESP_PLATFORM)
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
@@ -219,10 +233,10 @@ void DSCKeybusComponent::loop() {
     static bool init_timing_logged = false;
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
-    uint32_t required_delay = 1000;  // Default 1 second
+    uint32_t required_delay = 2000;  // CRITICAL FIX: Increase default delay from 1s to 2s to reduce system load
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-    required_delay = 2000;  // 2 seconds for ESP-IDF 5.3.2+
+    required_delay = 3000;  // 3 seconds for ESP-IDF 5.3.2+ (increased from 2s)
     #endif
     
     // CRITICAL FIX: Prevent infinite loop by implementing permanent failure after too many attempts
@@ -254,9 +268,16 @@ void DSCKeybusComponent::loop() {
                  current_time - init_attempt_time, required_delay);
         last_timing_log = current_time;
         
-        // Reset watchdog during stabilization delay
+        // CRITICAL FIX: Reset watchdog during stabilization delay to prevent timeout
         #if defined(ESP32) || defined(ESP_PLATFORM)
         esp_task_wdt_reset();
+        yield();  // Allow IDLE task to run during wait periods
+        #endif
+      } else {
+        // CRITICAL FIX: Always reset watchdog even when not logging to prevent timeout
+        #if defined(ESP32) || defined(ESP_PLATFORM)
+        esp_task_wdt_reset();
+        yield();  // Allow IDLE task to run
         #endif
       }
       return;  // Still waiting for system to stabilize
@@ -360,6 +381,13 @@ void DSCKeybusComponent::loop() {
       
       // Check if we've exceeded reasonable retry limits
       timer_init_attempts++;
+      
+      // CRITICAL FIX: Add watchdog reset during timer attempt limit checking
+#if defined(ESP32) || defined(ESP_PLATFORM)
+      esp_task_wdt_reset();
+      yield();  // Allow IDLE task to run
+#endif
+      
       if (timer_init_attempts > 10 || (current_time - first_timer_init_attempt > 120000)) {
         ESP_LOGE(TAG, "Enhanced timer system initialization permanently failed after %u attempts over %u ms", 
                  timer_init_attempts, current_time - first_timer_init_attempt);
@@ -404,16 +432,23 @@ void DSCKeybusComponent::loop() {
     // that could contribute to the infinite loop condition
     static uint32_t last_begin_attempt = 0;
     uint32_t now = millis();
-    if (now - last_begin_attempt < 1000) {  // Minimum 1 second between attempts
+    if (now - last_begin_attempt < 2000) {  // CRITICAL FIX: Increase minimum delay from 1s to 2s between attempts
       // CRITICAL FIX: Add circuit breaker to prevent infinite rate limiting
       static uint32_t rate_limit_count = 0;
       rate_limit_count++;
-      if (rate_limit_count > 200) {  // After 200 rate-limited attempts, force continue
+      
+      // CRITICAL FIX: Add watchdog reset and yield during rate limiting to prevent timeout
+      #if defined(ESP32) || defined(ESP_PLATFORM)
+      esp_task_wdt_reset();
+      yield();  // Allow IDLE task to run
+      #endif
+      
+      if (rate_limit_count > 100) {  // CRITICAL FIX: Reduce from 200 to 100 attempts to be more aggressive
         ESP_LOGE(TAG, "Hardware initialization rate limiting exceeded maximum attempts (%u) - forcing continuation", rate_limit_count);
         rate_limit_count = 0;  // Reset counter
       } else {
-        if (should_log && rate_limit_count % 50 == 0) {
-          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/200)", rate_limit_count);
+        if (should_log && rate_limit_count % 25 == 0) {  // CRITICAL FIX: Reduce logging frequency from every 50 to every 25
+          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/100)", rate_limit_count);
         }
         return;  // Wait before attempting initialization again
       }
@@ -422,6 +457,12 @@ void DSCKeybusComponent::loop() {
     
     // CRITICAL FIX: Add comprehensive memory and system checks before hardware init
     ESP_LOGD(TAG, "Attempting DSC hardware initialization - checking system readiness...");
+    
+    // CRITICAL FIX: Add watchdog reset before memory validation
+#if defined(ESP32) || defined(ESP_PLATFORM)
+    esp_task_wdt_reset();
+    yield();  // Allow IDLE task to run
+#endif
     
     // Final memory validation before hardware initialization
     size_t final_heap_check = esp_get_free_heap_size();
@@ -454,17 +495,19 @@ void DSCKeybusComponent::loop() {
     
     ESP_LOGD(TAG, "System ready - calling getDSC().begin() with %zu bytes free heap", final_heap_check);
     
-    // Reset watchdog before critical hardware initialization
+    // CRITICAL FIX: Reset watchdog and yield before critical hardware initialization
     #if defined(ESP32) || defined(ESP_PLATFORM)
     esp_task_wdt_reset();
+    yield();  // Allow IDLE task to run before critical operation
     #endif
     
     // Call DSC hardware initialization (no exceptions thrown by this method)
     getDSC().begin();
     
-    // Reset watchdog after hardware initialization attempt
+    // CRITICAL FIX: Reset watchdog and yield after hardware initialization attempt
     #if defined(ESP32) || defined(ESP_PLATFORM)
     esp_task_wdt_reset();
+    yield();  // Allow IDLE task to run after critical operation
     #endif
     
     // Check if initialization succeeded or failed permanently
@@ -534,6 +577,13 @@ void DSCKeybusComponent::loop() {
   
   // TODO: Implement full status processing using wrapper methods
   // This is a minimal implementation to test the wrapper pattern
+  
+  // CRITICAL FIX: Reset watchdog and yield at end of every loop iteration
+  // This ensures the IDLE task always has a chance to run and reset the task watchdog
+#if defined(ESP32) || defined(ESP_PLATFORM)
+  esp_task_wdt_reset();
+  yield();  // Allow IDLE task to run
+#endif
 }
 
 // Placeholder methods - will be implemented after wrapper pattern is verified

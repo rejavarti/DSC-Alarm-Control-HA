@@ -78,16 +78,22 @@ void DSCWrapper::begin() {
         static uint32_t first_attempt_time = 0;
         uint32_t current_time = millis();
         
+        // CRITICAL FIX: Add watchdog reset and yield during timeout checking
+#if defined(ESP32) || defined(ESP_PLATFORM)
+        esp_task_wdt_reset();
+        yield();  // Allow IDLE task to run
+#endif
+        
         // Record the first attempt time
         if (first_attempt_time == 0) {
             first_attempt_time = current_time;
         }
         
-        // If we've been trying for more than 30 seconds, give up permanently
-        // This prevents the infinite loop shown in the problem statement logs
-        if (current_time - first_attempt_time > 30000) {
+        // CRITICAL FIX: Increase timeout from 30 to 60 seconds to be more conservative
+        // and prevent premature timeout during legitimate initialization delays
+        if (current_time - first_attempt_time > 60000) {
             initialization_failed_ = true;
-            ESP_LOGE(TAG, "Hardware initialization timeout after 30 seconds - marking as permanently failed");
+            ESP_LOGE(TAG, "Hardware initialization timeout after 60 seconds - marking as permanently failed");
             return;
         }
         
@@ -100,8 +106,9 @@ void DSCWrapper::begin() {
         // Critical safety check for ESP32 LoadProhibited prevention
         // The 0xcececece pattern indicates static variables accessed before ready
 #if defined(ESP32) || defined(ESP_PLATFORM)
-        // Reset watchdog before memory and safety checks
+        // CRITICAL FIX: Reset watchdog and yield before memory and safety checks
         esp_task_wdt_reset();
+        yield();  // Allow IDLE task to run
         
         // Ensure we have adequate heap memory before hardware initialization
         size_t free_heap = esp_get_free_heap_size();
@@ -115,16 +122,18 @@ void DSCWrapper::begin() {
             return;  // Interface not properly initialized - abort (will retry next loop)
         }
         
-        // Reset watchdog before calling hardware initialization
+        // CRITICAL FIX: Reset watchdog and yield before calling hardware initialization
         esp_task_wdt_reset();
+        yield();  // Allow IDLE task to run before critical operation
 #endif
         
         // Initialize hardware with protection against early access
         dsc_interface_->begin();
         
-        // Reset watchdog after hardware initialization
+        // CRITICAL FIX: Reset watchdog and yield after hardware initialization
 #if defined(ESP32) || defined(ESP_PLATFORM)
         esp_task_wdt_reset();
+        yield();  // Allow IDLE task to run after critical operation
 #endif
         
         // Verify that hardware initialization actually succeeded
