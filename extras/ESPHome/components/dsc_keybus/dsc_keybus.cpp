@@ -10,6 +10,8 @@
 #include <esp_err.h>        // For ESP error handling
 #include <esp_system.h>     // For system functions
 #include <esp_idf_version.h>  // For ESP-IDF version detection
+#include <freertos/FreeRTOS.h>  // For FreeRTOS scheduler state checking
+#include <freertos/task.h>      // For task management functions
 
 // ESP-IDF 5.3.2+ specific includes for enhanced crash prevention
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
@@ -315,74 +317,47 @@ void DSCKeybusComponent::loop() {
     }
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-    // ESP-IDF 5.3.2+ specific timer system readiness verification (moved from setup())
-    // This prevents infinite loops by allowing retries in the main loop
+    // ESP-IDF 5.3.2+ specific timer system readiness verification (fixed approach)
+    // CRITICAL FIX: Replace flawed esp_timer_create() test with reliable uptime-based check
     if (!::dsc_esp_idf_timer_system_ready) {
-      // CRITICAL FIX: Add rate limiting to prevent infinite log spam
       static uint32_t last_timer_ready_log = 0;
       uint32_t current_time_for_timer = millis();
       
-      // Only attempt timer verification every 2 seconds to avoid overwhelming the system
-      if (current_time_for_timer - last_timer_ready_log >= 2000) {
+      // Only check timer readiness every 1 second to avoid overwhelming the system
+      if (current_time_for_timer - last_timer_ready_log >= 1000) {
         if (should_log) {
-          ESP_LOGD(TAG, "Verifying ESP-IDF 5.3.2+ timer system readiness...");
+          ESP_LOGD(TAG, "Checking ESP-IDF 5.3.2+ timer system readiness...");
         }
         
-        // Verify that the ESP timer system is fully operational
-        esp_timer_handle_t test_timer = nullptr;
-        esp_timer_create_args_t test_args = {
-          .callback = nullptr,
-          .arg = nullptr,
-          .dispatch_method = ESP_TIMER_TASK,
-          .name = "dsc_loop_test"
-        };
-        
-        esp_err_t timer_test = esp_timer_create(&test_args, &test_timer);
-        if (timer_test == ESP_OK && test_timer != nullptr) {
-          esp_timer_delete(test_timer);  // Clean up test timer
-          ::dsc_esp_idf_timer_system_ready = true;  // Mark timer system as ready
-          ESP_LOGD(TAG, "ESP timer system verified operational in loop()");
-        } else {
-          ESP_LOGW(TAG, "ESP-IDF 5.3.2+ timer system not ready - deferring hardware init (error: %d)", timer_test);
-          last_timer_ready_log = current_time_for_timer;
-          
-          // CRITICAL FIX: Add fallback timeout to prevent infinite waiting
-          static uint32_t first_timer_check = 0;
-          if (first_timer_check == 0) {
-            first_timer_check = current_time_for_timer;
-          } else if (current_time_for_timer - first_timer_check > 60000) {  // After 60 seconds, force continue
-            ESP_LOGW(TAG, "Timer system check exceeded 60 seconds - forcing continuation to prevent infinite loop");
-            ::dsc_esp_idf_timer_system_ready = true;  // Force continuation
+        // CRITICAL FIX: Use reliable system uptime check instead of timer creation test
+        // ESP timer service is ready when system has been running for at least 2 seconds
+        // and FreeRTOS scheduler is fully operational
+        if (current_time_for_timer >= 2000 && xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+          // Additional check: Ensure we can get proper system time
+          int64_t esp_time = esp_timer_get_time();
+          if (esp_time > 0) {
+            ::dsc_esp_idf_timer_system_ready = true;
+            ESP_LOGI(TAG, "ESP-IDF 5.3.2+ timer system ready after %u ms uptime", current_time_for_timer);
           } else {
-            // CRITICAL FIX: Add circuit breaker to prevent infinite waiting for timer system readiness
-            static uint32_t timer_wait_count = 0;
-            timer_wait_count++;
-            if (timer_wait_count > 50) {  // After 50 attempts, force continue to break infinite loop
-              ESP_LOGE(TAG, "Timer system readiness check exceeded maximum attempts (%u) - forcing continuation", timer_wait_count);
-              ::dsc_esp_idf_timer_system_ready = true;  // Force continuation to break loop
-              timer_wait_count = 0;  // Reset counter
-            } else {
-              if (should_log) {
-                ESP_LOGD(TAG, "Timer system not ready, waiting... (attempt %u/50)", timer_wait_count);
-              }
-              return;  // Wait for timer system to be verified as ready (don't reset init_attempt_time)
-            }
+            ESP_LOGD(TAG, "ESP timer service not yet operational, deferring initialization");
           }
-        }
-      } else {
-        // CRITICAL FIX: Add circuit breaker to prevent infinite waiting due to timer rate limiting
-        static uint32_t timer_rate_limit_count = 0;
-        timer_rate_limit_count++;
-        if (timer_rate_limit_count > 100) {  // After 100 rate-limited attempts, force continue
-          ESP_LOGE(TAG, "Timer system rate limiting exceeded maximum attempts (%u) - forcing continuation", timer_rate_limit_count);
-          ::dsc_esp_idf_timer_system_ready = true;  // Force continuation to break loop
-          timer_rate_limit_count = 0;  // Reset counter
         } else {
-          if (should_log) {
-            ESP_LOGD(TAG, "Timer system rate limited, waiting... (attempt %u/100)", timer_rate_limit_count);
-          }
-          return;  // Still within rate limit period (don't reset init_attempt_time)
+          ESP_LOGD(TAG, "System still initializing (uptime: %u ms, scheduler: %d), waiting...", 
+                   current_time_for_timer, xTaskGetSchedulerState());
         }
+        
+        last_timer_ready_log = current_time_for_timer;
+        
+        // CRITICAL FIX: Add safety timeout - if system hasn't initialized timer service after 30 seconds, proceed anyway
+        if (current_time_for_timer > 30000 && !::dsc_esp_idf_timer_system_ready) {
+          ESP_LOGW(TAG, "Timer system readiness timeout after 30s - forcing continuation to prevent infinite wait");
+          ::dsc_esp_idf_timer_system_ready = true;
+        }
+      }
+      
+      // If timer system still not ready, defer hardware initialization
+      if (!::dsc_esp_idf_timer_system_ready) {
+        return;
       }
     }
     #endif
