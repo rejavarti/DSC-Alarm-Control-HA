@@ -1,6 +1,12 @@
 substitutions:
   accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
 
+# DSC ALARM CONFIGURATION
+# IMPORTANT: Configure standalone_mode based on your setup:
+#   - standalone_mode: true  = For testing without physical DSC panel (no hardware required)
+#   - standalone_mode: false = For production use with real DSC panel connected (DEFAULT)
+# See DSC_STANDALONE_MODE_GUIDE.md for detailed setup instructions
+
 esphome:
   name: dscalarm
   # DSC Classic series build flag - REQUIRED for Classic panels
@@ -59,8 +65,8 @@ dsc_keybus:
   id: dsc_interface
   access_code: "$accessCode"
   series_type: "Classic"  # Explicitly set for DSC Classic series panels
-  # standalone_mode: true  # UNCOMMENT to enable testing without connected panel
-  debug: 0  # 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
+  standalone_mode: false  # DEFAULT for production use with real DSC panel - change to true for testing without panel
+  debug: 1  # Enable debug logging for diagnostics - 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
   on_system_status_change:
     then:
       - text_sensor.template.publish:
