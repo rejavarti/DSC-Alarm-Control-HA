@@ -125,9 +125,14 @@ void DSCWrapper::begin() {
         // CRITICAL FIX: Reset watchdog and yield before calling hardware initialization
         esp_task_wdt_reset();
         yield();  // Allow IDLE task to run before critical operation
+        
+        // ENHANCED: Add detailed diagnostics before hardware initialization
+        ESP_LOGD(TAG, "Attempting hardware initialization: attempt=%d, uptime=%u ms, free_heap=%u bytes", 
+                 initialization_attempts_, current_time, free_heap);
 #endif
         
         // Initialize hardware with protection against early access
+        ESP_LOGD(TAG, "Calling dsc_interface_->begin() for hardware initialization...");
         dsc_interface_->begin();
         
         // CRITICAL FIX: Reset watchdog and yield after hardware initialization
@@ -405,13 +410,25 @@ bool DSCWrapper::checkPersistentFailure() {
         return false;  // First attempt, allow it to proceed
     }
     
-    // If system uptime is very low but we've been trying to initialize,
-    // this suggests the ESP32 has been restarting repeatedly (likely due to crashes)
-    if (current_time < 10000) {  // Less than 10 seconds uptime
-        // If we already recorded an attempt, this suggests a restart happened
-        // This is a strong indicator of LoadProhibited crashes causing restarts
-        ESP_LOGW(TAG, "Detected potential restart loop - system uptime %u ms, had previous attempt", current_time);
-        return true;  // Likely in a restart loop due to crashes
+    // IMPROVED: More sophisticated restart loop detection
+    // Only consider it a restart loop if uptime is VERY low (< 5 seconds) 
+    // AND we have multiple rapid attempts within the same boot cycle
+    if (current_time < 5000) {  // Less than 5 seconds uptime
+        static uint32_t attempt_count_this_boot = 0;
+        static uint32_t last_attempt_time = 0;
+        
+        attempt_count_this_boot++;
+        
+        // If we have multiple rapid attempts in a very short boot cycle, it's likely a crash loop
+        if (attempt_count_this_boot >= 3 && (current_time - last_attempt_time < 1000)) {
+            ESP_LOGW(TAG, "Detected actual restart loop - system uptime %u ms, %u rapid attempts", 
+                     current_time, attempt_count_this_boot);
+            return true;  // Definitely in a restart loop due to crashes
+        }
+        
+        last_attempt_time = current_time;
+        ESP_LOGD(TAG, "Short uptime (%u ms) but allowing attempt %u - normal boot scenario", 
+                 current_time, attempt_count_this_boot);
     }
     
     // If we've been trying for more than 60 seconds total, give up

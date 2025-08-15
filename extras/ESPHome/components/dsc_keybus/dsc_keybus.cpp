@@ -544,6 +544,9 @@ void DSCKeybusComponent::loop() {
     uint32_t now = millis();
     if (now - last_error_log > 30000) {  // Every 30 seconds
       ESP_LOGE(TAG, "DSC Keybus hardware initialization has failed - component non-functional");
+      ESP_LOGE(TAG, "Troubleshooting: Check GPIO connections (Clock=%d, Read=%d, Write=%d)",
+               this->clock_pin_, this->read_pin_, this->write_pin_);
+      ESP_LOGE(TAG, "Also verify DSC panel power, resistors (33kΩ, 10kΩ), and ESP32 power stability");
       last_error_log = now;
     }
     return;  // Skip processing if initialization failed permanently
