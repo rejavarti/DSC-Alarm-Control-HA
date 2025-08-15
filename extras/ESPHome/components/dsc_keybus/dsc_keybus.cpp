@@ -159,9 +159,24 @@ void DSCKeybusComponent::loop() {
     
     // Ensure adequate stabilization time for ESP-IDF 5.3.2+
     unsigned long current_time_ms = esp_timer_get_time() / 1000;
-    if (current_time_ms - ::dsc_esp_idf_init_delay_timestamp < 3000) {  // 3 second minimum for hardware init
-      ESP_LOGD(TAG, "ESP-IDF 5.3.2+ stabilization period not complete - delaying hardware init");
-      return;  // Wait longer for complete system stabilization
+    unsigned long elapsed_time = current_time_ms - ::dsc_esp_idf_init_delay_timestamp;
+    
+    if (elapsed_time < 3000) {  // 3 second minimum for hardware init
+      // CRITICAL FIX: Add rate limiting to prevent infinite log spam
+      static uint32_t last_esp_idf_log = 0;
+      if (current_time_ms - last_esp_idf_log >= 5000) {  // Log every 5 seconds max
+        ESP_LOGD(TAG, "ESP-IDF 5.3.2+ stabilization period not complete - delaying hardware init (elapsed: %lu ms, need: 3000 ms)", elapsed_time);
+        last_esp_idf_log = current_time_ms;
+      }
+      
+      // Additional safety check: if we've been waiting too long, something is wrong
+      if (elapsed_time > 30000) {  // If waiting more than 30 seconds, force continuation
+        ESP_LOGW(TAG, "ESP-IDF stabilization period exceeded 30 seconds (%lu ms) - forcing continuation", elapsed_time);
+        // Reset timestamp to current time to break the loop
+        ::dsc_esp_idf_init_delay_timestamp = current_time_ms - 3000;
+      } else {
+        return;  // Wait longer for complete system stabilization
+      }
     }
     #else
     // FALLBACK: When DSC_ESP_IDF_5_3_PLUS_COMPONENT is not defined, provide basic compatibility
