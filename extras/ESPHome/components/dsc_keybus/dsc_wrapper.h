@@ -48,6 +48,8 @@ public:
     bool isHardwareInitialized() const;
     // Check if hardware initialization failed permanently
     bool isInitializationFailed() const;
+    // Mark initialization as permanently failed (for circuit breaker logic)
+    void markInitializationFailed();
     
     // Status methods
     bool loop();

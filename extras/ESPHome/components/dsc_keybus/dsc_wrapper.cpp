@@ -132,15 +132,34 @@ void DSCWrapper::begin() {
         #ifdef dscClassicSeries
         if (dsc_interface_->esp32_hardware_initialized) {
             hardware_initialized_ = true;
+            ESP_LOGI(TAG, "DSC Classic hardware initialization successful on attempt %d", initialization_attempts_);
+        } else {
+            ESP_LOGW(TAG, "DSC Classic hardware initialization incomplete on attempt %d (esp32_hardware_initialized=false)", initialization_attempts_);
+            // Check if we should give up permanently
+            if (initialization_attempts_ >= 3 || (current_time - first_attempt_time > 60000)) {
+                initialization_failed_ = true;
+                ESP_LOGE(TAG, "DSC Classic hardware initialization permanently failed after %d attempts over %u ms", 
+                         initialization_attempts_, current_time - first_attempt_time);
+            }
         }
         #else
         if (dsc_interface_->esp32_hardware_initialized) {
             hardware_initialized_ = true;
+            ESP_LOGI(TAG, "DSC PowerSeries hardware initialization successful on attempt %d", initialization_attempts_);
+        } else {
+            ESP_LOGW(TAG, "DSC PowerSeries hardware initialization incomplete on attempt %d (esp32_hardware_initialized=false)", initialization_attempts_);
+            // Check if we should give up permanently
+            if (initialization_attempts_ >= 3 || (current_time - first_attempt_time > 60000)) {
+                initialization_failed_ = true;
+                ESP_LOGE(TAG, "DSC PowerSeries hardware initialization permanently failed after %d attempts over %u ms", 
+                         initialization_attempts_, current_time - first_attempt_time);
+            }
         }
         #endif
 #else
         // For non-ESP32 platforms, assume success if no exception thrown
         hardware_initialized_ = true;
+        ESP_LOGI(TAG, "DSC hardware initialization completed (non-ESP32 platform)");
 #endif
     }
 }
@@ -217,15 +236,34 @@ void DSCWrapper::begin(Stream& stream) {
         #ifdef dscClassicSeries
         if (dsc_interface_->esp32_hardware_initialized) {
             hardware_initialized_ = true;
+            ESP_LOGI(TAG, "DSC Classic hardware initialization successful on attempt %d (with Stream)", initialization_attempts_);
+        } else {
+            ESP_LOGW(TAG, "DSC Classic hardware initialization incomplete on attempt %d (esp32_hardware_initialized=false, with Stream)", initialization_attempts_);
+            // Check if we should give up permanently
+            if (initialization_attempts_ >= 3 || (current_time - first_attempt_time > 60000)) {
+                initialization_failed_ = true;
+                ESP_LOGE(TAG, "DSC Classic hardware initialization permanently failed after %d attempts over %u ms (with Stream)", 
+                         initialization_attempts_, current_time - first_attempt_time);
+            }
         }
         #else
         if (dsc_interface_->esp32_hardware_initialized) {
             hardware_initialized_ = true;
+            ESP_LOGI(TAG, "DSC PowerSeries hardware initialization successful on attempt %d (with Stream)", initialization_attempts_);
+        } else {
+            ESP_LOGW(TAG, "DSC PowerSeries hardware initialization incomplete on attempt %d (esp32_hardware_initialized=false, with Stream)", initialization_attempts_);
+            // Check if we should give up permanently
+            if (initialization_attempts_ >= 3 || (current_time - first_attempt_time > 60000)) {
+                initialization_failed_ = true;
+                ESP_LOGE(TAG, "DSC PowerSeries hardware initialization permanently failed after %d attempts over %u ms (with Stream)", 
+                         initialization_attempts_, current_time - first_attempt_time);
+            }
         }
         #endif
 #else
         // For non-ESP32 platforms, assume success if no exception thrown
         hardware_initialized_ = true;
+        ESP_LOGI(TAG, "DSC hardware initialization completed (non-ESP32 platform, with Stream)");
 #endif
     }
 }
@@ -257,6 +295,11 @@ bool DSCWrapper::isHardwareInitialized() const {
 
 bool DSCWrapper::isInitializationFailed() const {
     return initialization_failed_;
+}
+
+void DSCWrapper::markInitializationFailed() {
+    initialization_failed_ = true;
+    ESP_LOGE(TAG, "DSC hardware initialization marked as permanently failed");
 }
 
 void DSCWrapper::write(const char* keys) {
