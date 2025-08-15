@@ -1,0 +1,38 @@
+{
+  "storage_version": 1,
+  "name": "test-compile",
+  "friendly_name": null,
+  "comment": null,
+  "esphome_version": "2025.7.5",
+  "src_version": 1,
+  "address": "test-compile.local",
+  "web_port": null,
+  "esp_platform": "ESP32",
+  "build_path": "/home/runner/work/New-DSC-Alarm-Control-HA/New-DSC-Alarm-Control-HA/.esphome/build/test-compile",
+  "firmware_bin_path": "/home/runner/work/New-DSC-Alarm-Control-HA/New-DSC-Alarm-Control-HA/.esphome/build/test-compile/.pioenvs/test-compile/firmware.bin",
+  "loaded_integrations": [
+    "alarm_control_panel",
+    "api",
+    "dsc_keybus",
+    "esp32",
+    "esphome",
+    "external_components",
+    "logger",
+    "md5",
+    "mdns",
+    "network",
+    "ota",
+    "preferences",
+    "safe_mode",
+    "socket",
+    "substitutions",
+    "wifi"
+  ],
+  "loaded_platforms": [
+    "alarm_control_panel/dsc_keybus",
+    "ota/esphome"
+  ],
+  "no_mdns": false,
+  "framework": "esp-idf",
+  "core_platform": "esp32"
+}
