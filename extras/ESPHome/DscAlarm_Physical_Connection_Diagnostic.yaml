@@ -456,3 +456,11 @@ switch:
       - lambda: |-
           // This will stop the DSC interface temporarily
           ESP_LOGI("dsc_diagnostic", "Connection control switched OFF - stopping DSC interface");
+
+# ALARM CONTROL PANELS
+# Test alarm control panel for partition 1
+alarm_control_panel:
+  - platform: dsc_keybus
+    partition: 1
+    name: "DSC Partition 1 (Diagnostic)"
+    id: partition_1_panel
