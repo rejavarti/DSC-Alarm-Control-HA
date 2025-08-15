@@ -222,7 +222,9 @@ extras/ESPHome/
 
 ### 🔧 ESP32-Specific Optimizations
 - **Stack Size**: Increased from 3.5KB to 20KB for complex DSC operations
-- **CPU Frequency**: Set to 240MHz for maximum performance
+- **CPU Frequency**: Properly configured to 240MHz with explicit frequency settings
+- **Crystal Configuration**: 40MHz crystal frequency explicitly set for stable 240MHz operation  
+- **Frequency Conflicts**: Other CPU frequencies (80MHz, 160MHz) explicitly disabled
 - **Watchdog Management**: Comprehensive timeout and reset handling
 - **Memory Debugging**: Heap poisoning and tracing enabled
 
@@ -290,6 +292,33 @@ Monitor these sensors for system health:
 - **DSCAlarm Stack High Water Mark**: Should remain above 1KB
 
 ## Troubleshooting
+
+### ESP32 Running at 160MHz Instead of 240MHz?
+
+If you see in the logs:
+```
+I (496) cpu_start: cpu freq: 160000000 Hz
+```
+
+**Solution**: Ensure your configuration includes all required CPU frequency settings:
+
+```yaml
+esp32:
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      # CPU frequency configuration - CRITICAL for performance
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y      # Enable 240MHz option
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"  # Set frequency to 240MHz
+      # Explicitly disable other frequency options
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n       # Disable 80MHz
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n      # Disable 160MHz
+      # Crystal configuration (required for 240MHz)
+      CONFIG_ESP32_XTAL_FREQ_40: y              # Use 40MHz crystal
+      CONFIG_ESP32_XTAL_FREQ_26: n              # Disable 26MHz crystal
+```
+
+All updated configuration files now include these settings automatically.
 
 ### Still Getting LoadProhibited Crashes?
 
