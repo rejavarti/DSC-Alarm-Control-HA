@@ -20,6 +20,7 @@
 #include "esphome/core/defines.h"
 #include "dsc_keybus.h"  // For LoadProhibited crash prevention declarations
 #include "dsc_arduino_compatibility.h"
+#include "dsc_esp_idf_timer_fix.h"  // ESP-IDF timer compatibility layer
 
 #if defined(dscClassicSeries)
 
@@ -107,7 +108,7 @@ void dscClassicInterface::begin(Stream &_stream) {
   
   // Clean up any existing timer first
   if (timer1 != nullptr) {
-    timerEnd(timer1);
+    dsc_esp_timer::dsc_timer_end();
     timer1 = nullptr;
   }
   
@@ -115,9 +116,9 @@ void dscClassicInterface::begin(Stream &_stream) {
   int retry_count = 0;
   const int max_retries = 3;
   
-  while (retry_count < max_retries && timer1 == nullptr) {
-    timer1 = timerBegin(1, 80, true);
-    if (timer1 == nullptr) {
+  while (retry_count < max_retries && !dsc_esp_timer::dsc_timer_is_initialized()) {
+    bool timer_success = dsc_esp_timer::dsc_timer_begin(1, 80, &dscDataInterrupt);
+    if (!timer_success) {
       retry_count++;
       if (stream && retry_count >= max_retries) {
         stream->println(F("ERROR: Failed to initialize ESP32 timer1 after retries"));
@@ -133,19 +134,20 @@ void dscClassicInterface::begin(Stream &_stream) {
     esp_task_wdt_reset();
   }
   
-  if (timer1 != nullptr) {
-    timerStop(timer1);
-    timerAttachInterrupt(timer1, &dscDataInterrupt, true);
-    timerAlarmWrite(timer1, 250, true);
-    timerAlarmEnable(timer1);
+  if (dsc_esp_timer::dsc_timer_is_initialized()) {
+    dsc_esp_timer::dsc_timer_stop();
+    dsc_esp_timer::dsc_timer_set_alarm(250);
+    dsc_esp_timer::dsc_timer_enable_alarm();
     
     // Reset watchdog after timer configuration
     esp_task_wdt_reset();
     
     // Mark ESP32 timers as configured
     esp32_timers_configured = true;
+    // Update timer1 handle for compatibility with existing code
+    timer1 = (hw_timer_t*)0x1; // Non-null marker since actual handle is managed by compatibility layer
   } else {
-    if (stream) stream->println(F("ERROR: timer1 is null after initialization"));
+    if (stream) stream->println(F("ERROR: timer1 initialization failed"));
     return;
   }
   #endif
