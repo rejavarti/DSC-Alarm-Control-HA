@@ -5,6 +5,7 @@
 test_memory_allocation_fix
 test_memory_allocation_fix.cpp
 validate_memory_fix.py
+test_clean_build_fix.py
 
 # Compiled Object files
 *.slo

@@ -20,7 +20,25 @@ See `MQTT_ENTITY_MIGRATION_GUIDE.md` for complete migration instructions.
    - **Alternative**: Use Home Assistant UI to manually configure MQTT entities
 3. **YAML Configuration**: Only use the provided YAML files for template sensors, automations, and scripts (no longer for MQTT entities)
 4. **Validate**: Run `python3 validate_config.py` to check your configuration
-5. **Deploy**: Add supported sections (templates, automations) to your `configuration.yaml`
+5. **Clean Build** (if needed): Run `./clean_build.sh` to clean ESPHome build caches
+6. **Deploy**: Add supported sections (templates, automations) to your `configuration.yaml`
+
+## Script Execution Guide
+
+### Python Scripts
+```bash
+python3 validate_config.py        # Configuration validation
+python3 test_watchdog_timeout_fix.py  # Test fixes
+```
+
+### Bash Scripts
+```bash
+./clean_build.sh                  # Clean ESPHome build directories
+# OR
+bash clean_build.sh
+```
+
+⚠️ **Important**: Don't run bash scripts with Python (`python3 clean_build.sh` will fail)
 
 ## Security
 
@@ -145,6 +163,13 @@ If you're on an older HA version and need the legacy entities, use that file wit
 **Still Supported in YAML**: Template sensors, automations, scripts, input helpers, and other non-MQTT platforms.
 
 ## Common Issues
+
+### Script Execution Errors
+**Problem**: Getting `SyntaxError: invalid syntax` when running `python3 clean_build.sh`
+**Solution**: 
+- Use `./clean_build.sh` or `bash clean_build.sh` instead
+- `clean_build.sh` is a bash script, not a Python script
+- See the "Script Execution Guide" section above for correct usage
 
 ### MQTT Entities Not Working
 **Problem**: YAML MQTT entities are deprecated in Home Assistant.
