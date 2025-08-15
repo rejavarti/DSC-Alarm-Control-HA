@@ -112,6 +112,7 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   void set_access_code(const std::string &code) { this->access_code_ = code; }
   void set_debug_level(uint8_t level) { this->debug_level_ = level; }
   void set_enable_05_messages(bool enable) { this->enable_05_messages_ = enable; }
+  void set_standalone_mode(bool enable) { this->standalone_mode_ = enable; }
   void set_clock_pin(uint8_t pin) { this->clock_pin_ = pin; }
   void set_read_pin(uint8_t pin) { this->read_pin_ = pin; }
   void set_write_pin(uint8_t pin) { this->write_pin_ = pin; }
@@ -181,6 +182,7 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   uint8_t debug_level_{0};
   bool enable_05_messages_{true};
   bool force_disconnect_{false};
+  bool standalone_mode_{false};  // Enable standalone mode for testing without connected panel
   
   // Pin configuration - use default pins if not specified
   uint8_t clock_pin_{DSC_DEFAULT_CLOCK_PIN};

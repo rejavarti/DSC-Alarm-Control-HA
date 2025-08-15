@@ -41,6 +41,8 @@ public:
     
     // Initialize the DSC interface (creates the interface object but doesn't start hardware)
     void init(uint8_t clockPin, uint8_t readPin, uint8_t writePin, uint8_t pc16Pin = 255);
+    // Set standalone mode for testing without connected panel
+    void setStandaloneMode(bool enable) { standalone_mode_ = enable; }
     // Start the hardware interface (timers, interrupts) - call only when system is ready
     void begin();
     void begin(Stream& stream);
@@ -96,6 +98,7 @@ private:
     bool initialized_;
     bool hardware_initialized_;
     bool initialization_failed_;
+    bool standalone_mode_;
     uint8_t initialization_attempts_;
     
     // CRITICAL FIX: Add persistent failure tracking to survive ESP32 restarts

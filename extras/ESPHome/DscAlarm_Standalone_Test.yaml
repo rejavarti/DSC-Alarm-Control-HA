@@ -1,8 +1,8 @@
 substitutions:
-  accessCode: !secret access_code #Only comes into effect if a password prompt occurs when arming eg. night mode
+  accessCode: "1234" # Test access code for standalone mode
 
 esphome:
-  name: dscalarm
+  name: dscalarm-standalone-test
   # DSC Classic series build flag - REQUIRED for Classic panels
   # NOTE: build_flags must be under esphome: section using platformio_options
   platformio_options:
@@ -24,7 +24,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
-    ssid: "DSCalarm"
+    ssid: "DSCalarm-Standalone"
     password: !secret wifi_password
 
 logger:
@@ -35,14 +35,6 @@ api:
   encryption:
     key: !secret encryption_key
 
-mqtt:
-  broker: !secret mqtt_broker
-  username: !secret mqtt_username  
-  password: !secret mqtt_password
-  discovery: true
-  discovery_prefix: homeassistant
-  topic_prefix: esphome/dscalarm
-   
 ota:
   - platform: esphome
     password: !secret ota_password
@@ -55,12 +47,13 @@ status_led:
     number: GPIO2
     inverted: yes
 
+# DSC Keybus configuration with standalone mode enabled
 dsc_keybus:
   id: dsc_interface
   access_code: "$accessCode"
   series_type: "Classic"  # Explicitly set for DSC Classic series panels
-  # standalone_mode: true  # UNCOMMENT to enable testing without connected panel
-  debug: 0  # 0 = off, 1 = status change data, 2 = + 05/27 packets, 3 = + all packets received
+  standalone_mode: true   # ENABLE STANDALONE MODE - No physical panel connection required
+  debug: 1  # Enable debug logging to see standalone mode messages
   on_system_status_change:
     then:
       - text_sensor.template.publish:
@@ -99,13 +92,6 @@ dsc_keybus:
             case 2: id(z2).publish_state(open); break;
             case 3: id(z3).publish_state(open); break;
             case 4: id(z4).publish_state(open); break;
-            case 5: id(z5).publish_state(open); break;
-            case 6: id(z6).publish_state(open); break;
-            case 7: id(z7).publish_state(open); break;
-            case 8: id(z8).publish_state(open); break;
-            case 9: id(z9).publish_state(open); break;
-            case 10: id(z10).publish_state(open); break;
-            case 11: id(z11).publish_state(open); break;
           }
   on_zone_alarm_change:
     then:
@@ -115,128 +101,65 @@ dsc_keybus:
             case 2: id(za2).publish_state(open); break;
             case 3: id(za3).publish_state(open); break;
             case 4: id(za4).publish_state(open); break;
-            case 5: id(za5).publish_state(open); break;
-            case 6: id(za6).publish_state(open); break;
-            case 7: id(za7).publish_state(open); break;
-            case 8: id(za8).publish_state(open); break;
-            case 9: id(za9).publish_state(open); break;
-            case 10: id(za10).publish_state(open); break;
-            case 11: id(za11).publish_state(open); break;
           }
 
 binary_sensor:
-  # Zone status sensors
+  # Zone status sensors (reduced for standalone testing)
   - platform: template
     id: z1
-    name: "Zone Front door"
+    name: "Zone Front door (Test)"
     device_class: door
   - platform: template
     id: z2
-    name: "Zone Garage door"
+    name: "Zone Back door (Test)"
     device_class: door
   - platform: template
     id: z3
-    name: "Zone Back door"
-    device_class: door
+    name: "Zone Window (Test)"
+    device_class: window
   - platform: template
     id: z4
-    name: "Zone Living room window"
-    device_class: window
-  - platform: template
-    id: z5
-    name: "Zone Dining room window"
-    device_class: window
-  - platform: template
-    id: z6
-    name: "Zone Family room window LF"
-    device_class: window
-  - platform: template
-    id: z7
-    name: "Zone Family room window RF"
-    device_class: window
-  - platform: template
-    id: z8
-    name: "Zone Basement windows"
-    device_class: window
-  - platform: template
-    id: z9
-    name: "Zone Upstairs motion"
-    device_class: motion
-  - platform: template
-    id: z10
-    name: "Zone Basement motion"
-    device_class: motion
-  - platform: template
-    id: z11
-    name: "Zone Main floor motion"
+    name: "Zone Motion (Test)"
     device_class: motion
     
   # Zone alarm status sensors
   - platform: template
     id: za1
-    name: "Zone Front door alarm"
+    name: "Zone Front door alarm (Test)"
     device_class: safety
   - platform: template
     id: za2
-    name: "Zone Garage door alarm"
+    name: "Zone Back door alarm (Test)"
     device_class: safety
   - platform: template
     id: za3
-    name: "Zone Back door alarm"
+    name: "Zone Window alarm (Test)"
     device_class: safety
   - platform: template
     id: za4
-    name: "Zone Living room window alarm"
-    device_class: safety
-  - platform: template
-    id: za5
-    name: "Zone Dining room window alarm"
-    device_class: safety
-  - platform: template
-    id: za6
-    name: "Zone Family room window LF alarm"
-    device_class: safety
-  - platform: template
-    id: za7
-    name: "Zone Family room window RF alarm"
-    device_class: safety
-  - platform: template
-    id: za8
-    name: "Zone Basement windows alarm"
-    device_class: safety
-  - platform: template
-    id: za9
-    name: "Zone Upstairs motion alarm"
-    device_class: safety
-  - platform: template
-    id: za10
-    name: "Zone Basement motion alarm"
-    device_class: safety
-  - platform: template
-    id: za11
-    name: "Zone Main floor motion alarm"
+    name: "Zone Motion alarm (Test)"
     device_class: safety
     
   # System status sensors
   - platform: template
     id: t1
-    name: "DSCAlarm Trouble Status"
+    name: "DSCAlarm Trouble Status (Test)"
     device_class: problem
     
   - platform: template
     id: f1
     device_class: safety
-    name: "DSCAlarm Partition1 Fire Status"
+    name: "DSCAlarm Partition1 Fire Status (Test)"
     
   # System connectivity and health sensors
   - platform: status
-    name: "DSCAlarm System Status"
+    name: "DSCAlarm System Status (Test)"
     id: system_status_sensor
     device_class: connectivity
     
   # System health monitoring
   - platform: template
-    name: "DSCAlarm System Healthy"
+    name: "DSCAlarm System Healthy (Test)"
     id: system_healthy_sensor
     device_class: problem
     lambda: |-
@@ -245,70 +168,53 @@ binary_sensor:
       bool api_ok = api::global_api_server->is_connected();
       bool heap_ok = esp_get_free_heap_size() > 10000; // At least 10KB free
       return wifi_ok && api_ok && heap_ok;
-    
-  # DSC Keybus connection status  
-  - platform: template
-    name: "DSCAlarm Keybus Connected"
-    id: keybus_connected_sensor
-    device_class: connectivity
-    lambda: |-
-      return id(dsc_interface).getKeybusConnected();
-      
-  # DSC Buffer overflow detection
-  - platform: template
-    name: "DSCAlarm Buffer Overflow"
-    id: buffer_overflow_sensor  
-    device_class: problem
-    lambda: |-
-      return id(dsc_interface).getBufferOverflow();
 
 text_sensor:
   - platform: template
     id: system_status
-    name: "DSCAlarm System Status"
+    name: "DSCAlarm System Status (Test)"
     icon: "mdi:shield"
   - platform: template
     id: p1
-    name: "DSCAlarm Partition 1 Status"
+    name: "DSCAlarm Partition 1 Status (Test)"
     icon: "mdi:shield"
   - platform: template
     id: p2
-    name: "DSCAlarm Partition 2 Status"
+    name: "DSCAlarm Partition 2 Status (Test)"
     icon: "mdi:shield"  
   - platform: template
     id: m1
-    name: "DSCAlarm Partition 1 Msg"
+    name: "DSCAlarm Partition 1 Msg (Test)"
     icon: "mdi:alert-box"
   - platform: template
     id: m2
-    name: "DSCAlarm Partition 2 Msg"
+    name: "DSCAlarm Partition 2 Msg (Test)"
     icon: "mdi:alert-box"
   # System version and build info
   - platform: version
-    name: "DSCAlarm ESPHome Version"
+    name: "DSCAlarm ESPHome Version (Test)"
     icon: "mdi:tag"
   # WiFi connection info  
   - platform: wifi_info
     ip_address:
-      name: "DSCAlarm IP Address"
+      name: "DSCAlarm IP Address (Test)"
     ssid:
-      name: "DSCAlarm WiFi SSID"
+      name: "DSCAlarm WiFi SSID (Test)"
     mac_address:
-      name: "DSCAlarm MAC Address"
+      name: "DSCAlarm MAC Address (Test)"
       
-  # System error tracking
+  # Standalone mode indicator
   - platform: template
-    name: "DSCAlarm Last Error"
-    id: last_error_sensor
-    icon: "mdi:alert-circle"
+    name: "DSCAlarm Mode"
+    id: mode_indicator
+    icon: "mdi:test-tube"
     lambda: |-
-      static std::string last_error = "None";
-      return last_error;
+      return {"Standalone Test Mode - No Panel Required"};
 
 sensor:
   # System uptime
   - platform: uptime
-    name: "DSCAlarm Uptime"
+    name: "DSCAlarm Uptime (Test)"
     id: uptime_seconds
     update_interval: 60s
     icon: "mdi:timer-outline"
@@ -318,7 +224,7 @@ sensor:
   
   # WiFi signal strength  
   - platform: wifi_signal
-    name: "DSCAlarm WiFi Signal"
+    name: "DSCAlarm WiFi Signal (Test)"
     id: wifi_signal_db
     update_interval: 60s
     unit_of_measurement: dBm
@@ -328,28 +234,36 @@ sensor:
     
   # System diagnostics - Free heap memory
   - platform: template
-    name: "DSCAlarm Free Heap"
+    name: "DSCAlarm Free Heap (Test)"
     id: free_heap_sensor
-    update_interval: 60s
+    update_interval: 30s
     unit_of_measurement: "bytes"
     state_class: measurement
     icon: "mdi:memory"
     lambda: |-
       return esp_get_free_heap_size();
       
-  # WiFi reconnection counter
+  # Largest free block (for testing memory allocation)
   - platform: template
-    name: "DSCAlarm WiFi Reconnects"
-    id: wifi_reconnects_sensor
-    update_interval: 60s
-    state_class: total_increasing
-    icon: "mdi:wifi-sync"
+    name: "DSCAlarm Largest Free Block (Test)"
+    id: largest_free_block_sensor
+    update_interval: 30s
+    unit_of_measurement: "bytes"
+    state_class: measurement
+    icon: "mdi:memory"
     lambda: |-
-      static uint32_t reconnect_count = 0;
-      if (!wifi::global_wifi_component->is_connected()) {
-        reconnect_count++;
-      }
-      return reconnect_count;
+      return heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      
+  # Stack high water mark
+  - platform: template
+    name: "DSCAlarm Stack High Water Mark (Test)"
+    id: stack_high_water_mark_sensor
+    update_interval: 60s
+    unit_of_measurement: "bytes"
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      return uxTaskGetStackHighWaterMark(NULL);
 
 # Periodic system health monitoring
 interval:
@@ -370,45 +284,13 @@ interval:
               wifi_ok ? "OK" : "FAIL", 
               api_ok ? "OK" : "FAIL",
               heap_ok ? "OK" : "FAIL");
+          } else {
+            ESP_LOGI("system_health", "System healthy in standalone mode - WiFi connected, API available, heap sufficient");
           }
 
-button:
-  # Emergency buttons
-  - platform: template
-    name: "Fire Alarm"
-    id: fire_alarm_button
-    icon: "mdi:fire"
-    on_press:
-      - lambda: |-
-          id(dsc_interface).alarm_keypress("f");
-          
-  - platform: template  
-    name: "Aux Alarm"
-    id: aux_alarm_button
-    icon: "mdi:hospital-box"
-    on_press:
-      - lambda: |-
-          id(dsc_interface).alarm_keypress("a");
-          
-  - platform: template
-    name: "Panic Alarm" 
-    id: panic_alarm_button
-    icon: "mdi:police-badge"
-    on_press:
-      - lambda: |-
-          id(dsc_interface).alarm_keypress("p");
-
 switch:
-  - platform: template
-    name: "DSCAlarm Connection"
-    id: connection_status_switch
-    lambda: |-
-      return esphome::dsc_keybus::getDSC().getKeybusConnected();
-    icon: "mdi:shield-link-variant"
-    turn_on_action:
-      - switch.toggle: restart_switch
-    turn_off_action:
-      - lambda: |-
-          esphome::dsc_keybus::getDSC().stop();
+  # System restart
   - platform: restart
     id: restart_switch
+    name: "DSCAlarm Restart (Test)"
+    icon: "mdi:restart"

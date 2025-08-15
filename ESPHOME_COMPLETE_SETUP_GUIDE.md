@@ -44,6 +44,25 @@
 
 ## Complete Setup Process
 
+### Step 0: Testing Without Hardware (Optional)
+
+Before wiring anything, you can test your ESPHome configuration using **standalone mode**:
+
+1. **Enable standalone mode** in your configuration:
+   ```yaml
+   dsc_keybus:
+     standalone_mode: true  # Add this line
+   ```
+
+2. **Use the test configuration**: Copy `DscAlarm_Standalone_Test.yaml` as starting point
+3. **Flash to ESP32**: Upload and verify WiFi connection and ESPHome API work
+4. **Check Home Assistant**: Confirm device appears with test sensors
+5. **Review logs**: Should show "Standalone mode enabled" messages
+
+This allows you to validate your ESPHome setup before doing any physical wiring to your alarm panel.
+
+**📖 Complete standalone mode guide**: See `DSC_STANDALONE_MODE_GUIDE.md`
+
 ### Step 1: Install ESPHome in Home Assistant
 
 1. **Navigate to Add-ons**:

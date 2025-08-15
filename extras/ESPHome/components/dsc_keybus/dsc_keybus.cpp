@@ -52,6 +52,21 @@ void DSCKeybusComponent::setup() {
   
   setup_in_progress = true;  // Mark setup as in progress
   ESP_LOGCONFIG(TAG, "Setting up DSC Keybus Interface...");
+  
+  // Check if standalone mode is enabled for testing without a connected panel
+  if (standalone_mode_) {
+    ESP_LOGCONFIG(TAG, "Standalone mode enabled - simulating successful hardware initialization");
+    ESP_LOGCONFIG(TAG, "Note: No actual DSC panel connection required in standalone mode");
+    ESP_LOGCONFIG(TAG, "This mode is for testing ESPHome integration without hardware");
+    
+    // In standalone mode, we skip actual hardware initialization and mark as successful
+    setup_complete = true;
+    setup_in_progress = false;
+    
+    // Create mock successful status for standalone testing
+    ESP_LOGI(TAG, "DSC Keybus hardware initialization complete (standalone mode)");
+    return;
+  }
 
 #if defined(ESP32) || defined(ESP_PLATFORM)
   // Enhanced ESP-IDF 5.3.2+ LoadProhibited crash prevention
@@ -127,6 +142,9 @@ void DSCKeybusComponent::setup() {
   // ONLY initialize the DSC wrapper object (NO hardware initialization yet)
   // This creates the interface object but doesn't start timers/interrupts
   getDSC().init(this->clock_pin_, this->read_pin_, this->write_pin_, this->pc16_pin_);
+  
+  // Set standalone mode if configured
+  getDSC().setStandaloneMode(this->standalone_mode_);
   
   // Initialize system state
   for (auto *trigger : this->system_status_triggers_) {
@@ -545,12 +563,33 @@ void DSCKeybusComponent::loop() {
       initialization_failures = 0;  // Reset failure counter on success
     } else if (getDSC().isInitializationFailed()) {
       ESP_LOGE(TAG, "DSC Keybus hardware initialization failed permanently after multiple attempts");
-      ESP_LOGE(TAG, "Check hardware connections, timer configuration, and heap memory");
+      ESP_LOGE(TAG, "╔════════════════════════════════════════════════════════════════════════════════════════╗");
+      ESP_LOGE(TAG, "║                               DSC HARDWARE INITIALIZATION FAILED                        ║");
+      ESP_LOGE(TAG, "╠════════════════════════════════════════════════════════════════════════════════════════╣");
+      ESP_LOGE(TAG, "║ Possible causes:                                                                       ║");
+      ESP_LOGE(TAG, "║ 1. DSC alarm panel is not connected to the ESP32 module                              ║");
+      ESP_LOGE(TAG, "║ 2. Incorrect wiring - check Clock (GPIO %d), Data (GPIO %d), Write (GPIO %d)           ║", this->clock_pin_, this->read_pin_, this->write_pin_);
+      ESP_LOGE(TAG, "║ 3. DSC alarm panel is powered off or not sending data                                ║");
+      ESP_LOGE(TAG, "║ 4. Wrong resistor values (need 33kΩ for data lines, 1kΩ for PC-16 if Classic)       ║");
+      ESP_LOGE(TAG, "║                                                                                        ║");
+      ESP_LOGE(TAG, "║ For testing without a connected panel, use standalone mode:                           ║");
+      ESP_LOGE(TAG, "║ dsc_keybus:                                                                            ║");
+      ESP_LOGE(TAG, "║   standalone_mode: true                                                                ║");
+      ESP_LOGE(TAG, "╚════════════════════════════════════════════════════════════════════════════════════════╝");
       initialization_failures = 5;  // Set to maximum to stop future attempts
     } else {
       // Initialization is still in progress or failed but might retry
       initialization_failures++;
-      ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/5) - will retry after delay", initialization_failures);
+      
+      if (initialization_failures == 1) {
+        ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/5) - will retry after delay", initialization_failures);
+        ESP_LOGW(TAG, "This is normal if the DSC panel is not connected or is powering up");
+      } else if (initialization_failures == 3) {
+        ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/5) - will retry after delay", initialization_failures);
+        ESP_LOGW(TAG, "If no DSC panel is connected, consider using standalone_mode: true for testing");
+      } else {
+        ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/5) - will retry after delay", initialization_failures);
+      }
       
       // Add exponential backoff delay to prevent rapid retries
       static uint32_t unclear_retry_delay = 0;
