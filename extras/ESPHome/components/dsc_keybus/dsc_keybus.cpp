@@ -198,7 +198,12 @@ void DSCKeybusComponent::loop() {
     void* test_alloc = heap_caps_malloc(768, MALLOC_CAP_8BIT);
     if (test_alloc != nullptr) {
       heap_caps_free(test_alloc);
-      ESP_LOGD(TAG, "768-byte test allocation successful, free heap: %zu bytes", free_heap);
+      // CRITICAL FIX: Add rate limiting to prevent infinite log spam
+      static uint32_t last_alloc_success_log = 0;
+      if (current_time - last_alloc_success_log >= 5000) {  // Log every 5 seconds max
+        ESP_LOGD(TAG, "768-byte test allocation successful, free heap: %zu bytes", free_heap);
+        last_alloc_success_log = current_time;
+      }
     } else {
       ESP_LOGW(TAG, "Critical: Cannot allocate 768 bytes - system memory critically low, free heap: %zu bytes", free_heap);
       return;  // Defer setup if we can't allocate the size that was failing
