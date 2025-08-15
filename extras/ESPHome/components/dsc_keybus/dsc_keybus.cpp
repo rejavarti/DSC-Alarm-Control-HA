@@ -707,6 +707,18 @@ void DSCKeybusComponent::disconnect_keybus() {
   this->force_disconnect_ = true;
 }
 
+void DSCKeybusComponent::stop() {
+  getDSC().stop();
+}
+
+void DSCKeybusComponent::restart() {
+  getDSC().stop();
+  // Reset initialization state to allow restart
+  this->force_disconnect_ = false;
+  // The hardware will be re-initialized in the next loop() call
+  getDSC().begin();
+}
+
 // Status methods - wrapper for DSCWrapper methods to maintain YAML compatibility
 bool DSCKeybusComponent::getKeybusConnected() {
   return getDSC().getKeybusConnected();

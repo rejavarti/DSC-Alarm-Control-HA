@@ -133,6 +133,10 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   void alarm_trigger_fire();
   void alarm_keypress(const std::string &keys);
   void disconnect_keybus();
+  
+  // Control methods for ESPHome YAML compatibility
+  void stop();
+  void restart();
 
   // Status methods - wrapper for DSCWrapper methods to maintain YAML compatibility
   bool getKeybusConnected();
