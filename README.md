@@ -39,11 +39,30 @@ The `extras/ESPHome/DscAlarm.yaml` configuration provides:
 - **Zone Monitoring** - Individual sensors for doors, windows, motion detectors
 - **System Status** - Partition states, trouble indicators, fire alarms
 - **Over-the-Air Updates** - Update firmware wirelessly
+- **ESP-IDF 5.3.2+ LoadProhibited Crash Fix** - Advanced protection against system crashes
+
+## 🛡️ ESP-IDF 5.3 LoadProhibited Fix
+
+**QUESTION: Can I still use the ESP-IDF 5.3 LoadProhibited fix with all these changes?**
+
+**ANSWER: YES! You should definitely still use it.**
+
+The ESP-IDF 5.3.2 LoadProhibited fix is the **most comprehensive and current solution**:
+- ✅ **Includes all previous fixes** and extends them with advanced protections
+- ✅ **Works seamlessly** with all repository improvements and recent changes
+- ✅ **Prevents multiple crash types**: 0xcececece LoadProhibited, memory allocation failures, timer system crashes
+- ✅ **Enhanced for ESP-IDF 5.3.2+** with specific optimizations and compatibility layers
+
+**For ESP-IDF users**: Use `DSCAlarm_ESP_IDF_5_3_LoadProhibited_Fix.yaml` - it's the gold standard.
+**For Arduino users**: Standard configurations already include the necessary basic protections.
+
+📖 **Complete guidance**: `ESP_IDF_5_3_LOADPROHIBITED_FIX_GUIDANCE.md`
 
 **📋 Complete Setup Documentation:**
 - **`ESPHOME_COMPLETE_SETUP_GUIDE.md`** - **NEW**: Comprehensive hardware and software setup guide
 - **`DSC_STANDALONE_MODE_GUIDE.md`** - **NEW**: Testing without connected panel
 - **`ESPHOME_MIGRATION_GUIDE.md`** - Step-by-step migration from MQTT YAML
+- **`ESP_IDF_5_3_LOADPROHIBITED_FIX_GUIDANCE.md`** - **NEW**: Complete guide on ESP-IDF 5.3 LoadProhibited fix usage
 
 ## Files
 
@@ -58,8 +77,10 @@ The `extras/ESPHome/DscAlarm.yaml` configuration provides:
 - `MQTT_CONFIGURATION_TROUBLESHOOTING.md` - Troubleshooting guide for common configuration errors
 - `validate_config.py` - Configuration validation tool
 - `extras/ESPHome/DscAlarm.yaml` - **RECOMMENDED**: Enhanced ESPHome configuration for MQTT Discovery with diagnostic sensors
+- `extras/ESPHome/DSCAlarm_ESP_IDF_5_3_LoadProhibited_Fix.yaml` - **ESP-IDF USERS**: Advanced ESP-IDF 5.3.2+ configuration with LoadProhibited crash prevention
 - `ESPHOME_COMPLETE_SETUP_GUIDE.md` - **NEW**: Complete hardware and software setup documentation (answers hardware requirements, wiring, step-by-step process)
 - `ESPHOME_MIGRATION_GUIDE.md` - **UPDATED**: Migration guide from deprecated MQTT YAML entities
+- `ESP_IDF_5_3_LOADPROHIBITED_FIX_GUIDANCE.md` - **NEW**: Definitive guide on ESP-IDF 5.3 LoadProhibited fix compatibility and usage
 
 ## What Changed
 
