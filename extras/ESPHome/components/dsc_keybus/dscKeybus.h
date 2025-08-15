@@ -127,6 +127,11 @@ class dscKeybusInterface {
     // Timer interrupt function to capture data - declared as public for use by AVR Timer1
     static void dscDataInterrupt();
 
+    #if defined(ESP32) || defined(ESP_PLATFORM)
+    // CRITICAL FIX: Move ESP32 hardware initialization status to public for access by wrapper
+    static volatile bool esp32_hardware_initialized;
+    #endif
+
     // Deprecated
     bool processRedundantData;  // Controls if repeated periodic commands are processed and displayed (default: false)
 
@@ -276,7 +281,7 @@ class dscKeybusInterface {
     static portMUX_TYPE timer1Mux;
     
     // Additional ESP32 safety variables to prevent LoadProhibited crashes
-    static volatile bool esp32_hardware_initialized;
+    // Note: esp32_hardware_initialized moved to public section for wrapper access
     static volatile bool esp32_timers_configured;
     static volatile unsigned long esp32_init_timestamp;
     
