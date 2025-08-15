@@ -58,3 +58,8 @@ __pycache__/
 
 # Temporary test files
 test_esp_idf_5_3_loadprohibited_fix.cpp
+
+# ESPHome build artifacts
+.esphome/
+.pioenvs/
+.piolibdeps/

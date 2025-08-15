@@ -2,6 +2,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/components/alarm_control_panel/alarm_control_panel.h"
+#include "esphome/components/alarm_control_panel/alarm_control_panel_call.h"
 #include "dsc_keybus.h"
 
 namespace esphome {
@@ -17,15 +18,15 @@ class DSCAlarmControlPanel : public alarm_control_panel::AlarmControlPanel, publ
   void set_partition(uint8_t partition) { this->partition_ = partition; }
 
   // AlarmControlPanel interface implementation
-  void arm_away() override;
-  void arm_home() override;
-  void arm_night() override;
-  void disarm(const std::string &code) override;
+  uint32_t get_supported_features() const override;
+  bool get_requires_code() const override;
+  bool get_requires_code_to_arm() const override;
 
  protected:
   DSCKeybusComponent *parent_{nullptr};
   uint8_t partition_{1};
 
+  void control(const alarm_control_panel::AlarmControlPanelCall &call) override;
   void update_state_from_dsc();
   alarm_control_panel::AlarmControlPanelState get_current_state();
 };

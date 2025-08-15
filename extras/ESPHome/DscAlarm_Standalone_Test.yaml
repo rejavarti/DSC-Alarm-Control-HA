@@ -294,3 +294,11 @@ switch:
     id: restart_switch
     name: "DSCAlarm Restart (Test)"
     icon: "mdi:restart"
+
+# ALARM CONTROL PANELS
+# Test alarm control panel for partition 1
+alarm_control_panel:
+  - platform: dsc_keybus
+    partition: 1
+    name: "DSC Partition 1 (Test)"
+    id: partition_1_panel
