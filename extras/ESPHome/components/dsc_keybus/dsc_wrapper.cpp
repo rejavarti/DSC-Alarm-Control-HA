@@ -38,7 +38,7 @@ DSCWrapper& DSCWrapper::getInstance() {
     return instance;
 }
 
-DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false), hardware_initialized_(false), initialization_failed_(false), initialization_attempts_(0), first_initialization_attempt_time_(0) {
+DSCWrapper::DSCWrapper() : dsc_interface_(nullptr), initialized_(false), hardware_initialized_(false), initialization_failed_(false), standalone_mode_(false), initialization_attempts_(0), first_initialization_attempt_time_(0) {
 }
 
 DSCWrapper::~DSCWrapper() {
@@ -57,6 +57,14 @@ void DSCWrapper::init(uint8_t clockPin, uint8_t readPin, uint8_t writePin, uint8
 }
 
 void DSCWrapper::begin() {
+    // Handle standalone mode - skip actual hardware initialization
+    if (standalone_mode_) {
+        ESP_LOGI(TAG, "DSC Wrapper: Standalone mode enabled - simulating successful hardware initialization");
+        hardware_initialized_ = true;
+        initialization_failed_ = false;
+        return;
+    }
+    
     // Prevent infinite initialization attempts by checking failure state
     if (initialization_failed_ || hardware_initialized_) {
         return;  // Already failed or already initialized

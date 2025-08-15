@@ -34,6 +34,7 @@ The `extras/ESPHome/DscAlarm.yaml` configuration provides:
 - **Complete Device Integration** - All sensors grouped under one device
 - **Enhanced Diagnostics** - WiFi signal, uptime, free memory, connection status
 - **DSC Series Support** - Both PowerSeries AND Classic series panels fully supported with automatic PC-16 pin configuration
+- **Standalone Testing Mode** - Test configuration without connected DSC panel (`standalone_mode: true`)
 - **Emergency Controls** - Fire, Aux, and Panic alarm buttons
 - **Zone Monitoring** - Individual sensors for doors, windows, motion detectors
 - **System Status** - Partition states, trouble indicators, fire alarms
@@ -41,6 +42,7 @@ The `extras/ESPHome/DscAlarm.yaml` configuration provides:
 
 **📋 Complete Setup Documentation:**
 - **`ESPHOME_COMPLETE_SETUP_GUIDE.md`** - **NEW**: Comprehensive hardware and software setup guide
+- **`DSC_STANDALONE_MODE_GUIDE.md`** - **NEW**: Testing without connected panel
 - **`ESPHOME_MIGRATION_GUIDE.md`** - Step-by-step migration from MQTT YAML
 
 ## Files

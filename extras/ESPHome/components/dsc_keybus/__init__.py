@@ -40,6 +40,7 @@ CONF_PC16_PIN = "pc16_pin"
 CONF_CLOCK_PIN = "clock_pin"
 CONF_READ_PIN = "read_pin"
 CONF_WRITE_PIN = "write_pin"
+CONF_STANDALONE_MODE = "standalone_mode"
 CONF_ON_SYSTEM_STATUS_CHANGE = "on_system_status_change"
 CONF_ON_PARTITION_STATUS_CHANGE = "on_partition_status_change"
 CONF_ON_PARTITION_MSG_CHANGE = "on_partition_msg_change"
@@ -59,6 +60,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_CLOCK_PIN): cv.int_range(0, 40),  # DSC Clock pin
     cv.Optional(CONF_READ_PIN): cv.int_range(0, 40),   # DSC Data read pin  
     cv.Optional(CONF_WRITE_PIN): cv.int_range(0, 40),  # DSC Data write pin
+    cv.Optional(CONF_STANDALONE_MODE, default=False): cv.boolean,  # Enable standalone mode for testing without panel
     cv.Optional(CONF_ON_SYSTEM_STATUS_CHANGE): automation.validate_automation(
         {
             cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(SystemStatusChangeTrigger),
@@ -105,6 +107,7 @@ async def to_code(config):
     cg.add(var.set_access_code(config["access_code"]))
     cg.add(var.set_debug_level(config["debug"]))
     cg.add(var.set_enable_05_messages(config["enable_05_messages"]))
+    cg.add(var.set_standalone_mode(config[CONF_STANDALONE_MODE]))
     
     # Set pin configurations if specified
     if CONF_CLOCK_PIN in config:
