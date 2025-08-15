@@ -20,6 +20,7 @@
 #if defined(dscPowerSeries)
 
 #include "dsc_arduino_compatibility.h"
+#include "dsc_esp_idf_timer_fix.h"  // ESP-IDF timer compatibility layer
 #include "dscKeypad.h"
 #if defined dscKeypad_h
 
@@ -63,13 +64,15 @@ void dscKeypadInterface::begin(Stream &_stream) {
   timer1_attachInterrupt(dscClockInterrupt);
   timer1_write(2500);
 
-  // esp32 timer1 calls dscClockInterrupt()
+  // esp32 timer1 calls dscClockInterrupt() using ESP-IDF compatibility layer
   #elif defined(ESP32)
-  timer1 = timerBegin(1, 80, true);
-  timerStop(timer1);
-  timerAttachInterrupt(timer1, &dscClockInterrupt, true);
-  timerAlarmWrite(timer1, 500, true);
-  timerAlarmEnable(timer1);
+  if (dsc_esp_timer::dsc_timer_begin(1, 80, &dscClockInterrupt)) {
+    dsc_esp_timer::dsc_timer_stop();
+    dsc_esp_timer::dsc_timer_set_alarm(500);
+    dsc_esp_timer::dsc_timer_enable_alarm();
+    // Set timer1 handle for compatibility with existing code
+    timer1 = (hw_timer_t*)0x1; // Non-null marker since actual handle is managed by compatibility layer
+  }
   #endif
 
   intervalStart = millis();
@@ -230,7 +233,7 @@ bool dscKeypadInterface::loop() {
     #elif defined(ESP8266)
     timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP);
     #elif defined(ESP32)
-    timerStart(timer1);
+    dsc_esp_timer::dsc_timer_start();
     #endif
   }
   else if (!commandReady) intervalStart = millis();
@@ -563,7 +566,7 @@ void dscKeypadInterface::dscClockInterrupt() {
     #elif defined(ESP8266)
     timer1_disable();
     #elif defined(ESP32)
-    timerStop(timer1);
+    dsc_esp_timer::dsc_timer_stop();
     #endif
   }
 

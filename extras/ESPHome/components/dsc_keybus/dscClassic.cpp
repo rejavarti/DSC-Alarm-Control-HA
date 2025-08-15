@@ -106,13 +106,13 @@ void dscClassicInterface::begin(Stream &_stream) {
   // Reset watchdog at start of ESP32 timer initialization
   esp_task_wdt_reset();
   
-  // Clean up any existing timer first using ESP-IDF compatibility layer
+  // Clean up any existing timer first
   if (timer1 != nullptr) {
     dsc_esp_timer::dsc_timer_end();
     timer1 = nullptr;
   }
   
-  // Initialize timer with error checking and retry logic using ESP-IDF compatibility
+  // Initialize timer with error checking and retry logic
   int retry_count = 0;
   const int max_retries = 3;
   
@@ -182,13 +182,13 @@ void dscClassicInterface::stop() {
   timer1_disable();
   timer1_detachInterrupt();
 
-  // Disables esp32 timer1 using ESP-IDF compatibility layer
+  // Disables esp32 timer1
   #elif defined(ESP32)
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) during cleanup
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_disable_alarm();
-    dsc_esp_timer::dsc_timer_end();
+  if (timer1 != nullptr) {
+    timerAlarmDisable(timer1);
+    timerEnd(timer1);
     timer1 = nullptr;  // Reset to safe state after cleanup
   }
   #endif
@@ -222,10 +222,10 @@ bool dscClassicInterface::loop() {
 
   // Checks if Keybus data is detected and sets a status flag if data is not detected for 3s
   #if defined(ESP32)
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_enter_critical();
+  if (timer1 != nullptr) {
+    portENTER_CRITICAL(&timer1Mux);
   }
   #else
   noInterrupts();
@@ -235,10 +235,10 @@ bool dscClassicInterface::loop() {
   else keybusConnected = true;
 
   #if defined(ESP32)
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_exit_critical();
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
+    portEXIT_CRITICAL(&timer1Mux);
   }
   #else
   interrupts();
@@ -270,10 +270,10 @@ bool dscClassicInterface::loop() {
 
   // Resets counters when the buffer is cleared
   #if defined(ESP32)
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_enter_critical();
+  if (timer1 != nullptr) {
+    portENTER_CRITICAL(&timer1Mux);
   }
   #else
   noInterrupts();
@@ -285,10 +285,10 @@ bool dscClassicInterface::loop() {
   }
 
   #if defined(ESP32)
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_exit_critical();
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
+    portEXIT_CRITICAL(&timer1Mux);
   }
   #else
   interrupts();
@@ -1169,11 +1169,11 @@ void dscClassicInterface::dscClockInterrupt() {
     return;  // Abort ISR execution if not ready
   }
   
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_start();
-    dsc_esp_timer::dsc_timer_enter_critical();
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
+    timerStart(timer1);
+    portENTER_CRITICAL(&timer1Mux);
   } else {
     return;  // Abort if timer is not properly initialized
   }
@@ -1216,10 +1216,10 @@ void dscClassicInterface::dscClockInterrupt() {
     }
   }
   #if defined(ESP32)
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_exit_critical();
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
+    portEXIT_CRITICAL(&timer1Mux);
   }
   #endif
 }
@@ -1239,11 +1239,11 @@ void IRAM_ATTR dscClassicInterface::dscDataInterrupt() {
     return;  // Abort ISR execution if not ready
   }
   
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_stop();
-    dsc_esp_timer::dsc_timer_enter_critical();
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
+    timerStop(timer1);
+    portENTER_CRITICAL(&timer1Mux);
   } else {
     return;  // Abort if timer is not properly initialized
   }
@@ -1376,10 +1376,10 @@ void dscClassicInterface::dscDataInterrupt() {
 
   }
   #if defined(ESP32)
-  // Safety check: Ensure timer is properly initialized before use
+  // Safety check: Ensure timer1 is properly initialized before use
   // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (dsc_esp_timer::dsc_timer_is_initialized()) {
-    dsc_esp_timer::dsc_timer_exit_critical();
+  if (timer1 != nullptr && timer1 != (hw_timer_t*)0xcececece && timer1 != (hw_timer_t*)0xa5a5a5a5) {
+    portEXIT_CRITICAL(&timer1Mux);
   }
   #endif
 }
