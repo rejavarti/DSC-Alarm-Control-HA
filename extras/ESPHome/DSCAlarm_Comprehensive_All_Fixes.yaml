@@ -374,11 +374,12 @@ alarm_control_panel:
     name: "DSC Partition 1"
     id: partition_1_panel
     # Configure supported modes based on your DSC panel setup
-    supported_modes:
-      - ALARM_ARM_AWAY
-      - ALARM_ARM_HOME  
-      - ALARM_ARM_NIGHT
-      # - ALARM_ARM_CUSTOM_BYPASS  # Uncomment if your panel supports bypass mode
+    # Note: supported_modes configuration is handled automatically by the platform
+    # supported_modes:
+    #   - ALARM_ARM_AWAY
+    #   - ALARM_ARM_HOME  
+    #   - ALARM_ARM_NIGHT
+    #   # - ALARM_ARM_CUSTOM_BYPASS  # Uncomment if your panel supports bypass mode
     
   # Add additional partitions as needed  
   # - platform: dsc_keybus
