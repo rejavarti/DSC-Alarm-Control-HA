@@ -1,5 +1,6 @@
 #include "dsc_wrapper.h"
 #include "esphome/core/defines.h"
+#include "esphome/core/log.h"
 #include "dsc_arduino_compatibility.h"
 
 #if defined(ESP32) || defined(ESP_PLATFORM)
@@ -29,6 +30,8 @@
 
 namespace esphome {
 namespace dsc_keybus {
+
+static const char *const TAG = "dsc_wrapper";
 
 DSCWrapper& DSCWrapper::getInstance() {
     static DSCWrapper instance;
@@ -62,7 +65,7 @@ void DSCWrapper::begin() {
     // CRITICAL FIX: Check for persistent failure patterns (restart loops)
     if (checkPersistentFailure()) {
         initialization_failed_ = true;
-        ESP_LOGE("dsc_wrapper", "Persistent failure pattern detected - stopping initialization attempts");
+        ESP_LOGE(TAG, "Persistent failure pattern detected - stopping initialization attempts");
         return;
     }
 
@@ -84,7 +87,7 @@ void DSCWrapper::begin() {
         // This prevents the infinite loop shown in the problem statement logs
         if (current_time - first_attempt_time > 30000) {
             initialization_failed_ = true;
-            ESP_LOGE("dsc_wrapper", "Hardware initialization timeout after 30 seconds - marking as permanently failed");
+            ESP_LOGE(TAG, "Hardware initialization timeout after 30 seconds - marking as permanently failed");
             return;
         }
         
@@ -140,7 +143,7 @@ void DSCWrapper::begin(Stream& stream) {
     // CRITICAL FIX: Check for persistent failure patterns (restart loops)
     if (checkPersistentFailure()) {
         initialization_failed_ = true;
-        ESP_LOGE("dsc_wrapper", "Persistent failure pattern detected - stopping initialization attempts");
+        ESP_LOGE(TAG, "Persistent failure pattern detected - stopping initialization attempts");
         return;
     }
 
@@ -160,7 +163,7 @@ void DSCWrapper::begin(Stream& stream) {
         // If we've been trying for more than 30 seconds, give up permanently
         if (current_time - first_attempt_time > 30000) {
             initialization_failed_ = true;
-            ESP_LOGE("dsc_wrapper", "Hardware initialization timeout after 30 seconds - marking as permanently failed");
+            ESP_LOGE(TAG, "Hardware initialization timeout after 30 seconds - marking as permanently failed");
             return;
         }
         
@@ -333,13 +336,13 @@ bool DSCWrapper::checkPersistentFailure() {
     if (current_time < 10000) {  // Less than 10 seconds uptime
         // If we already recorded an attempt, this suggests a restart happened
         // This is a strong indicator of LoadProhibited crashes causing restarts
-        ESP_LOGW("dsc_wrapper", "Detected potential restart loop - system uptime %u ms, had previous attempt", current_time);
+        ESP_LOGW(TAG, "Detected potential restart loop - system uptime %u ms, had previous attempt", current_time);
         return true;  // Likely in a restart loop due to crashes
     }
     
     // If we've been trying for more than 60 seconds total, give up
     if (current_time - first_initialization_attempt_time_ > 60000) {
-        ESP_LOGE("dsc_wrapper", "Persistent failure detected - unable to initialize for over 60 seconds");
+        ESP_LOGE(TAG, "Persistent failure detected - unable to initialize for over 60 seconds");
         return true;
     }
     
