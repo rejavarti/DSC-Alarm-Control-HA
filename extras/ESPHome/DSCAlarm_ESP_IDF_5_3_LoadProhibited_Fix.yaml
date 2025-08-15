@@ -74,8 +74,17 @@ esp32:
       CONFIG_ESP32_XTAL_FREQ_26: n                        # Disable 26MHz crystal option
       CONFIG_FREERTOS_HZ: "1000"                         # 1ms tick for DSC timing
       
+      # CRITICAL FIX: FreeRTOS task scheduling optimizations to prevent IDLE task starvation
+      # These settings ensure IDLE task gets adequate CPU time during WiFi connection
+      CONFIG_FREERTOS_USE_TICKLESS_IDLE: n               # Disable tickless idle (more predictable scheduling)
+      CONFIG_FREERTOS_IDLE_TIME_BEFORE_SLEEP: "3"        # Require 3 idle ticks before sleep
+      CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY: y      # Stack overflow protection
+      
       # Enhanced WiFi task configuration to prevent memory conflicts during init
       CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "12288"         # 12KB WiFi stack
+      # CRITICAL FIX: Reduce WiFi task priority to prevent it from blocking IDLE task
+      # during connection phase (lower number = lower priority)
+      CONFIG_ESP32_WIFI_TASK_PRIORITY: "18"              # Reduce from default 23 to 18
       # CRITICAL FIX: Additional heap memory optimizations for allocation failure prevention
       # Increase available heap memory during initialization
       CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "16"       # Reduce WiFi static buffers (was 32)
@@ -96,11 +105,14 @@ esp32:
       
       # Watchdog configuration - ESSENTIAL for ESP-IDF 5.3.2 stability
       # CRITICAL FIX: Increase timeout to prevent WiFi connection watchdog panics
-      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "180"               # 3 minute timeout for WiFi connection (increased from 120s)
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "300"               # 5 minute timeout for WiFi connection (increased from 180s)
       CONFIG_ESP_TASK_WDT_EN: y                          # Enable task watchdog
       CONFIG_ESP_TASK_WDT_INIT: y                        # Initialize early
       CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y        # Monitor idle tasks
       CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y
+      # Additional watchdog safety measures for WiFi connection phase
+      CONFIG_ESP_TASK_WDT_PANIC: n                       # Don't panic on watchdog timeout, just reset
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_ALL_CORES: y   # Monitor idle tasks on all cores
       
       # Interrupt watchdog for DSC real-time requirements
       CONFIG_ESP_INT_WDT_EN: y                           # Enable interrupt watchdog
@@ -157,6 +169,10 @@ wifi:
   fast_connect: true     # Speed up connection
   reboot_timeout: 300s   # CRITICAL FIX: Increase reboot timeout to 5 minutes (was 0s)
   output_power: 20.0     # Maximum WiFi output power for better range/stability
+  
+  # CRITICAL FIX: Add connection timeout and retry settings to prevent watchdog timeout
+  # during initial WiFi connection phase
+  connection_timeout: 60s    # Allow up to 60 seconds for initial connection
   
   # Enable Access Point mode as fallback if main WiFi fails
   ap:

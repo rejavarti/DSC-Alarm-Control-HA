@@ -199,6 +199,12 @@ void DSCKeybusComponent::loop() {
         // Reset timestamp to current time to break the loop
         ::dsc_esp_idf_init_delay_timestamp = current_time_ms - 3000;
       } else {
+        // CRITICAL FIX: Add frequent watchdog reset and yield during ESP-IDF stabilization delay
+        // This is especially important during WiFi connection which happens simultaneously
+        #if defined(ESP32) || defined(ESP_PLATFORM)
+        esp_task_wdt_reset();
+        yield();  // Allow IDLE task to run during ESP-IDF stabilization wait
+        #endif
         return;  // Wait longer for complete system stabilization
       }
     }
