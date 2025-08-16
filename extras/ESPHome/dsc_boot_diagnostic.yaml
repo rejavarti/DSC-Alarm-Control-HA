@@ -168,5 +168,4 @@ button:
 alarm_control_panel:
   - platform: dsc_keybus
     partition: 1
-    name: "DSC Partition 1 (Diagnostic)"
     id: partition_1_panel
