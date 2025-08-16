@@ -1,11 +1,24 @@
-# DEBUG CONFIGURATION FOR DSC HARDWARE TROUBLESHOOTING
+# DEBUG CONFIGURATION FOR DSC CLASSIC HARDWARE TROUBLESHOOTING
 # This configuration enables maximum debugging for hardware connection issues
 # Monitor serial output at 115200 baud for detailed initialization logs
 #
+# CLASSIC SERIES SPECIFIC TROUBLESHOOTING:
+# 1. Verify panel is powered and running (LED status lights active)
+# 2. Check all wire connections are secure:
+#    - Clock (Yellow) -> GPIO 18
+#    - Data (Green) -> GPIO 19  
+#    - Data Out (Black) -> GPIO 21
+#    - PC16 (Brown/Purple) -> GPIO 17 (through 1kΩ resistor to +5V)
+#    - Ground (Black) -> ESP32 GND
+# 3. Verify 5V power supply is stable (panels need 13.8V DC, interface needs 5V)
+# 4. Check for loose connections or oxidized terminals
+# 5. Try different GPIO pins if interference suspected
+#
 # Look for these key messages:
 # - "Setting up DSC Keybus Interface..."
-# - "DSC Keybus hardware initialization complete" (SUCCESS)
+# - "DSC Classic hardware initialization successful" (SUCCESS)
 # - "DSC hardware initialization permanently failed" (FAILURE)
+# - "esp32_hardware_initialized=false" (indicates interrupt attachment failed)
 #
 # DSC Keybus Interface - USER CUSTOMIZED CONFIGURATION
 # 
@@ -26,11 +39,14 @@
 
 substitutions:
   accessCode: !secret access_code
-  # Pin assignments optimized for ESP32 stability
-  clock_pin: "18"
-  read_pin: "19" 
-  write_pin: "21"
-  pc16_pin: "17"  # For Classic series only - connect with 1kΩ resistor
+  # Pin assignments optimized for ESP32 stability - Classic Series
+  # IMPORTANT: Verify these pins match your physical wiring
+  clock_pin: "18"    # Yellow wire - DSC Clock signal
+  read_pin: "19"     # Green wire - DSC Data signal  
+  write_pin: "21"    # Black wire - DSC Data Out signal
+  pc16_pin: "17"     # Brown/Purple wire - PC16 signal (Classic series only)
+                     # CRITICAL: Connect PC16 through 1kΩ resistor to +5V rail
+                     # This pin enables Classic series communication protocol
 
 esphome:
   name: dscalarm-comprehensive
@@ -245,14 +261,22 @@ dsc_keybus:
   # For Classic series: use "Classic"
   series_type: "Classic"  # User configured for Classic series panels
   
+  # Classic series timing optimization for better hardware detection
+  classic_timing_mode: true     # Enable Classic-specific timing adjustments
+  hardware_detection_delay: 5000  # Wait 5 seconds before starting hardware detection
+  
   # Enhanced pin configuration
   clock_pin: ${clock_pin}
   read_pin: ${read_pin}
   write_pin: ${write_pin}
   pc16_pin: ${pc16_pin}  # Enabled for Classic series panels
   
-  # Enhanced debugging and monitoring
+  # Enhanced debugging and monitoring for hardware connection troubleshooting
   debug: 3  # Enable debug output: 0=off, 1=status changes, 2=+05/27 packets, 3=all packets
+  
+  # Enhanced initialization timing for Classic series panels
+  initialization_timeout: 30000  # Increase timeout to 30 seconds for hardware detection
+  retry_delay: 2000              # Increase delay between retries to 2 seconds
   
   # Enhanced message processing
   enable_05_messages: true
@@ -358,7 +382,7 @@ dsc_keybus:
           level: DEBUG
           tag: main
 
-  standalone_mode: true  # FIXED: Enable standalone mode for testing without physical DSC panel
+  standalone_mode: false
 
 # ALARM CONTROL PANELS
 # Configure one alarm_control_panel for each partition in your system
