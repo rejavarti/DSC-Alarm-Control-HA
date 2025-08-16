@@ -261,10 +261,6 @@ dsc_keybus:
   # For Classic series: use "Classic"
   series_type: "Classic"  # User configured for Classic series panels
   
-  # Classic series timing optimization for better hardware detection
-  classic_timing_mode: true     # Enable Classic-specific timing adjustments
-  hardware_detection_delay: 5000  # Wait 5 seconds before starting hardware detection
-  
   # Enhanced pin configuration
   clock_pin: ${clock_pin}
   read_pin: ${read_pin}
@@ -273,10 +269,6 @@ dsc_keybus:
   
   # Enhanced debugging and monitoring for hardware connection troubleshooting
   debug: 3  # Enable debug output: 0=off, 1=status changes, 2=+05/27 packets, 3=all packets
-  
-  # Enhanced initialization timing for Classic series panels
-  initialization_timeout: 30000  # Increase timeout to 30 seconds for hardware detection
-  retry_delay: 2000              # Increase delay between retries to 2 seconds
   
   # Enhanced message processing
   enable_05_messages: true
