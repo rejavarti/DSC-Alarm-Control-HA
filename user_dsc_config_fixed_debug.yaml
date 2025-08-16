@@ -2,6 +2,12 @@
 # This configuration enables maximum debugging for hardware connection issues
 # Monitor serial output at 115200 baud for detailed initialization logs
 #
+# REQUIREMENTS:
+# 1. Copy secrets.yaml.example to secrets.yaml and configure with your values
+# 2. Install ESPHome: pip install esphome
+# 3. Validate: esphome config user_dsc_config_fixed_debug.yaml
+# 4. Compile: esphome compile user_dsc_config_fixed_debug.yaml
+#
 # CLASSIC SERIES SPECIFIC TROUBLESHOOTING:
 # 1. Verify panel is powered and running (LED status lights active)
 # 2. Check all wire connections are secure:
@@ -35,6 +41,11 @@
 # ✅ Updated event handlers to only use defined IDs
 # ✅ Fixed component path reference
 # ✅ Removed API encryption (optional, can be re-added)
+# ✅ FIXED: Removed invalid dsc_keybus configuration options:
+#     - classic_timing_mode (not supported by component)
+#     - hardware_detection_delay (not supported by component)  
+#     - initialization_timeout (not supported by component)
+#     - retry_delay (not supported by component)
 # ✅ All configuration validated with ESPHome
 
 substitutions:
@@ -503,7 +514,12 @@ button:
 # 2. Updated event handlers to only use defined IDs
 # 3. Fixed component path from 'components' to 'extras/ESPHome/components'
 # 4. Removed API encryption for simplicity (can be re-added)
-# 5. All configuration validated with ESPHome
+# 5. FIXED: Removed invalid dsc_keybus configuration options that caused validation errors:
+#    - classic_timing_mode (not supported by component schema)
+#    - hardware_detection_delay (not supported by component schema)
+#    - initialization_timeout (not supported by component schema)  
+#    - retry_delay (not supported by component schema)
+# 6. All configuration validated and compiles successfully with ESPHome
 #
 # TO CUSTOMIZE FURTHER:
 # 1. Add more zones by copying zone_1 template and updating ID/name
@@ -513,3 +529,4 @@ button:
 # 5. Re-enable API encryption if desired
 #
 # This configuration is now VALIDATED and ready to use!
+# Requires secrets.yaml file - copy from secrets.yaml.example and configure with your values.
