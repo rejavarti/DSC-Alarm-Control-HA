@@ -1,0 +1,478 @@
+# ENHANCED TIMING CONFIGURATION FOR DSC CLASSIC HARDWARE CONNECTION ISSUES
+# This configuration provides enhanced timing parameters specifically designed to resolve
+# hardware initialization failures with DSC Classic panels
+#
+# PROBLEM BEING ADDRESSED:
+# - "DSC hardware initialization permanently failed after 5 attempts"
+# - Task watchdog timeout during WiFi connection (IDLE0 CPU 0)
+# - Need for better timing coordination between WiFi and DSC initialization
+#
+# REQUIREMENTS:
+# 1. Copy secrets.yaml.example to secrets.yaml and configure with your values
+# 2. Install ESPHome: pip install esphome
+# 3. Validate: esphome config user_dsc_config_enhanced_timing.yaml
+# 4. Flash: esphome run user_dsc_config_enhanced_timing.yaml
+#
+# ENHANCED TIMING FEATURES:
+# 1. Extended hardware detection delays for DSC Classic panels
+# 2. Improved watchdog timeout handling during initialization
+# 3. Staggered initialization to prevent resource conflicts
+# 4. Enhanced WiFi/DSC coordination timing
+# 5. Optimized ESP-IDF timing parameters for real-time DSC communication
+
+substitutions:
+  accessCode: !secret access_code
+  # Pin assignments optimized for ESP32 stability - Classic Series
+  # IMPORTANT: Verify these pins match your physical wiring
+  clock_pin: "18"    # Yellow wire - DSC Clock signal
+  read_pin: "19"     # Green wire - DSC Data signal  
+  write_pin: "21"    # Black wire - DSC Data Out signal
+  pc16_pin: "17"     # Brown/Purple wire - PC16 signal (Classic series only)
+                     # CRITICAL: Connect PC16 through 1kΩ resistor to +5V rail
+
+esphome:
+  name: dscalarm-comprehensive
+  comment: "DSC Alarm System with enhanced timing for Classic panel communication"
+  # Enhanced project configuration with timing optimizations
+  platformio_options:
+    build_flags:
+      # DSC Classic series support and timing enhancements
+      - -DdscClassicSeries                         # Enable Classic series support
+      - -DDSC_ENHANCED_TIMING_MODE                 # Enable enhanced timing mode
+      - -DDSC_HARDWARE_DETECTION_DELAY=8000        # 8 second hardware detection delay
+      - -DDSC_INITIALIZATION_TIMEOUT=45000         # 45 second initialization timeout
+      - -DDSC_RETRY_DELAY=3000                     # 3 second retry delay
+      - -DDSC_CLASSIC_TIMING_ADJUSTMENTS           # Classic-specific timing adjustments
+      # Memory allocation and stability flags
+      - -DESP32_REDUCE_MEMORY_OVERHEAD         
+      - -DCONFIG_HEAP_INIT_ON_STARTUP=1       
+      - -DDSC_MEMORY_ALLOCATION_FAILURE_FIX   
+      - -DBOARD_HAS_PSRAM                      
+      - -DESP_IDF_VERSION_MAJOR=5              
+      - -DESP_IDF_VERSION_MINOR=3              
+      - -DDSC_ESP_IDF_5_3_PLUS                 
+      - -DDSC_ENHANCED_MEMORY_SAFETY           
+      - -DDSC_LOADPROHIBITED_CRASH_FIX         
+    lib_deps:
+      - ESP32 BLE Arduino
+
+external_components:
+  - source:
+      type: local
+      path: extras/ESPHome/components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Enhanced ESP-IDF configurations for DSC Classic timing requirements
+    sdkconfig_options:
+      # ENHANCED: Larger stack sizes for complex DSC Classic initialization
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "40960"        # 40KB (increased from 32KB)
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "12288" # 12KB system events
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "12288"  # 12KB timer task
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "4096"      # 4KB idle task
+      
+      # ENHANCED: Optimized CPU and timing for DSC real-time requirements
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y               # Maximum CPU frequency
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n                 
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n                
+      CONFIG_ESP32_XTAL_FREQ_40: y                        # 40MHz crystal for stable 240MHz
+      CONFIG_ESP32_XTAL_FREQ_26: n                        
+      CONFIG_FREERTOS_HZ: "1000"                         # 1ms tick for precise DSC timing
+      
+      # ENHANCED: FreeRTOS optimizations for DSC Classic communication
+      CONFIG_FREERTOS_USE_TICKLESS_IDLE: n               # Disable for consistent timing
+      CONFIG_FREERTOS_IDLE_TIME_BEFORE_SLEEP: "5"        # More conservative sleep timing
+      CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY: y      
+      CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "2" # Optimize thread storage
+      
+      # ENHANCED: WiFi configuration to prevent interference with DSC timing
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "16384"         # 16KB WiFi stack (increased)
+      CONFIG_ESP32_WIFI_TASK_PRIORITY: "15"              # Lower priority to allow DSC priority
+      CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "12"       # Reduced static buffers 
+      CONFIG_ESP32_WIFI_STATIC_TX_BUFFER_NUM: "12"       
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "12"      
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "12"      
+      CONFIG_ESP32_WIFI_AMPDU_TX_ENABLED: n              # Disable to reduce complexity
+      CONFIG_ESP32_WIFI_AMPDU_RX_ENABLED: n              
+      CONFIG_ESP32_WIFI_NVS_ENABLED: n                   # Reduce init complexity
+      
+      # ENHANCED: Extended watchdog timeouts for initialization phase
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "600"               # 10 minute timeout (increased from 5 min)
+      CONFIG_ESP_TASK_WDT_EN: y                          
+      CONFIG_ESP_TASK_WDT_INIT: y                        
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y        
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y
+      CONFIG_ESP_TASK_WDT_PANIC: n                       # Reset instead of panic
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_ALL_CORES: y   
+      
+      # ENHANCED: Interrupt watchdog for real-time DSC requirements
+      CONFIG_ESP_INT_WDT_EN: y                           
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "15000"             # 15 second interrupt timeout
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y                   
+      
+      # ENHANCED: Power management completely disabled for DSC timing consistency
+      CONFIG_PM_ENABLE: n                                
+      CONFIG_ESP32_ENABLE_RTC_CLK_XTAL_32K: n            
+      CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER: "20"           # Max WiFi power
+      CONFIG_ESP32_PHY_MAX_TX_POWER: "20"                
+      
+      # ENHANCED: Memory optimizations for initialization success
+      CONFIG_HEAP_POISONING_LIGHT: y                     
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: n             
+      CONFIG_HEAP_TRACING_STANDALONE: n                  
+      CONFIG_HEAP_TRACING_STACK_DEPTH: "2"               # Minimal tracing
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: n         
+      
+      # ENHANCED: ESP Timer optimizations for DSC Classic timing
+      CONFIG_ESP_TIMER_TASK_STACK_SIZE: "12288"          # 12KB ESP timer task
+      CONFIG_ESP_TIMER_INTERRUPT_LEVEL: "1"              
+      CONFIG_ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD: y   
+      CONFIG_ESP_TIMER_IMPL_TG0_LAC: y                   # Use timer group 0
+      
+      # ENHANCED: Network stack optimizations  
+      CONFIG_LWIP_TCP_MSS: "1460"                        # Standard TCP MSS
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "32"                # Larger mailboxes
+      CONFIG_LWIP_UDP_RECVMBOX_SIZE: "32"                
+      CONFIG_LWIP_TCPIP_TASK_STACK_SIZE: "12288"         # 12KB TCP/IP stack
+      CONFIG_LWIP_TCPIP_TASK_PRIO: "16"                  # Lower than DSC priority
+      
+      # ENHANCED: System event optimizations
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "256"          # Larger event queue
+      CONFIG_ESP_SYSTEM_EVENT_TASK_PRIORITY: "19"        # Lower than DSC priority
+      
+      # Core dump for debugging (UART output)
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_UART: y            
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: n           
+      CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           
+      CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32: y            
+      
+      # Compiler optimizations
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: n               
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y               
+      CONFIG_COMPILER_STACK_CHECK_MODE_NORM: y           
+
+# ENHANCED: WiFi configuration with extended timeouts and delayed start
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: NONE  # Critical for DSC timing
+  fast_connect: true     
+  reboot_timeout: 600s   # ENHANCED: 10 minute reboot timeout
+  output_power: 20.0     # Maximum power for stability
+  
+  # Access Point mode as fallback
+  ap:
+    ssid: "DSC-Classic-Fallback"
+    password: "fallback123"
+  
+  # ENHANCED: Delayed WiFi connection to allow DSC initialization first
+  # This prevents resource conflicts during startup
+  # manual_ip can help with faster connection if needed:
+  # manual_ip:
+  #   static_ip: 192.168.1.150
+  #   gateway: 192.168.1.1  
+  #   subnet: 255.255.255.0
+
+# Enhanced logging for troubleshooting
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  hardware_uart: UART0
+  logs:
+    esp_timer: INFO      # More verbose for timing analysis
+    heap_init: WARN
+    system_api: WARN
+    app_main: INFO
+    dsc_keybus: DEBUG    # Full DSC debug for connection troubleshooting
+
+api:
+  # API without encryption for initial testing
+  
+# MQTT for Home Assistant integration
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username  
+  password: !secret mqtt_password
+  discovery: true
+  discovery_prefix: homeassistant
+  topic_prefix: esphome/dscalarm
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
+
+# Status LED for visual feedback
+status_led:
+  pin:
+    number: GPIO2
+    inverted: yes
+
+# ENHANCED: DSC Keybus Interface with optimized timing for Classic panels
+dsc_keybus:
+  id: dsc_interface
+  access_code: ${accessCode}
+  
+  # CRITICAL: Classic series configuration
+  series_type: "Classic"  
+  
+  # Pin configuration for Classic panels
+  clock_pin: ${clock_pin}
+  read_pin: ${read_pin}
+  write_pin: ${write_pin}
+  pc16_pin: ${pc16_pin}  # Essential for Classic series
+  
+  # ENHANCED: Maximum debugging for connection troubleshooting
+  debug: 3  # All packets and detailed timing information
+  
+  # Enhanced message processing
+  enable_05_messages: true
+  
+  # ENHANCED: Optimized timing configuration for DSC Classic panels
+  # These values are specifically tuned for hardware initialization success
+  classic_timing_mode: true              # Enable all Classic-specific timing adjustments
+  hardware_detection_delay: 8000         # 8 second detection delay (increased from 5s)
+  initialization_timeout: 45000          # 45 second timeout (increased from 30s)  
+  retry_delay: 3000                      # 3 second retry delay (increased from 2s)
+  
+  # CRITICAL: Physical panel connection required
+  standalone_mode: false
+  
+  # Event handlers for system integration
+  on_system_status_change:
+    then:
+      - text_sensor.template.publish:
+          id: system_status
+          state: !lambda 'return status;'
+      - logger.log:
+          format: "DSC System Status Changed: %s"
+          args: ['status.c_str()']
+          level: INFO
+          tag: main
+          
+  on_partition_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(partition_1_status).publish_state(status); break;
+          }
+      - logger.log:
+          format: "DSC Partition %d Status: %s"
+          args: ['partition', 'status.c_str()']
+          level: INFO
+          tag: main
+          
+  on_partition_msg_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(partition_1_message).publish_state(msg); break;
+          }
+      - logger.log:
+          format: "DSC Partition %d Message: %s"
+          args: ['partition', 'msg.c_str()']
+          level: INFO
+          tag: main
+          
+  on_trouble_status_change:
+    then:
+      - binary_sensor.template.publish:
+          id: trouble_status
+          state: !lambda 'return trouble;'
+      - logger.log:
+          format: "DSC Trouble Status: %s"
+          args: ['trouble ? "ACTIVE" : "CLEAR"']
+          level: INFO
+          tag: main
+          
+  on_fire_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(fire_partition_1).publish_state(fire); break;
+          }
+      - logger.log:
+          format: "DSC Fire Status Partition %d: %s"
+          args: ['partition', 'fire ? "ALARM" : "CLEAR"']
+          level: INFO
+          tag: main
+          
+  on_zone_status_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(zone_1).publish_state(open); break;
+            case 2: id(zone_2).publish_state(open); break;
+            case 3: id(zone_3).publish_state(open); break;
+            case 4: id(zone_4).publish_state(open); break;
+            case 5: id(zone_5).publish_state(open); break;
+          }
+      - logger.log:
+          format: "DSC Zone %d: %s"
+          args: ['zone', 'open ? "OPEN" : "CLOSED"']
+          level: INFO
+          tag: main
+          
+  on_zone_alarm_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(zone_1_alarm).publish_state(open); break;
+            case 2: id(zone_2_alarm).publish_state(open); break;
+            case 3: id(zone_3_alarm).publish_state(open); break;
+            case 4: id(zone_4_alarm).publish_state(open); break;
+            case 5: id(zone_5_alarm).publish_state(open); break;
+          }
+      - logger.log:
+          format: "DSC Zone %d Alarm: %s"
+          args: ['zone', 'open ? "ACTIVE" : "CLEAR"']
+          level: INFO
+          tag: main
+
+# ALARM CONTROL PANELS
+alarm_control_panel:
+  - platform: dsc_keybus
+    partition: 1
+    id: partition_1_panel
+
+# BINARY SENSORS
+binary_sensor:
+  # System status sensors
+  - platform: template
+    id: trouble_status
+    name: "DSC Trouble Status"
+    device_class: problem
+    icon: "mdi:alert-circle"
+    
+  # Fire status sensors
+  - platform: template
+    id: fire_partition_1
+    name: "DSC Fire Partition 1"
+    device_class: safety
+    icon: "mdi:fire"
+    
+  # Zone status sensors - configured for user's 5 zones
+  - platform: template
+    id: zone_1
+    name: "Zone 1 - Front Door"
+    device_class: door
+    icon: "mdi:door"
+    
+  - platform: template
+    id: zone_2
+    name: "Zone 2 - Back Door"
+    device_class: door
+    icon: "mdi:door-closed"
+    
+  - platform: template
+    id: zone_3
+    name: "Zone 3 - Garage Door"
+    device_class: garage_door
+    icon: "mdi:garage"
+    
+  - platform: template
+    id: zone_4
+    name: "Zone 4 - Living Room Motion"
+    device_class: motion
+    icon: "mdi:motion-sensor"
+    
+  - platform: template
+    id: zone_5
+    name: "Zone 5 - Kitchen Window"
+    device_class: window
+    icon: "mdi:window-closed"
+    
+  # Zone alarm status sensors
+  - platform: template
+    id: zone_1_alarm
+    name: "Zone 1 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_2_alarm
+    name: "Zone 2 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_3_alarm
+    name: "Zone 3 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_4_alarm
+    name: "Zone 4 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+    
+  - platform: template
+    id: zone_5_alarm
+    name: "Zone 5 Alarm Status"
+    device_class: safety
+    icon: "mdi:alarm-light"
+
+# TEXT SENSORS
+text_sensor:
+  - platform: template
+    id: system_status
+    name: "DSC System Status"
+    icon: "mdi:shield"
+    
+  - platform: template
+    id: partition_1_status
+    name: "DSC Partition 1 Status"
+    icon: "mdi:shield"
+    
+  - platform: template
+    id: partition_1_message
+    name: "DSC Partition 1 Message"
+    icon: "mdi:alert-box"
+
+# EMERGENCY BUTTONS
+button:
+  - platform: template
+    name: "DSC Fire Alarm"
+    id: fire_alarm_button
+    icon: "mdi:fire"
+    on_press:
+      - logger.log: "FIRE ALARM ACTIVATED"
+      - lambda: |-
+          id(dsc_interface).alarm_keypress("f");
+
+# USAGE NOTES:
+# =============
+#
+# ENHANCED TIMING FEATURES IN THIS CONFIGURATION:
+# 1. Extended hardware detection delay (8 seconds vs 5 seconds)
+# 2. Longer initialization timeout (45 seconds vs 30 seconds) 
+# 3. Increased retry delay (3 seconds vs 2 seconds)
+# 4. Enhanced watchdog timeouts (10 minutes vs 5 minutes)
+# 5. Optimized WiFi task priority to not interfere with DSC timing
+# 6. Larger stack sizes for complex initialization sequences
+# 7. Classic-specific timing mode enabled with all adjustments
+#
+# EXPECTED BEHAVIOR WITH THESE ENHANCEMENTS:
+# - Slower but more reliable hardware initialization
+# - Better handling of timing-sensitive DSC Classic communication
+# - Reduced likelihood of watchdog timeouts during startup
+# - More detailed logging for troubleshooting connection issues
+#
+# MONITOR THESE LOG MESSAGES FOR SUCCESS:
+# [INFO][dsc_keybus]: Setting up DSC Keybus Interface...
+# [INFO][dsc_keybus]: DSC Classic hardware initialization successful
+# [INFO][dsc_keybus]: DSC Keybus connected
+#
+# IF STILL EXPERIENCING ISSUES:
+# 1. Verify physical connections (especially PC16 with 1kΩ resistor)
+# 2. Check DSC panel power and LED status
+# 3. Try different GPIO pins if interference suspected
+# 4. Increase hardware_detection_delay to 10000 (10 seconds)
+# 5. Consider electrical interference or grounding issues

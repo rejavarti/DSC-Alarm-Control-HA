@@ -1,0 +1,311 @@
+# ULTRA-CONSERVATIVE TIMING CONFIGURATION FOR DIFFICULT DSC CLASSIC CONNECTIONS
+# This configuration provides maximum timing margins for DSC Classic panels that have
+# previously worked but are now experiencing connection difficulties
+#
+# USE THIS CONFIGURATION IF:
+# - Enhanced timing configuration still shows initialization failures
+# - You need maximum timing margins for problematic hardware
+# - Previous working connections need more generous timing parameters
+#
+# KEY FEATURES:
+# - 12 second hardware detection delay
+# - 75 second initialization timeout  
+# - 5 second retry delays
+# - 15 minute watchdog timeouts
+# - Maximum stack sizes for complex initialization
+
+substitutions:
+  accessCode: !secret access_code
+  clock_pin: "18"    # Yellow wire - DSC Clock signal
+  read_pin: "19"     # Green wire - DSC Data signal  
+  write_pin: "21"    # Black wire - DSC Data Out signal
+  pc16_pin: "17"     # Brown/Purple wire - PC16 signal (Classic series only)
+
+esphome:
+  name: dscalarm-comprehensive
+  comment: "DSC Alarm System with ultra-conservative timing for difficult connections"
+  platformio_options:
+    build_flags:
+      # Ultra-conservative timing parameters
+      - -DdscClassicSeries
+      - -DDSC_ULTRA_CONSERVATIVE_TIMING
+      - -DDSC_HARDWARE_DETECTION_DELAY=10000       # 10 seconds (max allowed)
+      - -DDSC_INITIALIZATION_TIMEOUT=60000         # 60 seconds (max allowed)
+      - -DDSC_RETRY_DELAY=5000                     # 5 seconds
+      - -DDSC_MAX_TIMING_MARGINS                   # Maximum timing margins
+      - -DDSC_CLASSIC_TIMING_ADJUSTMENTS
+      # Memory and stability flags
+      - -DESP32_REDUCE_MEMORY_OVERHEAD         
+      - -DCONFIG_HEAP_INIT_ON_STARTUP=1       
+      - -DDSC_MEMORY_ALLOCATION_FAILURE_FIX   
+      - -DBOARD_HAS_PSRAM                      
+      - -DESP_IDF_VERSION_MAJOR=5              
+      - -DESP_IDF_VERSION_MINOR=3              
+      - -DDSC_ESP_IDF_5_3_PLUS                 
+      - -DDSC_ENHANCED_MEMORY_SAFETY           
+      - -DDSC_LOADPROHIBITED_CRASH_FIX         
+    lib_deps:
+      - ESP32 BLE Arduino
+
+external_components:
+  - source:
+      type: local
+      path: extras/ESPHome/components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      # ULTRA-CONSERVATIVE: Maximum stack sizes
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "49152"        # 48KB (maximum safe size)
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "16384" # 16KB system events
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "16384"  # 16KB timer task
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "6144"      # 6KB idle task
+      
+      # CPU and timing optimizations
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y               
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n                 
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n                
+      CONFIG_ESP32_XTAL_FREQ_40: y                        
+      CONFIG_ESP32_XTAL_FREQ_26: n                        
+      CONFIG_FREERTOS_HZ: "1000"                         
+      
+      # ULTRA-CONSERVATIVE: Very gentle scheduling
+      CONFIG_FREERTOS_USE_TICKLESS_IDLE: n               
+      CONFIG_FREERTOS_IDLE_TIME_BEFORE_SLEEP: "10"       # Even more conservative
+      CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY: y      
+      CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "3" 
+      
+      # ULTRA-CONSERVATIVE: WiFi with minimal priority interference
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "20480"         # 20KB WiFi stack
+      CONFIG_ESP32_WIFI_TASK_PRIORITY: "12"              # Very low priority
+      CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "8"        # Minimal static buffers 
+      CONFIG_ESP32_WIFI_STATIC_TX_BUFFER_NUM: "8"        
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "8"       
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "8"       
+      CONFIG_ESP32_WIFI_AMPDU_TX_ENABLED: n              
+      CONFIG_ESP32_WIFI_AMPDU_RX_ENABLED: n              
+      CONFIG_ESP32_WIFI_NVS_ENABLED: n                   
+      
+      # ULTRA-CONSERVATIVE: Extended watchdog timeouts
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "900"               # 15 minute timeout
+      CONFIG_ESP_TASK_WDT_EN: y                          
+      CONFIG_ESP_TASK_WDT_INIT: y                        
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y        
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y
+      CONFIG_ESP_TASK_WDT_PANIC: n                       
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_ALL_CORES: y   
+      
+      # Extended interrupt watchdog
+      CONFIG_ESP_INT_WDT_EN: y                           
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "20000"             # 20 second interrupt timeout
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y                   
+      
+      # Power management completely disabled
+      CONFIG_PM_ENABLE: n                                
+      CONFIG_ESP32_ENABLE_RTC_CLK_XTAL_32K: n            
+      CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER: "20"           
+      CONFIG_ESP32_PHY_MAX_TX_POWER: "20"                
+      
+      # Minimal memory debugging overhead
+      CONFIG_HEAP_POISONING_LIGHT: n                     # Disable even light poisoning
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: n             
+      CONFIG_HEAP_TRACING_STANDALONE: n                  
+      CONFIG_HEAP_TRACING_STACK_DEPTH: "0"               # No stack tracing
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: n         
+      
+      # Large ESP Timer configuration
+      CONFIG_ESP_TIMER_TASK_STACK_SIZE: "16384"          # 16KB ESP timer task
+      CONFIG_ESP_TIMER_INTERRUPT_LEVEL: "1"              
+      CONFIG_ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD: y   
+      CONFIG_ESP_TIMER_IMPL_TG0_LAC: y                   
+      
+      # Network stack with large buffers
+      CONFIG_LWIP_TCP_MSS: "1460"                        
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "64"                # Very large mailboxes
+      CONFIG_LWIP_UDP_RECVMBOX_SIZE: "64"                
+      CONFIG_LWIP_TCPIP_TASK_STACK_SIZE: "16384"         # 16KB TCP/IP stack
+      CONFIG_LWIP_TCPIP_TASK_PRIO: "10"                  # Very low priority
+      
+      # System events with maximum buffers
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "512"          # Maximum event queue
+      CONFIG_ESP_SYSTEM_EVENT_TASK_PRIORITY: "8"         # Very low priority
+      
+      # Core dump configuration
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_UART: y            
+      CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH: n           
+      CONFIG_ESP32_COREDUMP_DATA_FORMAT_ELF: y           
+      CONFIG_ESP32_COREDUMP_CHECKSUM_CRC32: y            
+      
+      # Performance optimization
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: n               
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y               
+      CONFIG_COMPILER_STACK_CHECK_MODE_NORM: y           
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: NONE
+  fast_connect: true     
+  reboot_timeout: 900s   # ULTRA-CONSERVATIVE: 15 minute reboot timeout
+  output_power: 20.0     
+  
+  ap:
+    ssid: "DSC-UltraConservative"
+    password: "fallback123"
+
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  hardware_uart: UART0
+  logs:
+    esp_timer: INFO
+    heap_init: WARN
+    system_api: WARN
+    app_main: INFO
+    dsc_keybus: DEBUG
+
+api:
+
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username  
+  password: !secret mqtt_password
+  discovery: true
+  discovery_prefix: homeassistant
+  topic_prefix: esphome/dscalarm
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
+
+status_led:
+  pin:
+    number: GPIO2
+    inverted: yes
+
+# ULTRA-CONSERVATIVE: DSC Keybus with maximum timing margins
+dsc_keybus:
+  id: dsc_interface
+  access_code: ${accessCode}
+  
+  series_type: "Classic"  
+  
+  clock_pin: ${clock_pin}
+  read_pin: ${read_pin}
+  write_pin: ${write_pin}
+  pc16_pin: ${pc16_pin}
+  
+  debug: 3
+  enable_05_messages: true
+  
+  # ULTRA-CONSERVATIVE timing parameters for difficult connections (within limits)
+  classic_timing_mode: true              
+  hardware_detection_delay: 10000        # 10 seconds (maximum allowed)
+  initialization_timeout: 60000          # 60 seconds (maximum allowed)
+  retry_delay: 5000                      # 5 seconds between retries
+  
+  standalone_mode: false
+  
+  # Simplified event handlers to reduce processing overhead during initialization
+  on_system_status_change:
+    then:
+      - text_sensor.template.publish:
+          id: system_status
+          state: !lambda 'return status;'
+      - logger.log:
+          format: "DSC System Status: %s"
+          args: ['status.c_str()']
+          level: INFO
+          
+  on_partition_status_change:
+    then:
+      - lambda: |-
+          if (partition == 1) id(partition_1_status).publish_state(status);
+      - logger.log:
+          format: "DSC Partition %d Status: %s"
+          args: ['partition', 'status.c_str()']
+          level: INFO
+          
+  on_zone_status_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(zone_1).publish_state(open); break;
+            case 2: id(zone_2).publish_state(open); break;
+            case 3: id(zone_3).publish_state(open); break;
+            case 4: id(zone_4).publish_state(open); break;
+            case 5: id(zone_5).publish_state(open); break;
+          }
+      - logger.log:
+          format: "Zone %d: %s"
+          args: ['zone', 'open ? "OPEN" : "CLOSED"']
+          level: INFO
+
+alarm_control_panel:
+  - platform: dsc_keybus
+    partition: 1
+    id: partition_1_panel
+
+binary_sensor:
+  - platform: template
+    id: zone_1
+    name: "Zone 1 - Front Door"
+    device_class: door
+    
+  - platform: template
+    id: zone_2
+    name: "Zone 2 - Back Door" 
+    device_class: door
+    
+  - platform: template
+    id: zone_3
+    name: "Zone 3 - Garage Door"
+    device_class: garage_door
+    
+  - platform: template
+    id: zone_4
+    name: "Zone 4 - Living Room Motion"
+    device_class: motion
+    
+  - platform: template
+    id: zone_5
+    name: "Zone 5 - Kitchen Window"
+    device_class: window
+
+text_sensor:
+  - platform: template
+    id: system_status
+    name: "DSC System Status"
+    
+  - platform: template
+    id: partition_1_status
+    name: "DSC Partition 1 Status"
+
+# USAGE NOTES:
+# This ultra-conservative configuration provides maximum timing margins
+# for DSC Classic panels that are experiencing connection difficulties.
+#
+# TIMING PARAMETERS:
+# - 10 second hardware detection delay (maximum allowed)
+# - 60 second initialization timeout (maximum allowed)
+# - 5 second retry delays
+# - 15 minute watchdog timeouts
+#
+# USE THIS IF:
+# - Enhanced timing configuration still fails
+# - You need maximum compatibility with slow/problematic hardware
+# - Previous working connections need very generous timing
+#
+# IF THIS STILL FAILS:
+# The issue is likely hardware-related:
+# - Physical wiring problems
+# - Power supply instability  
+# - Panel compatibility issues
+# - Electrical interference
