@@ -1,11 +1,11 @@
-# DSC ALARM PHYSICAL CONNECTION DIAGNOSTIC CONFIGURATION - FIXED VERSION
-# This version fixes compilation issues while maintaining full diagnostic capabilities
+# DSC ALARM DIAGNOSTIC CONFIGURATION - SIMPLIFIED VERSION
+# Minimal version with essential diagnostic features to isolate compilation issues
 
 substitutions:
   accessCode: !secret access_code
 
 esphome:
-  name: dscalarm-diagnostic-fixed
+  name: dscalarm-diagnostic-simple
 
 external_components:
   - source:
@@ -56,7 +56,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   ap:
-    ssid: "DSCalarm-Diagnostic-Fixed"
+    ssid: "DSCalarm-Diagnostic-Simple"
     password: !secret wifi_password
 
 logger:
@@ -66,14 +66,6 @@ logger:
 api:
   encryption:
     key: !secret encryption_key
-
-mqtt:
-  broker: !secret mqtt_broker
-  username: !secret mqtt_username
-  password: !secret mqtt_password
-  discovery: true
-  discovery_prefix: homeassistant
-  topic_prefix: esphome/dscalarm-diagnostic-fixed
 
 ota:
   - platform: esphome
@@ -98,77 +90,9 @@ dsc_keybus:
   read_pin: 19     # DSC Green wire → ESP32 GPIO 19 (via 33kΩ resistor)  
   write_pin: 21    # DSC Green wire write (shared with read_pin, via 33kΩ resistor)
   pc16_pin: 17     # DSC Brown wire → ESP32 GPIO 17 (DSC Classic only, via 1kΩ resistor)
-  on_system_status_change:
-    then:
-      - text_sensor.template.publish:
-          id: system_status
-          state: !lambda 'return status;'
-      - lambda: |-
-          ESP_LOGI("dsc_diagnostic", "System status changed: %s", status.c_str());
-  on_partition_status_change:
-    then:
-      - lambda: |-
-          ESP_LOGI("dsc_diagnostic", "Partition %d status changed: %s", partition, status.c_str());
-          if (partition == 1) {
-            id(p1).publish_state(status);
-          }
-  on_partition_msg_change:
-    then:
-      - lambda: |-
-          ESP_LOGI("dsc_diagnostic", "Partition %d message changed: %s", partition, msg.c_str());
-          if (partition == 1) {
-            id(m1).publish_state(msg);
-          }
-  on_trouble_status_change:
-    then:
-      - binary_sensor.template.publish:
-          id: t1
-          state: !lambda 'return trouble;'
-      - lambda: |-
-          ESP_LOGI("dsc_diagnostic", "Trouble status changed: %s", trouble ? "ACTIVE" : "CLEAR");
-  on_fire_status_change:
-    then:
-      - lambda: |-
-          ESP_LOGI("dsc_diagnostic", "Fire status changed for partition %d: %s", partition, fire ? "ACTIVE" : "CLEAR");
-          if (partition == 1) {
-            id(f1).publish_state(fire);
-          }
-  on_zone_status_change:
-    then:
-      - lambda: |-
-          ESP_LOGI("dsc_diagnostic", "Zone %d status changed: %s", zone, open ? "OPEN" : "CLOSED");
-          if (zone >= 1 && zone <= 8) {
-            // Simplified zone handling to avoid compilation issues
-            ESP_LOGI("dsc_diagnostic", "Zone %d is now %s", zone, open ? "OPEN" : "CLOSED");
-          }
-  on_zone_alarm_change:
-    then:
-      - lambda: |-
-          ESP_LOGI("dsc_diagnostic", "Zone %d alarm status changed: %s", zone, open ? "ALARM" : "NORMAL");
 
 # BASIC DIAGNOSTIC SENSORS
 binary_sensor:
-  # Zone status sensors (simplified set)
-  - platform: template
-    id: z1
-    name: "Zone 1"
-    device_class: door
-  - platform: template
-    id: z2
-    name: "Zone 2"
-    device_class: door
-    
-  # System status sensors
-  - platform: template
-    id: t1
-    name: "DSC Trouble Status"
-    device_class: problem
-    
-  - platform: template
-    id: f1
-    device_class: safety
-    name: "DSC Fire Status"
-    
   # System connectivity monitoring
   - platform: status
     name: "DSC System Online"
@@ -182,29 +106,8 @@ binary_sensor:
     device_class: connectivity
     lambda: |-
       return id(dsc_interface).getKeybusConnected();
-      
-  # DSC Buffer overflow detection
-  - platform: template
-    name: "DSC Buffer Overflow"
-    id: buffer_overflow_sensor  
-    device_class: problem
-    lambda: |-
-      return id(dsc_interface).getBufferOverflow();
 
 text_sensor:
-  - platform: template
-    id: system_status
-    name: "DSC System Status"
-    icon: "mdi:shield"
-  - platform: template
-    id: p1
-    name: "DSC Partition 1 Status"
-    icon: "mdi:shield"
-  - platform: template
-    id: m1
-    name: "DSC Partition 1 Message"
-    icon: "mdi:alert-box"
-    
   # DIAGNOSTIC INFORMATION
   - platform: version
     name: "DSC ESPHome Version"
@@ -326,9 +229,9 @@ button:
           }
           ESP_LOGI("dsc_test", "============================");
 
-# ALARM CONTROL PANEL - DISABLED DUE TO COMPILATION ISSUES
-# alarm_control_panel:
-#   - platform: dsc_keybus
-#     partition: 1
-#     name: "DSC Partition 1 (Diagnostic)"
-#     id: partition_1_panel
+# ALARM CONTROL PANEL
+alarm_control_panel:
+  - platform: dsc_keybus
+    partition: 1
+    name: "DSC Partition 1 (Diagnostic)"
+    id: partition_1_panel
