@@ -358,7 +358,7 @@ dsc_keybus:
           level: DEBUG
           tag: main
 
-  standalone_mode: false
+  standalone_mode: true  # FIXED: Enable standalone mode for testing without physical DSC panel
 
 # ALARM CONTROL PANELS
 # Configure one alarm_control_panel for each partition in your system
