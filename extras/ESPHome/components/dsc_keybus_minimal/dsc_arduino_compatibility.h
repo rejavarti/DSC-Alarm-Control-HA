@@ -128,6 +128,11 @@
     #define TIM_SINGLE 0
     #endif
   #endif
+  // ESPHOME FIX: Avoid millis() function ambiguity in ESPHome lambda contexts
+  // ESPHome has its own millis() function (uint32_t esphome::millis()) which conflicts
+  // with the Arduino compatibility millis() (unsigned long millis())
+  // Solution: Only define compatibility millis() when not in ESPHome main context
+  #ifndef ESPHOME_LAMBDA_CONTEXT
   #if defined(ESP32) || defined(ESP_PLATFORM)
     inline unsigned long millis() { return esp_timer_get_time() / 1000; }
     inline unsigned long micros() { return esp_timer_get_time(); }
@@ -145,6 +150,7 @@
       return (tv.tv_sec * 1000000UL) + tv.tv_usec;
     }
   #endif
+  #endif // ESPHOME_LAMBDA_CONTEXT
   inline void noInterrupts() { /* stub */ }
   inline void interrupts() { /* stub */ }
   

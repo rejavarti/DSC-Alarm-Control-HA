@@ -93,7 +93,7 @@ logger:
 # Basic API for connectivity
 api:
   encryption:
-    key: "test-key-12345678901234567890123="
+    key: "Pl8wzUYOrdkKNtyeQVMsGz/cqYbl/cd6sZZkWa63f3s="
 
 # OTA for updates
 ota:
@@ -139,7 +139,9 @@ interval:
             fix_validated = true;
           }
           
-          ESP_LOGI("watchdog_fix_test", "System uptime: %.1f seconds", millis() / 1000.0);
+          // ESPHOME FIX: Use esphome::millis() explicitly to avoid ambiguity
+          #define ESPHOME_LAMBDA_CONTEXT 1
+          ESP_LOGI("watchdog_fix_test", "System uptime: %.1f seconds", (unsigned long)esphome::millis() / 1000.0);
           ESP_LOGI("watchdog_fix_test", "Free heap: %zu bytes", esp_get_free_heap_size());
           
           if (validation_count >= 30) { // 5 minutes of stable operation
