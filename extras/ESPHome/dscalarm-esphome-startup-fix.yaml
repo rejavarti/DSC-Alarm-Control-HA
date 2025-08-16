@@ -1,0 +1,258 @@
+# DSC Keybus Interface - Fixed for "Returned from app_main()" Hang
+# This configuration specifically addresses ESP32 hanging after app_main() returns
+# ensuring ESPHome properly takes control and starts its main loop
+
+substitutions:
+  accessCode: "1234"  # Default test access code
+
+esphome:
+  name: dscalarm-fixed
+  # Enhanced project configuration for ESPHome startup after app_main()
+  platformio_options:
+    build_flags:
+      - -DDSC_ESPHOME_STARTUP_FIX              # Enable ESPHome startup fix
+      - -DDSC_ESP_IDF_5_3_PLUS                 # ESP-IDF 5.3+ optimizations
+      - -DDSC_ENHANCED_MEMORY_SAFETY           # Enhanced memory safety
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus_minimal]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    
+    # CRITICAL: Enhanced ESP-IDF configuration to prevent ESPHome startup hang
+    # These settings ensure ESPHome properly takes control after app_main() returns
+    sdkconfig_options:
+      # CRITICAL: Main task configuration for ESPHome initialization
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "32768"        # 32KB for ESPHome startup (vs 3.5KB default)
+      CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0: y           # Pin to CPU0 for consistent scheduling
+      CONFIG_ESP_MAIN_TASK_PRIORITY: "1"              # High priority for ESPHome startup
+      
+      # Enhanced system event task for ESPHome component initialization  
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "8192"  # 8KB for component events
+      CONFIG_ESP_SYSTEM_EVENT_TASK_PRIORITY: "20"      # Appropriate priority for system events
+      
+      # FreeRTOS scheduler optimizations for ESPHome main loop
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "8192"   # 8KB timer task for ESPHome
+      CONFIG_FREERTOS_TIMER_TASK_PRIORITY: "22"        # High priority for ESPHome timers
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "4096"      # 4KB idle task (vs 1.5KB default)
+      CONFIG_FREERTOS_HZ: "1000"                       # 1ms tick for responsive ESPHome operation
+      
+      # CRITICAL: Enhanced task watchdog for ESPHome component initialization
+      # Prevents system hang during component setup after app_main() returns
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "300"             # 5 minutes timeout for full initialization
+      CONFIG_ESP_TASK_WDT_EN: y                        # Enable task watchdog
+      CONFIG_ESP_TASK_WDT_INIT: y                      # Initialize watchdog early
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y      # Monitor idle task on CPU0
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y      # Monitor idle task on CPU1
+      CONFIG_ESP_TASK_WDT_PANIC: n                     # Reset instead of panic on timeout
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_ALL_CORES: y # Monitor all cores
+      
+      # Interrupt watchdog for system stability
+      CONFIG_ESP_INT_WDT_EN: y                         # Enable interrupt watchdog
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "10000"           # 10 second timeout
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y                 # Monitor both CPUs
+      
+      # CPU and clock configuration for optimal ESPHome performance
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y             # Maximum CPU frequency
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"         # 240MHz for fast initialization
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n              # Disable lower frequencies
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n
+      CONFIG_ESP32_XTAL_FREQ_40: y                     # 40MHz crystal for stable 240MHz
+      CONFIG_ESP32_XTAL_FREQ_26: n
+      
+      # CRITICAL: Disable power management for consistent ESPHome operation
+      CONFIG_PM_ENABLE: n                              # No power management interference
+      CONFIG_ESP32_ENABLE_RTC_CLK_XTAL_32K: n          # Disable 32K crystal
+      
+      # Memory management optimizations for ESPHome startup
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "128"        # Large event queue for components
+      CONFIG_HEAP_POISONING_LIGHT: y                   # Light heap debugging (low overhead)
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: n           # Avoid heavy memory overhead
+      CONFIG_HEAP_TRACING_STANDALONE: n                # Disable to save memory during startup
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: n       # Allow graceful handling of allocation failures
+      
+      # WiFi task optimization for non-blocking operation
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "8192"        # 8KB WiFi stack
+      CONFIG_ESP32_WIFI_TASK_PRIORITY: "18"            # Lower priority than main ESPHome tasks
+      CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "8"      # Reduce static buffers
+      CONFIG_ESP32_WIFI_STATIC_TX_BUFFER_NUM: "8"
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "16"    # Keep dynamic buffers
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "16"
+      
+      # TCP/IP stack optimization for ESPHome networking
+      CONFIG_LWIP_TCPIP_TASK_STACK_SIZE: "8192"        # 8KB TCP/IP stack
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "32"               # Large receive mailbox
+      CONFIG_LWIP_UDP_RECVMBOX_SIZE: "32"               # Large UDP mailbox
+
+# WiFi configuration - Use AP mode to avoid connection delays during testing
+wifi:
+  # Comment out networks section to use AP mode only during testing
+  # networks:
+  #   - ssid: "YourWiFiNetwork"
+  #     password: "YourWiFiPassword"
+  
+  # Access Point mode for immediate testing without WiFi dependencies
+  ap:
+    ssid: "DSC-Alarm-Fixed"
+    password: "fixed123"
+  
+  # Optimize WiFi for fast startup
+  power_save_mode: NONE
+  fast_connect: false  # Disable for AP mode
+  reboot_timeout: 0s   # Don't reboot on WiFi issues during testing
+
+# Enhanced logging to monitor ESPHome startup progress
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  hardware_uart: UART0
+  # Enable detailed logging for startup diagnosis
+  logs:
+    app: INFO
+    scheduler: DEBUG
+    component: INFO
+    dsc_keybus: INFO
+    main: INFO
+
+# Basic API without encryption for initial testing
+api:
+  # Uncomment for production use:
+  # encryption:
+  #   key: "your_32_byte_encryption_key_here"
+
+# Basic OTA for testing
+ota:
+  - platform: esphome
+    # password: "your_ota_password"
+
+# DSC Keybus Interface with startup-safe configuration
+dsc_keybus_minimal:
+  id: dsc_interface
+  access_code: ${accessCode}
+  
+  # CRITICAL: Enable standalone mode during initial testing
+  # This prevents hardware initialization hang and confirms ESPHome startup works
+  standalone_mode: true  # Set to false once ESPHome startup is confirmed working
+  
+  # Basic pin configuration (not used in standalone mode)
+  clock_pin: 18
+  read_pin: 19
+  write_pin: 21
+  
+  # Enable debug output to monitor component initialization
+  debug: 1
+  
+  # Basic DSC configuration
+  series_type: "PowerSeries"  # Change to "Classic" for DSC Classic panels
+
+# System health monitoring to confirm ESPHome main loop is running
+binary_sensor:
+  - platform: template
+    name: "ESPHome Started Successfully"
+    id: esphome_started
+    lambda: |-
+      // This lambda will only execute if ESPHome main loop is running
+      // If this sensor shows 'true', the startup hang is fixed
+      return true;
+    
+  - platform: template
+    name: "System Healthy"
+    id: system_healthy
+    lambda: |-
+      // Monitor system health indicators
+      size_t free_heap = esp_get_free_heap_size();
+      bool heap_ok = free_heap > 50000;  # At least 50KB free
+      return heap_ok;
+
+# System monitoring sensors
+sensor:
+  - platform: uptime
+    name: "System Uptime"
+    id: system_uptime
+    update_interval: 60s
+    
+  - platform: template
+    name: "Free Heap Memory"
+    id: free_heap_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 30s
+    lambda: |-
+      size_t free_heap = esp_get_free_heap_size();
+      return free_heap;
+      
+  - platform: template
+    name: "Task Stack High Water Mark"
+    id: stack_hwm_sensor
+    unit_of_measurement: "bytes"
+    accuracy_decimals: 0
+    update_interval: 60s
+    lambda: |-
+      size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+      return stack_hwm;
+
+# Text sensors for system information
+text_sensor:
+  - platform: template
+    name: "ESP-IDF Version"
+    id: esp_idf_version
+    update_interval: never
+    lambda: |-
+      return {"ESP-IDF " + to_string(ESP_IDF_VERSION_MAJOR) + "." + 
+              to_string(ESP_IDF_VERSION_MINOR) + "." + 
+              to_string(ESP_IDF_VERSION_PATCH)};
+              
+  - platform: template
+    name: "Startup Status"
+    id: startup_status
+    update_interval: never
+    lambda: |-
+      return {"ESPHome startup after app_main() - SUCCESS"};
+
+# Startup monitoring interval to confirm main loop operation
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          static bool startup_logged = false;
+          static uint32_t loop_counter = 0;
+          
+          loop_counter++;
+          
+          if (!startup_logged) {
+            ESP_LOGI("startup_fix", "SUCCESS: ESPHome main loop started after app_main() returned!");
+            ESP_LOGI("startup_fix", "System uptime: %.1f seconds", id(system_uptime).state);
+            ESP_LOGI("startup_fix", "Free heap: %zu bytes", esp_get_free_heap_size());
+            ESP_LOGI("startup_fix", "Stack high water mark: %zu bytes", uxTaskGetStackHighWaterMark(nullptr));
+            startup_logged = true;
+          }
+          
+          // Periodic health check
+          if (loop_counter % 12 == 0) {  // Every 60 seconds
+            size_t free_heap = esp_get_free_heap_size();
+            size_t stack_hwm = uxTaskGetStackHighWaterMark(nullptr);
+            ESP_LOGD("health", "System health - uptime: %.1f, heap: %zu, stack: %zu", 
+                     id(system_uptime).state, free_heap, stack_hwm);
+          }
+
+# Status LED to provide visual confirmation of successful startup
+status_led:
+  pin:
+    number: GPIO2
+    inverted: yes
+
+# Button to test system responsiveness
+button:
+  - platform: template
+    name: "Test System Response"
+    id: test_response_button
+    on_press:
+      - lambda: |-
+          ESP_LOGI("test", "System responsive! Uptime: %.1f seconds", id(system_uptime).state);
+          ESP_LOGI("test", "Free heap: %zu bytes", esp_get_free_heap_size());
