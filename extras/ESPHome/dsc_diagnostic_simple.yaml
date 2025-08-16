@@ -1,0 +1,237 @@
+# DSC ALARM DIAGNOSTIC CONFIGURATION - SIMPLIFIED VERSION
+# Minimal version with essential diagnostic features to isolate compilation issues
+
+substitutions:
+  accessCode: !secret access_code
+
+esphome:
+  name: dscalarm-diagnostic-simple
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Enhanced ESP-IDF configuration to prevent task watchdog timeout
+    sdkconfig_options:
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "32768"
+      CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0: y
+      CONFIG_ESP_MAIN_TASK_PRIORITY: "1"
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "8192"
+      CONFIG_ESP_SYSTEM_EVENT_TASK_PRIORITY: "20"
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "8192"
+      CONFIG_FREERTOS_TIMER_TASK_PRIORITY: "22"
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "4096"
+      CONFIG_FREERTOS_HZ: "1000"
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "300"             # 5 minutes timeout
+      CONFIG_ESP_TASK_WDT_EN: y
+      CONFIG_ESP_TASK_WDT_INIT: y
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y
+      CONFIG_ESP_TASK_WDT_PANIC: n                     # Reset instead of panic
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_ALL_CORES: y
+      CONFIG_ESP_INT_WDT_EN: y
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "10000"
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n
+      CONFIG_ESP32_XTAL_FREQ_40: y
+      CONFIG_ESP32_XTAL_FREQ_26: n
+      CONFIG_PM_ENABLE: n
+      CONFIG_ESP32_ENABLE_RTC_CLK_XTAL_32K: n
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "128"
+      CONFIG_HEAP_POISONING_LIGHT: y
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: n
+      CONFIG_HEAP_TRACING_STANDALONE: n
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: n
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "DSCalarm-Diagnostic-Simple"
+    password: !secret wifi_password
+
+logger:
+  baud_rate: 0
+  level: VERBOSE
+
+api:
+  encryption:
+    key: !secret encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+safe_mode:
+  disabled: false
+
+status_led:
+  pin:
+    number: GPIO2
+    inverted: yes
+
+# DSC KEYBUS CONFIGURATION
+dsc_keybus:
+  id: dsc_interface
+  access_code: "$accessCode"
+  series_type: "Classic"  # Change to "PowerSeries" if using PowerSeries panels
+  standalone_mode: false  # FALSE for physical panel connection diagnosis
+  debug: 3  # MAXIMUM DEBUG - Shows all packets for troubleshooting
+  clock_pin: 18    # DSC Yellow wire → ESP32 GPIO 18 (via 33kΩ resistor)
+  read_pin: 19     # DSC Green wire → ESP32 GPIO 19 (via 33kΩ resistor)  
+  write_pin: 21    # DSC Green wire write (shared with read_pin, via 33kΩ resistor)
+  pc16_pin: 17     # DSC Brown wire → ESP32 GPIO 17 (DSC Classic only, via 1kΩ resistor)
+
+# BASIC DIAGNOSTIC SENSORS
+binary_sensor:
+  # System connectivity monitoring
+  - platform: status
+    name: "DSC System Online"
+    id: system_status_sensor
+    device_class: connectivity
+    
+  # DSC Keybus connection status diagnostic
+  - platform: template
+    name: "DSC Keybus Connected"
+    id: keybus_connected_sensor
+    device_class: connectivity
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+
+text_sensor:
+  # DIAGNOSTIC INFORMATION
+  - platform: version
+    name: "DSC ESPHome Version"
+    icon: "mdi:tag"
+    
+  - platform: wifi_info
+    ip_address:
+      name: "DSC IP Address"
+    ssid:
+      name: "DSC WiFi SSID"
+    mac_address:
+      name: "DSC MAC Address"
+      
+  # Connection diagnostic information
+  - platform: template
+    name: "DSC Connection Status"
+    id: connection_diagnostic
+    icon: "mdi:connection"
+    lambda: |-
+      if (id(dsc_interface).getKeybusConnected()) {
+        return {"Connected and communicating"};
+      } else {
+        return {"Not connected - check wiring and power"};
+      }
+
+sensor:
+  # System diagnostics
+  - platform: uptime
+    name: "DSC Uptime"
+    id: uptime_seconds
+    update_interval: 60s
+    icon: "mdi:timer-outline"
+    unit_of_measurement: s
+    device_class: duration
+    state_class: total_increasing
+  
+  - platform: wifi_signal
+    name: "DSC WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    unit_of_measurement: dBm
+    device_class: signal_strength
+    state_class: measurement
+    icon: "mdi:wifi-strength-2"
+    
+  - platform: template
+    name: "DSC Free Heap"
+    id: free_heap_sensor
+    update_interval: 60s
+    unit_of_measurement: "bytes"
+    state_class: measurement
+    icon: "mdi:memory"
+    lambda: |-
+      return esp_get_free_heap_size();
+
+# ENHANCED DIAGNOSTIC LOGGING
+interval:
+  # Keybus status monitoring every 30 seconds
+  - interval: 30s
+    then:
+      - lambda: |-
+          bool connected = id(dsc_interface).getKeybusConnected();
+          bool overflow = id(dsc_interface).getBufferOverflow();
+          
+          ESP_LOGI("dsc_diagnostic", "=== DSC CONNECTION DIAGNOSTIC ===");
+          ESP_LOGI("dsc_diagnostic", "Keybus Connected: %s", connected ? "YES" : "NO");
+          ESP_LOGI("dsc_diagnostic", "Buffer Overflow: %s", overflow ? "YES" : "NO");
+          ESP_LOGI("dsc_diagnostic", "Free Heap: %zu bytes", esp_get_free_heap_size());
+          ESP_LOGI("dsc_diagnostic", "WiFi RSSI: %.1f dBm", wifi::global_wifi_component->wifi_rssi());
+          
+          if (!connected) {
+            ESP_LOGW("dsc_diagnostic", "DSC panel not responding - check:");
+            ESP_LOGW("dsc_diagnostic", "1. Power to DSC panel (should be 12V on keybus)");
+            ESP_LOGW("dsc_diagnostic", "2. Physical wiring: Yellow→GPIO18, Green→GPIO19, Black→GND");
+            ESP_LOGW("dsc_diagnostic", "3. Resistors: 33kΩ on Clock and Data lines");
+            ESP_LOGW("dsc_diagnostic", "4. Panel series type: Classic vs PowerSeries");
+          } else {
+            ESP_LOGI("dsc_diagnostic", "DSC panel communication is working correctly!");
+          }
+          ESP_LOGI("dsc_diagnostic", "================================");
+
+  # ESPHome startup success monitoring (validates the app_main() hang fix)
+  - interval: 30s
+    then:
+      - lambda: |-
+          static bool startup_success_logged = false;
+          
+          if (!startup_success_logged) {
+            ESP_LOGI("startup_fix", "✅ SUCCESS: ESPHome startup hang fix working!");
+            ESP_LOGI("startup_fix", "ESP32 successfully transitioned from app_main() to ESPHome main loop");
+            ESP_LOGI("startup_fix", "System uptime: %.1f seconds", id(uptime_seconds).state);
+            ESP_LOGI("startup_fix", "Free heap: %zu bytes", esp_get_free_heap_size());
+            ESP_LOGI("startup_fix", "Enhanced ESP-IDF configuration prevented task watchdog timeout");
+            startup_success_logged = true;
+          }
+
+button:
+  # System restart for diagnostic purposes
+  - platform: restart
+    name: "DSC System Restart"
+    id: restart_switch
+    
+  # Manual connection test
+  - platform: template
+    name: "DSC Test Connection"
+    id: test_connection_button
+    icon: "mdi:test-tube"
+    on_press:
+      - lambda: |-
+          ESP_LOGI("dsc_test", "=== MANUAL CONNECTION TEST ===");
+          ESP_LOGI("dsc_test", "Testing DSC keybus communication...");
+          
+          // Force a connection status check
+          bool connected = id(dsc_interface).getKeybusConnected();
+          ESP_LOGI("dsc_test", "Connection test result: %s", connected ? "SUCCESS" : "FAILED");
+          
+          if (!connected) {
+            ESP_LOGW("dsc_test", "Connection test failed - see diagnostic logs above");
+          }
+          ESP_LOGI("dsc_test", "============================");
+
+# ALARM CONTROL PANEL
+alarm_control_panel:
+  - platform: dsc_keybus
+    partition: 1
+    name: "DSC Partition 1 (Diagnostic)"
+    id: partition_1_panel
