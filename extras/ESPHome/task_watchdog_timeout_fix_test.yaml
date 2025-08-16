@@ -93,7 +93,7 @@ logger:
 # Basic API for connectivity
 api:
   encryption:
-    key: "test-key-12345678901234567890123="
+    key: "Pl8wzUYOrdkKNtyeQVMsGz/cqYbl/cd6sZZkWa63f3s="
 
 # OTA for updates
 ota:
