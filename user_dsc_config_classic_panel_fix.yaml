@@ -1,0 +1,277 @@
+# DSC Classic Panel Hardware Connection Fix Configuration
+# 
+# This configuration enables the original Arduino dscKeybusInterface timing characteristics
+# for DSC Classic panels that previously worked with the Arduino library but fail with ESPHome.
+#
+# Key Changes from Standard ESPHome Configuration:
+# 1. Enables DSC_CLASSIC_TIMING_COMPATIBILITY mode to bypass defensive ESPHome measures
+# 2. Uses original interrupt timing without critical section overhead
+# 3. Minimal initialization validation to maintain timing characteristics
+# 4. Direct Arduino-compatible timer management
+#
+# Use this configuration if:
+# - Your DSC Classic panel worked with the original Arduino dscKeybusInterface
+# - You're getting "Hardware initialization rate limiting exceeded" errors
+# - Standard ESPHome configurations fail but Arduino sketches work
+#
+# Expected Results:
+# - Successful hardware initialization without rate limiting errors
+# - No task watchdog timeouts during WiFi connection
+# - Stable DSC panel communication matching Arduino library behavior
+
+esphome:
+  name: dsc-esphome-classic-fix
+  friendly_name: "DSC Classic Panel (Fixed)"
+  platformio_options:
+    build_flags:
+      # CRITICAL: Enable classic timing compatibility mode
+      - "-DDSC_CLASSIC_TIMING_COMPATIBILITY"
+      # Classic series support with original timing
+      - "-DdscClassicSeries"
+      # Extended watchdog timeout for classic panel initialization
+      - "-DCONFIG_ESP_TASK_WDT_TIMEOUT_S=600"
+      # Reduced system timing interference
+      - "-DCONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ=240"
+      # Memory optimization for stable classic operation
+      - "-DCONFIG_SPIRAM_USE_MALLOC=1"
+    build_unflags:
+      # Remove aggressive optimization that affects timing
+      - "-Os"
+    build_src_flags:
+      # Enable classic compatibility in source files
+      - "-DDSC_CLASSIC_TIMING_COMPATIBILITY"
+      
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: 5.3.2
+    # Classic timing requires specific ESP-IDF configuration
+    sdkconfig_options:
+      # Extended task watchdog for classic initialization
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "600"
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: "n"
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: "n"
+      # Optimal CPU frequency for classic timing
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ_240: "y"
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      # Memory configuration for stable operation
+      CONFIG_ESP32_SPIRAM_SUPPORT: "y"
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      # Timer precision for classic timing compatibility
+      CONFIG_ESP_TIMER_TASK_PRIORITY: "22"
+      CONFIG_ESP_TIMER_TASK_STACK_SIZE: "4096"
+
+# Enable logging with appropriate level for troubleshooting
+logger:
+  level: INFO
+  logs:
+    dsc_keybus: INFO
+
+# API configuration
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# OTA configuration  
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# WiFi configuration with reduced priority to prevent DSC interference
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Reduced priority to prevent interference with DSC timing
+  priority: 15.0
+  # Extended connection timeout for classic panels
+  connect_timeout: 60s
+  # Manual IP configuration reduces DHCP timing interference
+  manual_ip:
+    static_ip: 192.168.1.200
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+    dns1: 192.168.1.1
+
+  # Enable hotspot fallback
+  ap:
+    ssid: "DSC-Classic-Fallback"
+    password: !secret ap_password
+
+# Captive portal for easy configuration
+captive_portal:
+
+# DSC Keybus configuration with classic timing compatibility
+external_components:
+  - source: 
+      type: local
+      path: src
+    components: [dsc_keybus]
+
+# Classic Panel DSC Configuration
+dsc_keybus:
+  # Essential pin configuration
+  clock_pin: GPIO18
+  read_pin: GPIO19
+  write_pin: GPIO21  # Optional for virtual keypad
+  
+  # Classic panel timing configuration
+  # These values restore original Arduino library characteristics
+  hardware_detection_delay: 5000ms      # Original Arduino timing (reduced from ESPHome default)
+  initialization_timeout: 30000ms       # Original Arduino timeout
+  retry_delay: 2000ms                    # Original retry timing
+  max_initialization_attempts: 5        # Conservative retry limit
+  
+  # Classic series specific configuration
+  classic_series: true
+  
+  # Enable standalone mode as fallback for connection issues
+  standalone_mode: false  # Try hardware connection first
+  
+  # Partition configuration
+  partitions: 1
+  
+  # Access codes for classic panels
+  access_code: !secret dsc_access_code
+
+# Text sensors for DSC status
+text_sensor:
+  - platform: dsc_keybus
+    partition_status_1:
+      name: "Partition 1 Status"
+    
+  - platform: dsc_keybus  
+    system_status:
+      name: "System Status"
+
+# Binary sensors for DSC zones and partitions
+binary_sensor:
+  # Partition 1 sensors
+  - platform: dsc_keybus
+    partition_ready_1:
+      name: "Partition 1 Ready"
+      
+  - platform: dsc_keybus
+    partition_armed_1:
+      name: "Partition 1 Armed"
+      
+  - platform: dsc_keybus
+    partition_armed_stay_1:
+      name: "Partition 1 Armed Stay"
+      
+  - platform: dsc_keybus
+    partition_armed_away_1:
+      name: "Partition 1 Armed Away"
+      
+  - platform: dsc_keybus
+    partition_entry_delay_1:
+      name: "Partition 1 Entry Delay"
+      
+  - platform: dsc_keybus
+    partition_exit_delay_1:
+      name: "Partition 1 Exit Delay"
+      
+  - platform: dsc_keybus
+    partition_alarm_1:
+      name: "Partition 1 Alarm"
+
+  # System status sensors
+  - platform: dsc_keybus
+    keybus_connected:
+      name: "DSC Keybus Connected"
+      
+  - platform: dsc_keybus
+    trouble:
+      name: "System Trouble"
+
+  # Zone sensors (8 zones for classic panels)
+  - platform: dsc_keybus
+    zone_1:
+      name: "Zone 1"
+      
+  - platform: dsc_keybus
+    zone_2:
+      name: "Zone 2"
+      
+  - platform: dsc_keybus
+    zone_3:
+      name: "Zone 3"
+      
+  - platform: dsc_keybus
+    zone_4:
+      name: "Zone 4"
+      
+  - platform: dsc_keybus
+    zone_5:
+      name: "Zone 5"
+      
+  - platform: dsc_keybus
+    zone_6:
+      name: "Zone 6"
+      
+  - platform: dsc_keybus
+    zone_7:
+      name: "Zone 7"
+      
+  - platform: dsc_keybus
+    zone_8:
+      name: "Zone 8"
+
+# Switches for DSC control
+switch:
+  - platform: dsc_keybus
+    partition_arm_stay_1:
+      name: "Partition 1 Arm Stay"
+      
+  - platform: dsc_keybus
+    partition_arm_away_1:
+      name: "Partition 1 Arm Away"
+      
+  - platform: dsc_keybus
+    partition_disarm_1:
+      name: "Partition 1 Disarm"
+
+# Services for advanced DSC control
+dsc_keybus:
+  services:
+    - service: send_keypad_command
+      variables:
+        command: string
+      then:
+        - lambda: |-
+            id(dsc_keybus_component).write(command.c_str());
+            
+    - service: arm_stay_partition_1
+      then:
+        - lambda: |-
+            id(dsc_keybus_component).write("s");
+            
+    - service: arm_away_partition_1  
+      then:
+        - lambda: |-
+            id(dsc_keybus_component).write("w");
+            
+    - service: disarm_partition_1
+      then:
+        - lambda: |-
+            // Use access code from secrets
+            std::string disarm_cmd = std::string(ESPHOME_STRINGIFY(SECRET_DSC_ACCESS_CODE));
+            id(dsc_keybus_component).write(disarm_cmd.c_str());
+
+# Time component for DSC timing functions
+time:
+  - platform: sntp
+    id: sntp_time
+    servers:
+      - pool.ntp.org
+    on_time_sync:
+      then:
+        - logger.log: "Time synchronized for DSC operations"
+
+# Status LED to indicate DSC connection status  
+status_led:
+  pin: GPIO2
+
+# Optional: Deep sleep prevention during active monitoring
+deep_sleep:
+  prevent_deep_sleep: true

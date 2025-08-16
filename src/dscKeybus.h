@@ -20,6 +20,11 @@
 #ifndef dscKeybus_h
 #define dscKeybus_h
 
+// DSC Classic Panel Timing Compatibility Mode
+// Uncomment the line below to enable original Arduino library timing characteristics
+// for DSC Classic panels that worked with the original dscKeybusInterface library
+// #define DSC_CLASSIC_TIMING_COMPATIBILITY
+
 #include <cstdint>
 #include <cstring>
 #if defined(ARDUINO)

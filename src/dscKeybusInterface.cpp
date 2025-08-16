@@ -143,81 +143,109 @@ dscKeybusInterface::dscKeybusInterface(byte setClockPin, byte setReadPin, byte s
 
 
 void dscKeybusInterface::begin(Stream &_stream) {
-  // CRITICAL: Verify static variables are properly initialized before proceeding
-  // This prevents LoadProhibited crashes (0xcececece pattern) during initialization
-#ifndef DSC_STATIC_VARIABLES_DEFINED
-  // For Arduino builds, static variables are defined in this file
-  // Perform explicit initialization check to prevent uninitialized memory access
-  if ((uintptr_t)&panelBufferLength == 0xcececece || (uintptr_t)&panelBufferLength == 0xa5a5a5a5) {
-    _stream.println(F("ERROR: Static variables not properly initialized - preventing LoadProhibited crash"));
-    return;
-  }
-#else
-  // For ESPHome builds, verify the external initialization flag
-  extern volatile bool dsc_static_variables_initialized;
-  if (!dsc_static_variables_initialized) {
-    _stream.println(F("ERROR: Static variables not initialized - deferring DSC interface setup"));
-    return;
-  }
-#endif
-
-  // Validate pins are properly configured
-  if (dscClockPin == 255 || dscReadPin == 255) {
-    _stream.println(F("ERROR: Invalid pin configuration for DSC interface"));
-    return;
-  }
+  // DSC Classic Panel Compatibility Mode: Check if classic timing is enabled
+  bool classicCompatibilityMode = false;
   
-  // Ensure all static variables are properly initialized before enabling interrupts
-  if (panelBufferLength != 0) {
-    // Reset all static variables to safe state
+  #ifdef DSC_CLASSIC_TIMING_COMPATIBILITY
+  classicCompatibilityMode = true;
+  #endif
+  
+  // For DSC Classic panels, use original Arduino library timing characteristics
+  if (classicCompatibilityMode) {
+    // Original initialization path with minimal overhead for timing-sensitive classic panels
+    _stream.println(F("DSC Classic Panel Compatibility Mode: Using original timing characteristics"));
+    
+    // Minimal validation - only check essential pins
+    if (dscClockPin == 255 || dscReadPin == 255) {
+      _stream.println(F("ERROR: Invalid pin configuration for DSC interface"));
+      return;
+    }
+    
+    // Quick reset of essential variables only
     panelBufferLength = 0;
-    bufferOverflow = false;
-    writeKeyPending = false;
-    writeAlarm = false;
-    starKeyCheck = false;
-    moduleDataDetected = false;
-    moduleDataCaptured = false;
-    
-    // Clear all buffers
-    for (byte i = 0; i < dscBufferSize; i++) {
-      for (byte j = 0; j < dscReadSize; j++) {
-        panelBuffer[i][j] = 0;
-      }
-      panelBufferBitCount[i] = 0;
-      panelBufferByteCount[i] = 0;
-    }
-    
-    // Clear data arrays
-    for (byte i = 0; i < dscReadSize; i++) {
-      panelData[i] = 0;
-      moduleData[i] = 0;
-      isrPanelData[i] = 0;
-      isrModuleData[i] = 0;
-    }
-    
-    // Clear partition flags
-    for (byte i = 0; i < dscPartitions; i++) {
-      starKeyWait[i] = false;
-    }
-    
-    // Reset counters
     isrPanelByteCount = 0;
     isrPanelBitCount = 0;
     isrPanelBitTotal = 0;
-    panelByteCount = 0;
-    panelBitCount = 0;
-    moduleByteCount = 0;
-    moduleBitCount = 0;
-    
-    // Reset command tracking
-    currentCmd = 0;
-    statusCmd = 0;
-    moduleCmd = 0;
-    moduleSubCmd = 0;
-    
-    // Initialize timing
-    clockHighTime = 0;
     keybusTime = millis();
+    
+  } else {
+    // Standard ESPHome initialization path with full defensive measures
+    // CRITICAL: Verify static variables are properly initialized before proceeding
+    // This prevents LoadProhibited crashes (0xcececece pattern) during initialization
+#ifndef DSC_STATIC_VARIABLES_DEFINED
+    // For Arduino builds, static variables are defined in this file
+    // Perform explicit initialization check to prevent uninitialized memory access
+    if ((uintptr_t)&panelBufferLength == 0xcececece || (uintptr_t)&panelBufferLength == 0xa5a5a5a5) {
+      _stream.println(F("ERROR: Static variables not properly initialized - preventing LoadProhibited crash"));
+      return;
+    }
+#else
+    // For ESPHome builds, verify the external initialization flag
+    extern volatile bool dsc_static_variables_initialized;
+    if (!dsc_static_variables_initialized) {
+      _stream.println(F("ERROR: Static variables not initialized - deferring DSC interface setup"));
+      return;
+    }
+#endif
+
+    // Validate pins are properly configured
+    if (dscClockPin == 255 || dscReadPin == 255) {
+      _stream.println(F("ERROR: Invalid pin configuration for DSC interface"));
+      return;
+    }
+    
+    // Ensure all static variables are properly initialized before enabling interrupts
+    if (panelBufferLength != 0) {
+      // Reset all static variables to safe state
+      panelBufferLength = 0;
+      bufferOverflow = false;
+      writeKeyPending = false;
+      writeAlarm = false;
+      starKeyCheck = false;
+      moduleDataDetected = false;
+      moduleDataCaptured = false;
+      
+      // Clear all buffers
+      for (byte i = 0; i < dscBufferSize; i++) {
+        for (byte j = 0; j < dscReadSize; j++) {
+          panelBuffer[i][j] = 0;
+        }
+        panelBufferBitCount[i] = 0;
+        panelBufferByteCount[i] = 0;
+      }
+      
+      // Clear data arrays
+      for (byte i = 0; i < dscReadSize; i++) {
+        panelData[i] = 0;
+        moduleData[i] = 0;
+        isrPanelData[i] = 0;
+        isrModuleData[i] = 0;
+      }
+      
+      // Clear partition flags
+      for (byte i = 0; i < dscPartitions; i++) {
+        starKeyWait[i] = false;
+      }
+      
+      // Reset counters
+      isrPanelByteCount = 0;
+      isrPanelBitCount = 0;
+      isrPanelBitTotal = 0;
+      panelByteCount = 0;
+      panelBitCount = 0;
+      moduleByteCount = 0;
+      moduleBitCount = 0;
+      
+      // Reset command tracking
+      currentCmd = 0;
+      statusCmd = 0;
+      moduleCmd = 0;
+      moduleSubCmd = 0;
+      
+      // Initialize timing
+      clockHighTime = 0;
+      keybusTime = millis();
+    }
   }
   
   pinMode(dscClockPin, INPUT);
@@ -304,29 +332,54 @@ bool dscKeybusInterface::loop() {
   yield();
   #endif
 
+  // DSC Classic Panel Compatibility Mode: Check if classic timing is enabled
+  bool classicCompatibilityMode = false;
+  #ifdef DSC_CLASSIC_TIMING_COMPATIBILITY
+  classicCompatibilityMode = true;
+  #endif
+
   // Checks if Keybus data is detected and sets a status flag if data is not detected for 3s
-  #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portENTER_CRITICAL(&timer1Mux);
-  }
-  #else
-  noInterrupts();
-  #endif
+  if (classicCompatibilityMode) {
+    // Original timing check without defensive measures for classic panels
+    #if defined(ESP32)
+    noInterrupts(); // Use simpler interrupt disable for classic compatibility
+    #else
+    noInterrupts();
+    #endif
 
-  if (millis() - keybusTime > 3000) keybusConnected = false;  // keybusTime is set in dscDataInterrupt() when the clock resets
-  else keybusConnected = true;
+    if (millis() - keybusTime > 3000) keybusConnected = false;  // keybusTime is set in dscDataInterrupt() when the clock resets
+    else keybusConnected = true;
 
-  #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portEXIT_CRITICAL(&timer1Mux);
+    #if defined(ESP32)
+    interrupts(); // Re-enable interrupts immediately
+    #else
+    interrupts();
+    #endif
+  } else {
+    // Standard ESPHome approach with defensive timer checks
+    #if defined(ESP32)
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      portENTER_CRITICAL(&timer1Mux);
+    }
+    #else
+    noInterrupts();
+    #endif
+
+    if (millis() - keybusTime > 3000) keybusConnected = false;  // keybusTime is set in dscDataInterrupt() when the clock resets
+    else keybusConnected = true;
+
+    #if defined(ESP32)
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      portEXIT_CRITICAL(&timer1Mux);
+    }
+    #else
+    interrupts();
+    #endif
   }
-  #else
-  interrupts();
-  #endif
 
   if (previousKeybus != keybusConnected) {
     previousKeybus = keybusConnected;
@@ -350,30 +403,51 @@ bool dscKeybusInterface::loop() {
   panelBufferIndex++;
 
   // Resets counters when the buffer is cleared
-  #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portENTER_CRITICAL(&timer1Mux);
-  }
-  #else
-  noInterrupts();
-  #endif
+  if (classicCompatibilityMode) {
+    // Original simple interrupt handling for classic panels
+    #if defined(ESP32)
+    noInterrupts();
+    #else
+    noInterrupts();
+    #endif
 
-  if (panelBufferIndex > panelBufferLength) {
-    panelBufferIndex = 1;
-    panelBufferLength = 0;
-  }
+    if (panelBufferIndex > panelBufferLength) {
+      panelBufferIndex = 1;
+      panelBufferLength = 0;
+    }
 
-  #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portEXIT_CRITICAL(&timer1Mux);
+    #if defined(ESP32)
+    interrupts();
+    #else
+    interrupts();
+    #endif
+  } else {
+    // Standard ESPHome approach with defensive timer checks
+    #if defined(ESP32)
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      portENTER_CRITICAL(&timer1Mux);
+    }
+    #else
+    noInterrupts();
+    #endif
+
+    if (panelBufferIndex > panelBufferLength) {
+      panelBufferIndex = 1;
+      panelBufferLength = 0;
+    }
+
+    #if defined(ESP32)
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      portEXIT_CRITICAL(&timer1Mux);
+    }
+    #else
+    interrupts();
+    #endif
   }
-  #else
-  interrupts();
-  #endif
 
   // Waits at startup for the 0x05 status command or a command with valid CRC data to eliminate spurious data.
   static bool startupCycle = true;
@@ -688,11 +762,24 @@ void dscKeybusInterface::dscClockInterrupt() {
 
   // esp32 timer1 calls dscDataInterrupt() in 250us
   #elif defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    timerStart(timer1);
-    portENTER_CRITICAL(&timer1Mux);
+  // DSC Classic Panel Compatibility Mode: Check if classic timing is enabled
+  bool classicCompatibilityMode = false;
+  #ifdef DSC_CLASSIC_TIMING_COMPATIBILITY
+  classicCompatibilityMode = true;
+  #endif
+  
+  if (classicCompatibilityMode) {
+    // Original timing approach without defensive checks for classic panels
+    if (timer1 != nullptr) {
+      timerStart(timer1);
+    }
+  } else {
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      timerStart(timer1);
+      portENTER_CRITICAL(&timer1Mux);
+    }
   }
   #endif
 
@@ -827,10 +914,18 @@ void dscKeybusInterface::dscClockInterrupt() {
     }
   }
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portEXIT_CRITICAL(&timer1Mux);
+  // DSC Classic Panel Compatibility Mode: Check if classic timing is enabled
+  bool classicCompatibilityMode = false;
+  #ifdef DSC_CLASSIC_TIMING_COMPATIBILITY
+  classicCompatibilityMode = true;
+  #endif
+  
+  if (!classicCompatibilityMode) {
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      portEXIT_CRITICAL(&timer1Mux);
+    }
   }
   #endif
 }
@@ -843,11 +938,24 @@ void dscKeybusInterface::dscDataInterrupt() {
 void ICACHE_RAM_ATTR dscKeybusInterface::dscDataInterrupt() {
 #elif defined(ESP32)
 void IRAM_ATTR dscKeybusInterface::dscDataInterrupt() {
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    timerStop(timer1);
-    portENTER_CRITICAL(&timer1Mux);
+  // DSC Classic Panel Compatibility Mode: Check if classic timing is enabled
+  bool classicCompatibilityMode = false;
+  #ifdef DSC_CLASSIC_TIMING_COMPATIBILITY
+  classicCompatibilityMode = true;
+  #endif
+  
+  if (classicCompatibilityMode) {
+    // Original timer handling for classic panels - no critical section overhead
+    if (timer1 != nullptr) {
+      timerStop(timer1);
+    }
+  } else {
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      timerStop(timer1);
+      portENTER_CRITICAL(&timer1Mux);
+    }
   }
 #else
 // Native/test environment
@@ -922,10 +1030,18 @@ void dscKeybusInterface::dscDataInterrupt() {
     }
   }
   #if defined(ESP32)
-  // Safety check: Ensure timer1 is properly initialized before use
-  // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
-  if (timer1 != nullptr) {
-    portEXIT_CRITICAL(&timer1Mux);
+  // DSC Classic Panel Compatibility Mode: Check if classic timing is enabled
+  bool classicCompatibilityMode = false;
+  #ifdef DSC_CLASSIC_TIMING_COMPATIBILITY
+  classicCompatibilityMode = true;
+  #endif
+  
+  if (!classicCompatibilityMode) {
+    // Safety check: Ensure timer1 is properly initialized before use
+    // This prevents LoadProhibited crashes (0xcececece pattern) in ISR
+    if (timer1 != nullptr) {
+      portEXIT_CRITICAL(&timer1Mux);
+    }
   }
   #endif
 }
