@@ -371,7 +371,6 @@ dsc_keybus:
 alarm_control_panel:
   - platform: dsc_keybus
     partition: 1
-    name: "DSC Partition 1"
     id: partition_1_panel
     # Configure supported modes based on your DSC panel setup
     # Note: supported_modes configuration is handled automatically by the platform
@@ -384,7 +383,6 @@ alarm_control_panel:
   # Add additional partitions as needed  
   # - platform: dsc_keybus
   #   partition: 2
-  #   name: "DSC Partition 2"
   #   id: partition_2_panel
   #   supported_modes:
   #     - ALARM_ARM_AWAY
