@@ -117,6 +117,12 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   void set_read_pin(uint8_t pin) { this->read_pin_ = pin; }
   void set_write_pin(uint8_t pin) { this->write_pin_ = pin; }
   void set_pc16_pin(uint8_t pin) { this->pc16_pin_ = pin; }
+  
+  // Debug timing configuration methods for DSC Classic hardware troubleshooting
+  void set_classic_timing_mode(bool enable) { this->classic_timing_mode_ = enable; }
+  void set_hardware_detection_delay(uint32_t delay_ms) { this->hardware_detection_delay_ = delay_ms; }
+  void set_initialization_timeout(uint32_t timeout_ms) { this->initialization_timeout_ = timeout_ms; }
+  void set_retry_delay(uint32_t delay_ms) { this->retry_delay_ = delay_ms; }
 
   // Component lifecycle
   void setup() override;
@@ -193,6 +199,12 @@ class ZoneAlarmChangeTrigger : public Trigger<uint8_t, bool> {
   uint8_t read_pin_{DSC_DEFAULT_READ_PIN};
   uint8_t write_pin_{DSC_DEFAULT_WRITE_PIN};
   uint8_t pc16_pin_{DSC_DEFAULT_PC16_PIN};
+  
+  // Debug timing configuration for DSC Classic hardware troubleshooting
+  bool classic_timing_mode_{false};          // Enable Classic-specific timing adjustments
+  uint32_t hardware_detection_delay_{2000};  // Hardware detection delay in ms (default: 2000ms)
+  uint32_t initialization_timeout_{30000};   // Initialization timeout in ms (default: 30000ms)  
+  uint32_t retry_delay_{2000};               // Retry delay between attempts in ms (default: 2000ms)
 
   // Trigger lists
   std::vector<SystemStatusChangeTrigger *> system_status_triggers_;

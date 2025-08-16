@@ -276,15 +276,27 @@ void DSCKeybusComponent::loop() {
     }
 #endif
     
-    // Enhanced stabilization timing with longer delays for ESP-IDF 5.3.2+
+    // Enhanced stabilization timing with configurable delays for DSC Classic hardware troubleshooting
     static uint32_t init_attempt_time = 0;
     static bool init_timing_logged = false;
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
-    uint32_t required_delay = 2000;  // CRITICAL FIX: Increase default delay from 1s to 2s to reduce system load
+    
+    // Use configurable hardware detection delay instead of hardcoded values
+    uint32_t required_delay = this->hardware_detection_delay_;
+    
+    // Apply Classic timing mode adjustments if enabled
+    if (this->classic_timing_mode_) {
+      ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
+      required_delay += 1000;  // Add extra 1 second for Classic panels
+    }
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-    required_delay = 3000;  // 3 seconds for ESP-IDF 5.3.2+ (increased from 2s)
+    // For ESP-IDF 5.3.2+, ensure minimum delay but respect user configuration
+    if (required_delay < 3000) {
+      required_delay = 3000;  // Minimum 3 seconds for ESP-IDF 5.3.2+ stability
+      ESP_LOGD(TAG, "ESP-IDF 5.3.2+ detected - enforcing minimum 3000ms delay (was %u ms)", this->hardware_detection_delay_);
+    }
     #endif
     
     // CRITICAL FIX: Prevent infinite loop by implementing permanent failure detection
@@ -464,12 +476,20 @@ void DSCKeybusComponent::loop() {
     }
     #endif
     
-    // CRITICAL FIX: Add rate limiting to prevent rapid retry attempts
+    // CRITICAL FIX: Add rate limiting to prevent rapid retry attempts using configurable retry delay
     // This prevents overwhelming the system with back-to-back hardware initialization attempts
     // that could contribute to the infinite loop condition
     static uint32_t last_begin_attempt = 0;
     uint32_t now = millis();
-    if (now - last_begin_attempt < 2000) {  // CRITICAL FIX: Increase minimum delay from 1s to 2s between attempts
+    uint32_t min_retry_delay = this->retry_delay_;  // Use configurable retry delay
+    
+    // Apply Classic timing mode adjustments for retry delay if enabled
+    if (this->classic_timing_mode_) {
+      min_retry_delay += 500;  // Add extra 500ms for Classic panels
+      ESP_LOGD(TAG, "Classic timing mode: Using extended retry delay of %u ms", min_retry_delay);
+    }
+    
+    if (now - last_begin_attempt < min_retry_delay) {
       // CRITICAL FIX: Add circuit breaker to prevent infinite rate limiting
       static uint32_t rate_limit_count = 0;
       rate_limit_count++;
@@ -536,11 +556,17 @@ void DSCKeybusComponent::loop() {
     // CRITICAL FIX: Only count actual hardware initialization attempts, not stabilization deferrals
     total_loop_attempts++;
     
-    // If we've had too many actual initialization attempts, something is wrong - give up
-    // CRITICAL FIX: Revert to more tolerant limits for real panel connections
-    if (total_loop_attempts > 500 || (current_time - first_loop_attempt_time > 30000 && total_loop_attempts > 50)) {
-      ESP_LOGE(TAG, "DSC hardware initialization exceeded maximum loop attempts (%u attempts over %u ms) - marking as permanently failed to prevent infinite loop", 
-               total_loop_attempts, current_time - first_loop_attempt_time);
+    // If we've had too many actual initialization attempts or exceeded configurable timeout, something is wrong - give up
+    // Use configurable initialization timeout instead of hardcoded 30 seconds
+    bool attempts_exceeded = total_loop_attempts > 500;
+    bool timeout_exceeded = (current_time - first_loop_attempt_time > this->initialization_timeout_) && total_loop_attempts > 50;
+    
+    if (attempts_exceeded || timeout_exceeded) {
+      ESP_LOGE(TAG, "DSC hardware initialization exceeded limits (%u attempts over %u ms, timeout: %u ms) - marking as permanently failed", 
+               total_loop_attempts, current_time - first_loop_attempt_time, this->initialization_timeout_);
+      if (this->classic_timing_mode_) {
+        ESP_LOGW(TAG, "Classic timing mode was enabled - try increasing initialization_timeout if needed");
+      }
       ESP_LOGW(TAG, "If no DSC panel is connected, enable standalone_mode: true in your configuration");
       getDSC().markInitializationFailed();
       return;
@@ -743,6 +769,21 @@ void DSCKeybusComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Debug level: %u", this->debug_level_);
   ESP_LOGCONFIG(TAG, "  Access code configured: %s", this->access_code_.empty() ? "NO" : "YES");
   ESP_LOGCONFIG(TAG, "  Enable 05 messages: %s", YESNO(this->enable_05_messages_));
+  ESP_LOGCONFIG(TAG, "  Standalone mode: %s", YESNO(this->standalone_mode_));
+  
+  // Display debug timing configuration for DSC Classic hardware troubleshooting
+  ESP_LOGCONFIG(TAG, "  Debug Timing Configuration:");
+  ESP_LOGCONFIG(TAG, "    Classic timing mode: %s", YESNO(this->classic_timing_mode_));
+  ESP_LOGCONFIG(TAG, "    Hardware detection delay: %u ms", this->hardware_detection_delay_);
+  ESP_LOGCONFIG(TAG, "    Initialization timeout: %u ms", this->initialization_timeout_);
+  ESP_LOGCONFIG(TAG, "    Retry delay: %u ms", this->retry_delay_);
+  
+  // Pin configuration
+  ESP_LOGCONFIG(TAG, "  Pin Configuration:");
+  ESP_LOGCONFIG(TAG, "    Clock pin: %u", this->clock_pin_);
+  ESP_LOGCONFIG(TAG, "    Read pin: %u", this->read_pin_);
+  ESP_LOGCONFIG(TAG, "    Write pin: %u", this->write_pin_);
+  ESP_LOGCONFIG(TAG, "    PC16 pin: %u", this->pc16_pin_);
 }
 
 }  // namespace dsc_keybus
