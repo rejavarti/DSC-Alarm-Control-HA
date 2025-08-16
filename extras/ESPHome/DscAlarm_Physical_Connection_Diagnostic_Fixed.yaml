@@ -326,9 +326,9 @@ button:
           }
           ESP_LOGI("dsc_test", "============================");
 
-# ALARM CONTROL PANEL
-alarm_control_panel:
-  - platform: dsc_keybus
-    partition: 1
-    name: "DSC Partition 1 (Diagnostic)"
-    id: partition_1_panel
+# ALARM CONTROL PANEL - DISABLED DUE TO COMPILATION ISSUES
+# alarm_control_panel:
+#   - platform: dsc_keybus
+#     partition: 1
+#     name: "DSC Partition 1 (Diagnostic)"
+#     id: partition_1_panel
