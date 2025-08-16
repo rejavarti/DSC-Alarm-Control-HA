@@ -1,0 +1,147 @@
+# DSC Keybus Interface Diagnostic Configuration
+# This configuration is designed to diagnose the "Returned from app_main()" hang issue
+# Uses ESP-IDF framework to reproduce the exact problem reported
+
+substitutions:
+  accessCode: "1234"  # Test access code
+
+esphome:
+  name: dscalarm-diagnostic
+  # Enhanced project configuration for diagnostic purposes
+  platformio_options:
+    build_flags:
+      - -DDSC_DIAGNOSTIC_MODE                 # Enable diagnostic mode
+      - -DESP_IDF_VERSION_MAJOR=5             # Ensure ESP-IDF 5.x compatibility  
+      - -DESP_IDF_VERSION_MINOR=3             # ESP-IDF 5.3.x specific
+      - -DDSC_ESP_IDF_5_3_PLUS                # Enable ESP-IDF 5.3+ specific fixes
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Use compatible ESP-IDF version that reproduces the issue
+    
+    # Basic ESP-IDF configuration to reproduce the hang
+    sdkconfig_options:
+      # Main task stack - use default initially to reproduce the hang
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "3584"   # Default ESP-IDF value
+      
+      # System event task stack - use default  
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "2304"  # Default value
+      
+      # Timer task stack - use default
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "2048"   # Default value
+      
+      # Basic WiFi configuration
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "3584"   # Default value
+      
+      # CPU frequency - standard
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n
+      CONFIG_ESP32_XTAL_FREQ_40: y
+      CONFIG_ESP32_XTAL_FREQ_26: n
+      
+      # Watchdog configuration
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "5"        # Short timeout to trigger issue
+      CONFIG_ESP_TASK_WDT_EN: y
+      CONFIG_ESP_TASK_WDT_INIT: y
+      
+      # Interrupt watchdog
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "300"      # Short timeout
+      
+      # Disable power management 
+      CONFIG_PM_ENABLE: n
+
+# Create a mock WiFi configuration to avoid actual connection issues
+wifi:
+  networks:
+    - ssid: "TestNetwork"
+      password: "testpassword"
+  
+  # Use access point mode to avoid WiFi connection delays
+  ap:
+    ssid: "DSC-Diagnostic"
+    password: "diagnostic123"
+
+# Enhanced logging to capture the hang
+logger:
+  level: VERBOSE
+  baud_rate: 115200
+  hardware_uart: UART0
+  logs:
+    esp_timer: VERBOSE
+    heap_init: VERBOSE  
+    system_api: VERBOSE
+    app_main: VERBOSE
+    dsc_keybus: VERBOSE
+
+# Basic API without encryption for diagnostics
+api:
+
+# Basic OTA
+ota:
+  - platform: esphome
+
+# DSC Keybus Interface with basic configuration to trigger the hang
+dsc_keybus:
+  id: dsc_interface
+  access_code: ${accessCode}
+  
+  # Basic pin configuration
+  clock_pin: 18
+  read_pin: 19
+  write_pin: 21
+  
+  # Enable debug output for diagnostics
+  debug: 2
+  
+  # Disable standalone mode to trigger actual hardware initialization
+  standalone_mode: false
+
+# System health monitoring to detect when the hang occurs
+binary_sensor:
+  - platform: template
+    name: "System Health"
+    id: system_health
+    lambda: |-
+      // System is healthy if we can allocate memory and tasks are running
+      size_t free_heap = esp_get_free_heap_size();
+      return free_heap > 10000;
+
+sensor:
+  - platform: template
+    name: "Free Heap"
+    id: free_heap_sensor
+    unit_of_measurement: "bytes"
+    update_interval: 1s
+    lambda: |-
+      size_t free_heap = esp_get_free_heap_size();
+      ESP_LOGD("diagnostic", "Free heap: %zu bytes", free_heap);
+      return free_heap;
+
+  - platform: uptime
+    name: "Uptime"
+    id: uptime_sensor
+
+# Interval to log system status and detect hangs
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          static uint32_t counter = 0;
+          counter++;
+          ESP_LOGI("diagnostic", "System running - counter: %u, heap: %zu", 
+                   counter, esp_get_free_heap_size());
+          
+          // If we reach this point, app_main() completed successfully
+          if (counter == 1) {
+            ESP_LOGI("diagnostic", "SUCCESS: app_main() completed and ESPHome is running!");
+          }

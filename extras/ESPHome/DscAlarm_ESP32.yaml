@@ -41,46 +41,64 @@ esp32:
     type: esp-idf
     # Use ESPHome default versions for maximum compatibility
     
-    # ESP-IDF specific configurations to prevent boot hanging
+    # CRITICAL: Enhanced ESP-IDF configurations to prevent ESPHome startup hang after app_main()
+    # These settings ensure ESPHome properly takes control after "Returned from app_main()"
     sdkconfig_options:
-      # Main task stack size - increase to prevent stack overflow during init
-      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "16384"  # Default is 3584, increase to 16KB
+      # CRITICAL: Main task configuration for ESPHome initialization
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "32768"        # 32KB for ESPHome startup (vs 3.5KB default)
+      CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0: y           # Pin to CPU0 for consistent scheduling
+      CONFIG_ESP_MAIN_TASK_PRIORITY: "1"              # High priority for ESPHome startup
       
-      # System event task stack size
-      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "4096"  # Increase to 4KB
+      # Enhanced system event task for ESPHome component initialization  
+      CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE: "8192"  # 8KB for component events
+      CONFIG_ESP_SYSTEM_EVENT_TASK_PRIORITY: "20"      # Appropriate priority for system events
       
-      # Timer task stack size  
-      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "4096"  # Increase to 4KB
+      # FreeRTOS scheduler optimizations for ESPHome main loop
+      CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH: "8192"   # 8KB timer task for ESPHome
+      CONFIG_FREERTOS_TIMER_TASK_PRIORITY: "22"        # High priority for ESPHome timers
+      CONFIG_FREERTOS_IDLE_TASK_STACKSIZE: "4096"      # 4KB idle task (vs 1.5KB default)
+      CONFIG_FREERTOS_HZ: "1000"                       # 1ms tick for responsive ESPHome operation
       
-      # WiFi task stack sizes for stability
-      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "6144"  # Increase to 6KB
-      CONFIG_ESP32_WIFI_RX_BUFFER_NUM: "16"     # Increase WiFi buffers
-      CONFIG_ESP32_WIFI_TX_BUFFER_NUM: "16"
+      # CRITICAL: Enhanced task watchdog for ESPHome component initialization
+      # Prevents system hang during component setup after app_main() returns
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "300"             # 5 minutes timeout for full initialization
+      CONFIG_ESP_TASK_WDT_EN: y                        # Enable task watchdog
+      CONFIG_ESP_TASK_WDT_INIT: y                      # Initialize watchdog early
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: y      # Monitor idle task on CPU0
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: y      # Monitor idle task on CPU1
+      CONFIG_ESP_TASK_WDT_PANIC: n                     # Reset instead of panic on timeout
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_ALL_CORES: y # Monitor all cores
       
-      # Memory management optimizations
-      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "64"  # Increase event queue
-      CONFIG_FREERTOS_HZ: "1000"                # 1ms tick for responsive DSC processing
+      # Interrupt watchdog for system stability
+      CONFIG_ESP_INT_WDT_EN: y                         # Enable interrupt watchdog
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "10000"           # 10 second timeout
+      CONFIG_ESP_INT_WDT_CHECK_CPU1: y                 # Monitor both CPUs
       
-      # CPU frequency configuration - CRITICAL for performance
-      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y      # Run at 240MHz for maximum performance
-      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"  # Set CPU frequency to 240MHz
-      # Ensure other CPU frequency options are explicitly disabled
-      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n       # Disable 80MHz option
-      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n      # Disable 160MHz option
-      # Crystal frequency configuration (required for stable 240MHz operation)
-      CONFIG_ESP32_XTAL_FREQ_40: y              # Use 40MHz crystal (required for 240MHz)
-      CONFIG_ESP32_XTAL_FREQ_26: n              # Disable 26MHz crystal option
+      # CPU and memory management optimizations
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y             # Maximum CPU frequency
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"         # 240MHz for fast initialization
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_80: n              # Disable lower frequencies
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: n
+      CONFIG_ESP32_XTAL_FREQ_40: y                     # 40MHz crystal for stable 240MHz
+      CONFIG_ESP32_XTAL_FREQ_26: n
       
-      # Watchdog timer configurations
-      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"       # 30 second timeout
-      CONFIG_ESP_TASK_WDT_EN: y                 # Enable watchdog
-      CONFIG_ESP_TASK_WDT_INIT: y               # Initialize early
+      # CRITICAL: Disable power management for consistent ESPHome operation
+      CONFIG_PM_ENABLE: n                              # No power management interference
       
-      # Interrupt timing for DSC Keybus
-      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "2000"    # 2 second interrupt watchdog
+      # Memory management optimizations for ESPHome startup
+      CONFIG_ESP_SYSTEM_EVENT_QUEUE_SIZE: "128"        # Large event queue for components
+      CONFIG_HEAP_POISONING_LIGHT: y                   # Light heap debugging (low overhead)
+      CONFIG_HEAP_POISONING_COMPREHENSIVE: n           # Avoid heavy memory overhead
+      CONFIG_HEAP_TRACING_STANDALONE: n                # Disable to save memory during startup
+      CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS: n       # Allow graceful handling of allocation failures
       
-      # Disable power management for consistent DSC timing
-      CONFIG_PM_ENABLE: n
+      # WiFi task optimization for non-blocking operation
+      CONFIG_ESP32_WIFI_TASK_STACK_SIZE: "8192"        # 8KB WiFi stack
+      CONFIG_ESP32_WIFI_TASK_PRIORITY: "18"            # Lower priority than main ESPHome tasks
+      CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "8"      # Reduce static buffers for more free memory
+      CONFIG_ESP32_WIFI_STATIC_TX_BUFFER_NUM: "8"
+      CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM: "16"    # Keep dynamic buffers
+      CONFIG_ESP32_WIFI_DYNAMIC_TX_BUFFER_NUM: "16"
       
   # ===== DSC CLASSIC SERIES ONLY =====
   # Uncomment these lines ONLY if you have a DSC Classic series panel:
