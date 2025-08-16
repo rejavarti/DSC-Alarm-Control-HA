@@ -1,0 +1,1343 @@
+INFO ESPHome 2025.7.5
+INFO Reading configuration dsc_minimal_test.yaml...
+INFO Generating C++ source...
+INFO Core config, version changed, cleaning build files...
+INFO Compiling app...
+Processing dsc-minimal-test (board: esp32dev; framework: espidf; platform: https://github.com/pioarduino/platform-espressif32/releases/download/53.03.13/platform-espressif32.zip)
+--------------------------------------------------------------------------------
+Library Manager: Installing esphome/noise-c @ 0.1.10
+INFO Installing esphome/noise-c @ 0.1.10
+[?25lUnpacking  [------------------------------------]    0%[?25lUnpacking  [------------------------------------]    1%[?25lUnpacking  [------------------------------------]    2%[?25lUnpacking  [#-----------------------------------]    4%[?25lUnpacking  [#-----------------------------------]    5%[?25lUnpacking  [##----------------------------------]    6%[?25lUnpacking  [##----------------------------------]    8%[?25lUnpacking  [###---------------------------------]    9%[?25lUnpacking  [###---------------------------------]   10%[?25lUnpacking  [####--------------------------------]   12%[?25lUnpacking  [####--------------------------------]   13%[?25lUnpacking  [#####-------------------------------]   14%[?25lUnpacking  [#####-------------------------------]   16%[?25lUnpacking  [######------------------------------]   17%[?25lUnpacking  [######------------------------------]   18%[?25lUnpacking  [#######-----------------------------]   20%[?25lUnpacking  [#######-----------------------------]   21%[?25lUnpacking  [########----------------------------]   22%[?25lUnpacking  [########----------------------------]   24%[?25lUnpacking  [#########---------------------------]   25%[?25lUnpacking  [#########---------------------------]   27%[?25lUnpacking  [##########--------------------------]   28%[?25lUnpacking  [##########--------------------------]   29%[?25lUnpacking  [###########-------------------------]   31%[?25lUnpacking  [###########-------------------------]   32%[?25lUnpacking  [############------------------------]   33%[?25lUnpacking  [############------------------------]   35%[?25lUnpacking  [#############-----------------------]   36%[?25lUnpacking  [#############-----------------------]   37%[?25lUnpacking  [##############----------------------]   39%[?25lUnpacking  [##############----------------------]   40%[?25lUnpacking  [###############---------------------]   41%[?25lUnpacking  [###############---------------------]   43%[?25lUnpacking  [################--------------------]   44%[?25lUnpacking  [################--------------------]   45%[?25lUnpacking  [#################-------------------]   47%[?25lUnpacking  [#################-------------------]   48%[?25lUnpacking  [##################------------------]   50%[?25lUnpacking  [##################------------------]   51%[?25lUnpacking  [##################------------------]   52%[?25lUnpacking  [###################-----------------]   54%[?25lUnpacking  [###################-----------------]   55%[?25lUnpacking  [####################----------------]   56%[?25lUnpacking  [####################----------------]   58%[?25lUnpacking  [#####################---------------]   59%[?25lUnpacking  [#####################---------------]   60%[?25lUnpacking  [######################--------------]   62%[?25lUnpacking  [######################--------------]   63%[?25lUnpacking  [#######################-------------]   64%[?25lUnpacking  [#######################-------------]   66%[?25lUnpacking  [########################------------]   67%[?25lUnpacking  [########################------------]   68%[?25lUnpacking  [#########################-----------]   70%[?25lUnpacking  [#########################-----------]   71%[?25lUnpacking  [##########################----------]   72%[?25lUnpacking  [##########################----------]   74%[?25lUnpacking  [###########################---------]   75%[?25lUnpacking  [###########################---------]   77%[?25lUnpacking  [############################--------]   78%[?25lUnpacking  [############################--------]   79%[?25lUnpacking  [#############################-------]   81%[?25lUnpacking  [#############################-------]   82%[?25lUnpacking  [##############################------]   83%[?25lUnpacking  [##############################------]   85%[?25lUnpacking  [###############################-----]   86%[?25lUnpacking  [###############################-----]   87%[?25lUnpacking  [################################----]   89%[?25lUnpacking  [################################----]   90%[?25lUnpacking  [#################################---]   91%[?25lUnpacking  [#################################---]   93%[?25lUnpacking  [##################################--]   94%[?25lUnpacking  [##################################--]   95%[?25lUnpacking  [###################################-]   97%[?25lUnpacking  [###################################-]   98%[?25lUnpacking  [####################################]  100%[?25h
+Library Manager: noise-c@0.1.10 has been installed!
+INFO noise-c@0.1.10 has been installed!
+Library Manager: Resolving dependencies...
+INFO Resolving dependencies...
+Library Manager: Installing esphome/libsodium @ 1.10020.7
+INFO Installing esphome/libsodium @ 1.10020.7
+[?25lUnpacking  [------------------------------------]    0%[?25lUnpacking  [------------------------------------]    1%[?25lUnpacking  [------------------------------------]    2%[?25lUnpacking  [#-----------------------------------]    3%[?25lUnpacking  [#-----------------------------------]    4%[?25lUnpacking  [#-----------------------------------]    5%[?25lUnpacking  [##----------------------------------]    6%[?25lUnpacking  [##----------------------------------]    7%[?25lUnpacking  [###---------------------------------]    8%[?25lUnpacking  [###---------------------------------]    9%[?25lUnpacking  [###---------------------------------]   10%[?25lUnpacking  [####--------------------------------]   11%[?25lUnpacking  [####--------------------------------]   12%[?25lUnpacking  [####--------------------------------]   13%[?25lUnpacking  [#####-------------------------------]   14%[?25lUnpacking  [#####-------------------------------]   16%[?25lUnpacking  [######------------------------------]   17%[?25lUnpacking  [######------------------------------]   18%[?25lUnpacking  [######------------------------------]   19%[?25lUnpacking  [#######-----------------------------]   20%[?25lUnpacking  [#######-----------------------------]   21%[?25lUnpacking  [########----------------------------]   22%[?25lUnpacking  [########----------------------------]   23%[?25lUnpacking  [########----------------------------]   24%[?25lUnpacking  [#########---------------------------]   25%[?25lUnpacking  [#########---------------------------]   26%[?25lUnpacking  [#########---------------------------]   27%[?25lUnpacking  [##########--------------------------]   28%[?25lUnpacking  [##########--------------------------]   29%[?25lUnpacking  [###########-------------------------]   30%[?25lUnpacking  [###########-------------------------]   32%[?25lUnpacking  [###########-------------------------]   33%[?25lUnpacking  [############------------------------]   34%[?25lUnpacking  [############------------------------]   35%[?25lUnpacking  [#############-----------------------]   36%[?25lUnpacking  [#############-----------------------]   37%[?25lUnpacking  [#############-----------------------]   38%[?25lUnpacking  [##############----------------------]   39%[?25lUnpacking  [##############----------------------]   40%[?25lUnpacking  [##############----------------------]   41%[?25lUnpacking  [###############---------------------]   42%[?25lUnpacking  [###############---------------------]   43%[?25lUnpacking  [################--------------------]   44%[?25lUnpacking  [################--------------------]   45%[?25lUnpacking  [################--------------------]   46%[?25lUnpacking  [#################-------------------]   48%[?25lUnpacking  [#################-------------------]   49%[?25lUnpacking  [##################------------------]   50%[?25lUnpacking  [##################------------------]   51%[?25lUnpacking  [##################------------------]   52%[?25lUnpacking  [###################-----------------]   53%[?25lUnpacking  [###################-----------------]   54%[?25lUnpacking  [###################-----------------]   55%[?25lUnpacking  [####################----------------]   56%[?25lUnpacking  [####################----------------]   57%[?25lUnpacking  [#####################---------------]   58%[?25lUnpacking  [#####################---------------]   59%[?25lUnpacking  [#####################---------------]   60%[?25lUnpacking  [######################--------------]   61%[?25lUnpacking  [######################--------------]   62%[?25lUnpacking  [#######################-------------]   64%[?25lUnpacking  [#######################-------------]   65%[?25lUnpacking  [#######################-------------]   66%[?25lUnpacking  [########################------------]   67%[?25lUnpacking  [########################------------]   68%[?25lUnpacking  [########################------------]   69%[?25lUnpacking  [#########################-----------]   70%[?25lUnpacking  [#########################-----------]   71%[?25lUnpacking  [##########################----------]   72%[?25lUnpacking  [##########################----------]   73%[?25lUnpacking  [##########################----------]   74%[?25lUnpacking  [###########################---------]   75%[?25lUnpacking  [###########################---------]   76%[?25lUnpacking  [############################--------]   77%[?25lUnpacking  [############################--------]   79%[?25lUnpacking  [############################--------]   80%[?25lUnpacking  [#############################-------]   81%[?25lUnpacking  [#############################-------]   82%[?25lUnpacking  [#############################-------]   83%[?25lUnpacking  [##############################------]   84%[?25lUnpacking  [##############################------]   85%[?25lUnpacking  [###############################-----]   86%[?25lUnpacking  [###############################-----]   87%[?25lUnpacking  [###############################-----]   88%[?25lUnpacking  [################################----]   89%[?25lUnpacking  [################################----]   90%[?25lUnpacking  [#################################---]   91%[?25lUnpacking  [#################################---]   92%[?25lUnpacking  [#################################---]   93%[?25lUnpacking  [##################################--]   95%[?25lUnpacking  [##################################--]   96%[?25lUnpacking  [##################################--]   97%[?25lUnpacking  [###################################-]   98%[?25lUnpacking  [###################################-]   99%[?25lUnpacking  [####################################]  100%[?25h
+Library Manager: libsodium@1.10020.7 has been installed!
+INFO libsodium@1.10020.7 has been installed!
+HARDWARE: ESP32 240MHz, 320KB RAM, 4MB Flash
+ - framework-espidf @ 3.50302.0 (5.3.2) 
+ - tool-cmake @ 3.30.2 
+ - tool-esptoolpy @ 4.8.6 
+ - tool-mklittlefs @ 3.2.0 
+ - tool-ninja @ 1.7.1 
+ - tool-riscv32-esp-elf-gdb @ 14.2.0+20240403 
+ - tool-xtensa-esp-elf-gdb @ 14.2.0+20240403 
+ - toolchain-esp32ulp @ 2.35.0-20220830 
+ - toolchain-xtensa-esp-elf @ 13.2.0+20240530
+Reading CMake configuration...
+Generating assembly for certificate bundle...
+Dependency Graph
+|-- noise-c @ 0.1.10
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/api_connection.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/api_frame_helper.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/api_pb2.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/api_pb2_service.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/api_server.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/list_entities.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/proto.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/api/subscribe_state.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dscClassic.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dscKeybusInterface.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dscKeybusPrintData.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dscKeybusProcessData.cpp.o
+src/esphome/components/dsc_keybus/dscClassic.cpp:27:17: note: '#pragma message: dscClassic.cpp: dscClassicSeries is defined - compiling Classic interface'
+   27 | #pragma message "dscClassic.cpp: dscClassicSeries is defined - compiling Classic interface"
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dscKeypad.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dsc_esp_idf_timer_fix.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dsc_keybus.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dsc_static_variables.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/dsc_keybus/dsc_wrapper.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/esp32/core.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/esp32/gpio.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/esp32/helpers.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/esp32/preferences.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/esphome/ota/ota_esphome.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/logger/logger.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/logger/logger_esp32.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/logger/task_log_buffer.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/md5/md5.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/mdns/mdns_component.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/mdns/mdns_esp32.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/network/util.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/ota/ota_backend.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/ota/ota_backend_esp_idf.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/safe_mode/safe_mode.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/socket/bsd_sockets_impl.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/socket/socket.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/template/text_sensor/template_text_sensor.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/text_sensor/filter.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/text_sensor/text_sensor.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/wifi/wifi_component.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/components/wifi/wifi_component_esp_idf.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/application.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/color.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/component.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/component_iterator.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/controller.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/entity_base.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/helpers.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/log.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/ring_buffer.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/scheduler.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/string_ref.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/time.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/esphome/core/util.cpp.o
+Compiling .pioenvs/dsc-minimal-test/src/main.cpp.o
+Generating LD script .pioenvs/dsc-minimal-test/esp-idf/esp_system/ld/memory.ld.in
+Generating LD script .pioenvs/dsc-minimal-test/memory.ld
+Generating LD script .pioenvs/dsc-minimal-test/esp-idf/esp_system/ld/sections.ld.in
+Compiling .pioenvs/dsc-minimal-test/app_trace/app_trace.c.o
+Compiling .pioenvs/dsc-minimal-test/app_trace/app_trace_util.c.o
+Compiling .pioenvs/dsc-minimal-test/app_trace/host_file_io.c.o
+Compiling .pioenvs/dsc-minimal-test/app_trace/port/port_uart.c.o
+Compiling .pioenvs/dsc-minimal-test/app_update/esp_ota_ops.c.o
+Compiling .pioenvs/dsc-minimal-test/app_update/esp_ota_app_desc.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/app_trace/libapp_trace.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/app_trace/libapp_trace.a
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_common.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_common_loader.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_clock_init.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_mem.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/app_update/libapp_update.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/app_update/libapp_update.a
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_random.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_efuse.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/flash_encrypt.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/secure_boot.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_random_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/bootloader_flash/src/bootloader_flash.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/bootloader_flash/src/flash_qio_mode.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/bootloader_utility.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/flash_partitions.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/esp_image_format.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/idf/bootloader_sha.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader_support/src/esp32/secure_boot_secure_features.c.o
+Compiling .pioenvs/dsc-minimal-test/cmock/CMock/src/cmock.c.o
+Compiling .pioenvs/dsc-minimal-test/console/commands.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/cmock/libcmock.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/cmock/libcmock.a
+Compiling .pioenvs/dsc-minimal-test/console/esp_console_common.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/bootloader_support/libbootloader_support.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/bootloader_support/libbootloader_support.a
+Compiling .pioenvs/dsc-minimal-test/console/split_argv.c.o
+Compiling .pioenvs/dsc-minimal-test/console/linenoise/linenoise.c.o
+Compiling .pioenvs/dsc-minimal-test/console/esp_console_repl_chip.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_cmd.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_date.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_dbl.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_dstr.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_end.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_file.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_hashtable.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_int.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_lit.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_rem.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_rex.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_str.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/arg_utils.c.o
+Compiling .pioenvs/dsc-minimal-test/console/argtable3/argtable3.c.o
+Compiling .pioenvs/dsc-minimal-test/cxx/cxx_exception_stubs.cpp.o
+Compiling .pioenvs/dsc-minimal-test/cxx/cxx_guards.cpp.o
+Compiling .pioenvs/dsc-minimal-test/cxx/cxx_init.cpp.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/adc_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/adc_dma_legacy.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/console/libconsole.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/console/libconsole.a
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/dac_common_legacy.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/cxx/libcxx.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/cxx/libcxx.a
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/esp32/dac_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/timer_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/i2c/i2c.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/i2s_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/mcpwm_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/pcnt_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/rmt_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/sigma_delta_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/touch_sensor/touch_sensor_common.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/touch_sensor/esp32/touch_sensor.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/twai/twai.c.o
+Compiling .pioenvs/dsc-minimal-test/driver/deprecated/adc_i2s_deprecated.c.o
+Compiling .pioenvs/dsc-minimal-test/efuse/esp32/esp_efuse_table.c.o
+Compiling .pioenvs/dsc-minimal-test/efuse/esp32/esp_efuse_fields.c.o
+Compiling .pioenvs/dsc-minimal-test/efuse/esp32/esp_efuse_utility.c.o
+Compiling .pioenvs/dsc-minimal-test/efuse/src/esp_efuse_api.c.o
+Compiling .pioenvs/dsc-minimal-test/efuse/src/esp_efuse_fields.c.o
+Compiling .pioenvs/dsc-minimal-test/efuse/src/esp_efuse_utility.c.o
+Compiling .pioenvs/dsc-minimal-test/efuse/src/efuse_controller/keys/without_key_purposes/three_key_blocks/esp_efuse_api_key.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/driver/libdriver.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/driver/libdriver.a
+Compiling .pioenvs/dsc-minimal-test/efuse/src/esp_efuse_startup.c.o
+Compiling .pioenvs/dsc-minimal-test/esp-tls/esp_tls.c.o
+Compiling .pioenvs/dsc-minimal-test/esp-tls/esp-tls-crypto/esp_tls_crypto.c.o
+Compiling .pioenvs/dsc-minimal-test/esp-tls/esp_tls_error_capture.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/efuse/libefuse.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/efuse/libefuse.a
+Compiling .pioenvs/dsc-minimal-test/esp-tls/esp_tls_platform_port.c.o
+Compiling .pioenvs/dsc-minimal-test/esp-tls/esp_tls_mbedtls.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/adc_oneshot.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/adc_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/adc_cali.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/adc_cali_curve_fitting.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/deprecated/esp_adc_cal_common_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/adc_continuous.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/esp32/adc_dma.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp-tls/libesp-tls.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp-tls/libesp-tls.a
+Compiling .pioenvs/dsc-minimal-test/esp_adc/esp32/adc_cali_line_fitting.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_adc/deprecated/esp32/esp_adc_cal_legacy.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_app_format/esp_app_desc.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_bootloader_format/esp_bootloader_desc.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_coex/esp32/esp_coex_adapter.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_adc/libesp_adc.a
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_app_format/libesp_app_format.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_adc/libesp_adc.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_app_format/libesp_app_format.a
+Compiling .pioenvs/dsc-minimal-test/esp_coex/src/coexist_debug_diagram.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_coex/src/coexist_debug.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_common/src/esp_err_to_name.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_coex/libesp_coex.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_coex/libesp_coex.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_cam/esp_cam_ctlr.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_cam/dvp_share_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_dac/dac_oneshot.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_dac/dac_cosine.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_cam/libesp_driver_cam.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_cam/libesp_driver_cam.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_dac/dac_continuous.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_dac/dac_common.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_common/libesp_common.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_common/libesp_common.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_dac/esp32/dac_dma.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_gpio/src/gpio.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_gpio/src/gpio_glitch_filter_ops.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_gpio/src/rtc_io.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_gptimer/src/gptimer.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_dac/libesp_driver_dac.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_dac/libesp_driver_dac.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_gptimer/src/gptimer_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_i2c/i2c_master.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_i2c/i2c_common.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_gptimer/libesp_driver_gptimer.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_gptimer/libesp_driver_gptimer.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_i2c/i2c_slave.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_i2s/i2s_common.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_gpio/libesp_driver_gpio.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_gpio/libesp_driver_gpio.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_i2s/i2s_platform.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_i2s/i2s_std.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_i2s/i2s_pdm.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_ledc/src/ledc.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_i2c/libesp_driver_i2c.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_i2c/libesp_driver_i2c.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_cap.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_cmpr.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_com.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_fault.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_gen.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_oper.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_sync.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_mcpwm/src/mcpwm_timer.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_ledc/libesp_driver_ledc.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_ledc/libesp_driver_ledc.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_pcnt/src/pulse_cnt.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_rmt/src/rmt_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_rmt/src/rmt_encoder.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_rmt/src/rmt_rx.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_rmt/src/rmt_tx.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_sdio/src/sdio_slave.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_sdm/src/sdm.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_sdmmc/src/sdmmc_transaction.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdio/libesp_driver_sdio.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdio/libesp_driver_sdio.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_sdmmc/src/sdmmc_host.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_sdspi/src/sdspi_crc.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_sdspi/src/sdspi_host.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_sdspi/src/sdspi_transaction.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_spi/src/gpspi/spi_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_spi/src/gpspi/spi_master.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdmmc/libesp_driver_sdmmc.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdmmc/libesp_driver_sdmmc.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_spi/src/gpspi/spi_slave.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
+Compiling .pioenvs/dsc-minimal-test/esp_driver_spi/src/gpspi/spi_dma.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_uart/src/uart.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_driver_uart/src/uart_vfs.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/esp_eth.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_spi/libesp_driver_spi.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_spi/libesp_driver_spi.a
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/phy/esp_eth_phy_802_3.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/esp_eth_netif_glue.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/mac/esp_eth_mac_esp.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/mac/esp_eth_mac_esp_dma.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/mac/esp_eth_mac_esp_gpio.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/phy/esp_eth_phy_dp83848.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/phy/esp_eth_phy_ip101.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/phy/esp_eth_phy_ksz80xx.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_driver_uart/libesp_driver_uart.a
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/phy/esp_eth_phy_lan87xx.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_driver_uart/libesp_driver_uart.a
+Compiling .pioenvs/dsc-minimal-test/esp_eth/src/phy/esp_eth_phy_rtl8201.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_event/default_event_loop.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_event/esp_event.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_event/esp_event_private.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_eth/libesp_eth.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_eth/libesp_eth.a
+Compiling .pioenvs/dsc-minimal-test/esp_gdbstub/src/gdbstub.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_gdbstub/src/gdbstub_transport.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_gdbstub/src/packet.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_gdbstub/src/port/xtensa/gdbstub_xtensa.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_gdbstub/src/port/xtensa/gdbstub-entry.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_gdbstub/src/port/xtensa/xt_debugexception.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_hid/src/esp_hidd.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_event/libesp_event.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_event/libesp_event.a
+Compiling .pioenvs/dsc-minimal-test/esp_hid/src/esp_hidh.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hid/src/esp_hid_common.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_gdbstub/libesp_gdbstub.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_gdbstub/libesp_gdbstub.a
+Compiling .pioenvs/dsc-minimal-test/esp_http_client/esp_http_client.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_http_client/lib/http_auth.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_http_client/lib/http_header.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_hid/libesp_hid.a
+Compiling .pioenvs/dsc-minimal-test/esp_http_client/lib/http_utils.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_hid/libesp_hid.a
+Compiling .pioenvs/dsc-minimal-test/esp_http_server/src/httpd_main.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_http_server/src/httpd_parse.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_http_server/src/httpd_sess.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_http_server/src/httpd_txrx.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_http_server/src/httpd_uri.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_http_server/src/httpd_ws.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_http_client/libesp_http_client.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_http_client/libesp_http_client.a
+Compiling .pioenvs/dsc-minimal-test/esp_http_server/src/util/ctrl_sock.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_https_ota/src/esp_https_ota.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_https_server/src/https_server.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/cpu.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_http_server/libesp_http_server.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_http_server/libesp_http_server.a
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/esp_cpu_intr.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/esp_memory_utils.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/cpu_region_protect.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/esp_clk.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/clk_ctrl_os.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_https_ota/libesp_https_ota.a
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_https_server/libesp_https_server.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_https_ota/libesp_https_ota.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_https_server/libesp_https_server.a
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/hw_random.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/intr_alloc.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/mac_addr.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/periph_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/revision.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/rtc_module.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/sleep_modem.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/sleep_modes.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/sleep_console.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/sleep_gpio.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/sleep_event.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/regi2c_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/esp_gpio_reserve.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/sar_periph_ctrl_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/io_mux.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/esp_clk_tree.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp_clk_tree_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/dma/esp_dma_utils.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/dma/gdma_link.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/spi_share_hw_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/spi_bus_lock.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/adc_share_hw_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/rtc_wdt.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/mspi_timing_tuning.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/sleep_wake_stub.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/esp_clock_output.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/rtc_clk.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/rtc_clk_init.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/rtc_init.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/rtc_sleep.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/rtc_time.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/chip_info.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/cache_sram_mmu.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/esp_crypto_lock.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_hw_support/port/esp32/sar_periph_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/src/esp_lcd_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/src/esp_lcd_panel_io.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/src/esp_lcd_panel_nt35510.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_hw_support/libesp_hw_support.a
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/src/esp_lcd_panel_ssd1306.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_hw_support/libesp_hw_support.a
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/src/esp_lcd_panel_st7789.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/src/esp_lcd_panel_ops.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/i2c/esp_lcd_panel_io_i2c_v1.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/i2c/esp_lcd_panel_io_i2c_v2.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/spi/esp_lcd_panel_io_spi.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_lcd/i80/esp_lcd_panel_io_i2s.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_local_ctrl/src/esp_local_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_local_ctrl/src/esp_local_ctrl_handler.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_local_ctrl/proto-c/esp_local_ctrl.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_local_ctrl/src/esp_local_ctrl_transport_httpd.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_mm/esp_mmu_map.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_mm/port/esp32/ext_mem_layout.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_mm/esp_cache.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_lcd/libesp_lcd.a
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_local_ctrl/libesp_local_ctrl.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_lcd/libesp_lcd.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_local_ctrl/libesp_local_ctrl.a
+Compiling .pioenvs/dsc-minimal-test/esp_mm/cache_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_mm/heap_align_hw.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/esp_netif_handlers.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/esp_netif_objects.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/esp_netif_defaults.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/lwip/esp_netif_lwip.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/lwip/esp_netif_sntp.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/lwip/esp_netif_lwip_defaults.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_mm/libesp_mm.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_mm/libesp_mm.a
+Compiling .pioenvs/dsc-minimal-test/esp_netif/lwip/netif/wlanif.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/lwip/netif/ethernetif.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_netif/lwip/netif/esp_pbuf_ref.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_partition/partition.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_partition/partition_target.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_phy/src/phy_override.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_phy/src/lib_printf.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_phy/src/phy_common.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_partition/libesp_partition.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_partition/libesp_partition.a
+Compiling .pioenvs/dsc-minimal-test/esp_phy/src/phy_init.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_phy/esp32/phy_init_data.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_phy/src/btbb_init.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_pm/pm_locks.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_pm/pm_trace.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_netif/libesp_netif.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_netif/libesp_netif.a
+Compiling .pioenvs/dsc-minimal-test/esp_pm/pm_impl.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_ringbuf/ringbuf.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_phy/libesp_phy.a
+Compiling .pioenvs/dsc-minimal-test/esp_rom/patches/esp_rom_crc.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_phy/libesp_phy.a
+Compiling .pioenvs/dsc-minimal-test/esp_rom/patches/esp_rom_sys.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_rom/patches/esp_rom_uart.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_rom/patches/esp_rom_spiflash.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_rom/patches/esp_rom_efuse.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_rom/patches/esp_rom_longjmp.S.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_pm/libesp_pm.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_pm/libesp_pm.a
+Compiling .pioenvs/dsc-minimal-test/esp_system/esp_err.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/crosscore_int.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/esp_ipc.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/freertos_hooks.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_rom/libesp_rom.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_rom/libesp_rom.a
+Compiling .pioenvs/dsc-minimal-test/esp_system/int_wdt.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/panic.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/esp_system.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_ringbuf/libesp_ringbuf.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_ringbuf/libesp_ringbuf.a
+Compiling .pioenvs/dsc-minimal-test/esp_system/startup.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/startup_funcs.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/system_time.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/stack_check.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/ubsan.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/xt_wdt.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/task_wdt/task_wdt.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/task_wdt/task_wdt_impl_timergroup.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/cpu_start.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/panic_handler.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/esp_system_chip.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/image_process.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/brownout.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/esp_ipc_isr.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/esp_ipc_isr_port.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/esp_ipc_isr_handler.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/esp_ipc_isr_routines.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/panic_arch.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/panic_handler_asm.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/expression_with_stack.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/expression_with_stack_asm.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/debug_helpers.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/debug_helpers_asm.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/debug_stubs.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/arch/xtensa/trax.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/soc/esp32/highint_hdl.S.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/soc/esp32/clk.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/soc/esp32/reset_reason.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/soc/esp32/system_internal.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_system/port/soc/esp32/cache_err_int.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_timer/src/esp_timer.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_timer/src/esp_timer_init.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_timer/src/ets_timer_legacy.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_system/libesp_system.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_system/libesp_system.a
+Compiling .pioenvs/dsc-minimal-test/esp_timer/src/system_time.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_timer/src/esp_timer_impl_common.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_timer/src/esp_timer_impl_lac.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_vfs_console/vfs_console.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/lib_printf.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/mesh_event.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/smartconfig.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_timer/libesp_timer.a
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_vfs_console/libesp_vfs_console.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_vfs_console/libesp_vfs_console.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_timer/libesp_timer.a
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/wifi_init.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/wifi_default.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/wifi_netif.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/wifi_default_ap.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/esp32/esp_adapter.c.o
+Compiling .pioenvs/dsc-minimal-test/esp_wifi/src/smartconfig_ack.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_init.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_common.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_flash.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_uart.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_elf.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_binary.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/esp_wifi/libesp_wifi.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/esp_wifi/libesp_wifi.a
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_sha.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/core_dump_crc.c.o
+Compiling .pioenvs/dsc-minimal-test/espcoredump/src/port/xtensa/core_dump_port.c.o
+Compiling .pioenvs/dsc-minimal-test/managed_components/espressif__mdns/mdns.c.o
+Compiling .pioenvs/dsc-minimal-test/managed_components/espressif__mdns/mdns_mem_caps.c.o
+Compiling .pioenvs/dsc-minimal-test/managed_components/espressif__mdns/mdns_networking_lwip.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/espcoredump/libespcoredump.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/espcoredump/libespcoredump.a
+Compiling .pioenvs/dsc-minimal-test/managed_components/espressif__mdns/mdns_console.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/diskio/diskio.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/diskio/diskio_rawflash.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/diskio/diskio_wl.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/src/ff.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/src/ffunicode.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/port/freertos/ffsystem.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/diskio/diskio_sdmmc.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/vfs/vfs_fat.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/vfs/vfs_fat_sdmmc.c.o
+Compiling .pioenvs/dsc-minimal-test/fatfs/vfs/vfs_fat_spiflash.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/heap_idf.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/app_startup.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/port_common.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/fatfs/libfatfs.a
+Compiling .pioenvs/dsc-minimal-test/freertos/port_systick.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/fatfs/libfatfs.a
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/list.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/queue.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/tasks.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/timers.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/event_groups.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/stream_buffer.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/portable/xtensa/port.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/portable/xtensa/xtensa_init.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/FreeRTOS-Kernel/portable/xtensa/xtensa_overlay_os_hook.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/esp_additions/freertos_compatibility.c.o
+Compiling .pioenvs/dsc-minimal-test/freertos/esp_additions/idf_additions.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/hal_utils.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/mpu_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/efuse_hal.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/freertos/libfreertos.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/freertos/libfreertos.a
+Compiling .pioenvs/dsc-minimal-test/hal/esp32/efuse_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/wdt_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/mmu_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/esp32/cache_hal_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/color_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/spi_flash_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/spi_flash_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/spi_flash_encrypt_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/esp32/clk_tree_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/uart_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/uart_hal_iram.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/espressif__mdns/libespressif__mdns.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/espressif__mdns/libespressif__mdns.a
+Compiling .pioenvs/dsc-minimal-test/hal/gpio_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/rtc_io_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/timer_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/ledc_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/ledc_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/i2c_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/i2c_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/rmt_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/pcnt_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/mcpwm_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/twai_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/twai_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/i2s_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/sdm_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/sdmmc_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/emac_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/adc_hal_common.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/adc_oneshot_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/adc_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/mpi_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/sha_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/aes_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/brownout_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/spi_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/spi_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/spi_slave_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/spi_slave_hal_iram.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/sdio_slave_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/esp32/touch_sensor_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/touch_sensor_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/hal/esp32/gpio_hal_workaround.c.o
+Compiling .pioenvs/dsc-minimal-test/heap/heap_caps_base.c.o
+Compiling .pioenvs/dsc-minimal-test/heap/heap_caps.c.o
+Compiling .pioenvs/dsc-minimal-test/heap/heap_caps_init.c.o
+Compiling .pioenvs/dsc-minimal-test/heap/multi_heap.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/hal/libhal.a
+Compiling .pioenvs/dsc-minimal-test/heap/tlsf/tlsf.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/hal/libhal.a
+Compiling .pioenvs/dsc-minimal-test/heap/port/memory_layout_utils.c.o
+Compiling .pioenvs/dsc-minimal-test/heap/port/esp32/memory_layout.c.o
+Compiling .pioenvs/dsc-minimal-test/http_parser/http_parser.c.o
+Compiling .pioenvs/dsc-minimal-test/json/cJSON/cJSON.c.o
+Compiling .pioenvs/dsc-minimal-test/json/cJSON/cJSON_Utils.c.o
+Compiling .pioenvs/dsc-minimal-test/log/log.c.o
+Compiling .pioenvs/dsc-minimal-test/log/log_buffers.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/heap/libheap.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/heap/libheap.a
+Compiling .pioenvs/dsc-minimal-test/log/log_freertos.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/apps/sntp/sntp.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/json/libjson.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/json/libjson.a
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/api_lib.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/log/liblog.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/log/liblog.a
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/api_msg.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/err.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/http_parser/libhttp_parser.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/http_parser/libhttp_parser.a
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/if_api.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/netbuf.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/netdb.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/netifapi.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/sockets.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/api/tcpip.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/apps/sntp/sntp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/apps/netbiosns/netbiosns.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/def.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/dns.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/inet_chksum.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/init.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ip.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/mem.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/memp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/netif.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/pbuf.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/raw.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/stats.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/sys.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/tcp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/tcp_in.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/tcp_out.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/timeouts.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/udp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/autoip.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/dhcp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/etharp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/icmp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/igmp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/ip4.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/ip4_napt.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/ip4_addr.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv4/ip4_frag.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/dhcp6.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/ethip6.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/icmp6.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/inet6.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/ip6.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/ip6_addr.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/ip6_frag.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/mld6.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/core/ipv6/nd6.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ethernet.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/bridgeif.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/bridgeif_fdb.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/slipif.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/auth.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/ccp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/chap-md5.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/chap-new.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/chap_ms.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/demand.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/eap.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/ecp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/eui64.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/fsm.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/ipcp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/ipv6cp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/lcp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/magic.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/mppe.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/multilink.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/ppp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/pppapi.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/pppcrypt.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/pppoe.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/pppol2tp.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/pppos.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/upap.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/utils.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/vj.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/port/hooks/tcp_isn_default.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/port/hooks/lwip_default_hooks.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/port/debug/lwip_debug.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/port/sockets_ext.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/port/freertos/sys_arch.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/port/esp32xx/vfs_lwip.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/apps/ping/esp_ping.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/apps/ping/ping.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/apps/ping/ping_sock.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/polarssl/arc4.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/polarssl/des.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/polarssl/md4.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/polarssl/md5.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/lwip/src/netif/ppp/polarssl/sha1.c.o
+Compiling .pioenvs/dsc-minimal-test/lwip/apps/dhcpserver/dhcpserver.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/esp_crt_bundle/esp_crt_bundle.c.o
+Compiling .pioenvs/dsc-minimal-test/.pioenvs/dsc-minimal-test/x509_crt_bundle.S.o
+Compiling .pioenvs/dsc-minimal-test/mqtt/esp-mqtt/mqtt_client.c.o
+Compiling .pioenvs/dsc-minimal-test/mqtt/esp-mqtt/lib/mqtt_msg.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/mbedtls/libmbedtls.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/mbedtls/libmbedtls.a
+Compiling .pioenvs/dsc-minimal-test/mqtt/esp-mqtt/lib/mqtt_outbox.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/lwip/liblwip.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/lwip/liblwip.a
+Compiling .pioenvs/dsc-minimal-test/mqtt/esp-mqtt/lib/platform_esp32_idf.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/abort.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/assert.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/heap.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/locks.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/poll.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/pthread.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/random.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/getentropy.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/reent_init.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/newlib_init.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/syscalls.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/termios.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/stdatomic.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/time.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/sysconf.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/realpath.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/scandir.c.o
+Compiling .pioenvs/dsc-minimal-test/newlib/port/esp_time_impl.c.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_api.cpp.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/mqtt/libmqtt.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/mqtt/libmqtt.a
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_cxx_api.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_item_hash_list.cpp.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/newlib/libnewlib.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/newlib/libnewlib.a
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_page.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_pagemanager.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_storage.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_handle_simple.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_handle_locked.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_partition.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_partition_lookup.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_partition_manager.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_types.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_platform.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_flash/src/nvs_encrypted_partition.cpp.o
+Compiling .pioenvs/dsc-minimal-test/nvs_sec_provider/nvs_sec_provider.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/nvs_sec_provider/libnvs_sec_provider.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/nvs_sec_provider/libnvs_sec_provider.a
+Compiling .pioenvs/dsc-minimal-test/perfmon/xtensa_perfmon_access.c.o
+Compiling .pioenvs/dsc-minimal-test/perfmon/xtensa_perfmon_apis.c.o
+Compiling .pioenvs/dsc-minimal-test/perfmon/xtensa_perfmon_masks.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/perfmon/libperfmon.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/perfmon/libperfmon.a
+Compiling .pioenvs/dsc-minimal-test/protobuf-c/protobuf-c/protobuf-c/protobuf-c.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/common/protocomm.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/proto-c/constants.pb-c.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/nvs_flash/libnvs_flash.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/nvs_flash/libnvs_flash.a
+Compiling .pioenvs/dsc-minimal-test/protocomm/proto-c/sec0.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/proto-c/sec1.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/proto-c/sec2.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/proto-c/session.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/transports/protocomm_console.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/transports/protocomm_httpd.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/security/security0.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/security/security1.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/security/security2.c.o
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/crypto/srp6a/esp_srp.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/protobuf-c/libprotobuf-c.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/protobuf-c/libprotobuf-c.a
+Compiling .pioenvs/dsc-minimal-test/protocomm/src/crypto/srp6a/esp_srp_mpi.c.o
+Compiling .pioenvs/dsc-minimal-test/pthread/pthread.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/protocomm/libprotocomm.a
+Compiling .pioenvs/dsc-minimal-test/pthread/pthread_cond_var.c.o
+Compiling .pioenvs/dsc-minimal-test/pthread/pthread_local_storage.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/protocomm/libprotocomm.a
+Compiling .pioenvs/dsc-minimal-test/pthread/pthread_rwlock.c.o
+Compiling .pioenvs/dsc-minimal-test/pthread/pthread_semaphore.c.o
+Compiling .pioenvs/dsc-minimal-test/sdmmc/sdmmc_cmd.c.o
+Compiling .pioenvs/dsc-minimal-test/sdmmc/sdmmc_common.c.o
+Compiling .pioenvs/dsc-minimal-test/sdmmc/sdmmc_init.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/pthread/libpthread.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/pthread/libpthread.a
+Compiling .pioenvs/dsc-minimal-test/sdmmc/sdmmc_io.c.o
+Compiling .pioenvs/dsc-minimal-test/sdmmc/sdmmc_mmc.c.o
+Compiling .pioenvs/dsc-minimal-test/sdmmc/sdmmc_sd.c.o
+Compiling .pioenvs/dsc-minimal-test/sdmmc/sd_pwr_ctrl/sd_pwr_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/lldesc.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/dport_access_common.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/interrupts.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/gpio_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/uart_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/dport_access.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/sdmmc/libsdmmc.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/sdmmc/libsdmmc.a
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/adc_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/emac_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/spi_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/ledc_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/pcnt_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/rmt_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/sdm_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/i2s_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/i2c_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/timer_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/lcd_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/mcpwm_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/mpi_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/sdmmc_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/touch_sensor_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/twai_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/wdt_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/dac_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/rtc_io_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/soc/esp32/sdio_slave_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/flash_brownout_hook.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_drivers.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_generic.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_issi.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/soc/libsoc.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/soc/libsoc.a
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_mxic.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_gd.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_winbond.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_boya.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_mxic_opi.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_chip_th.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/memspi_host_driver.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/cache_utils.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/flash_mmap.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/flash_ops.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_wrap.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/esp_flash_api.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/esp_flash_spi_init.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_os_func_app.c.o
+Compiling .pioenvs/dsc-minimal-test/spi_flash/spi_flash_os_func_noos.c.o
+Compiling .pioenvs/dsc-minimal-test/spiffs/spiffs_api.c.o
+Compiling .pioenvs/dsc-minimal-test/spiffs/spiffs/src/spiffs_cache.c.o
+Compiling .pioenvs/dsc-minimal-test/spiffs/spiffs/src/spiffs_check.c.o
+Compiling .pioenvs/dsc-minimal-test/spiffs/spiffs/src/spiffs_gc.c.o
+Compiling .pioenvs/dsc-minimal-test/spiffs/spiffs/src/spiffs_hydrogen.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/spi_flash/libspi_flash.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/spi_flash/libspi_flash.a
+Compiling .pioenvs/dsc-minimal-test/spiffs/spiffs/src/spiffs_nucleus.c.o
+Compiling .pioenvs/dsc-minimal-test/spiffs/esp_spiffs.c.o
+Compiling .pioenvs/dsc-minimal-test/tcp_transport/transport.c.o
+Compiling .pioenvs/dsc-minimal-test/tcp_transport/transport_ssl.c.o
+Compiling .pioenvs/dsc-minimal-test/tcp_transport/transport_internal.c.o
+Compiling .pioenvs/dsc-minimal-test/tcp_transport/transport_socks_proxy.c.o
+Compiling .pioenvs/dsc-minimal-test/tcp_transport/transport_ws.c.o
+Compiling .pioenvs/dsc-minimal-test/unity/unity/src/unity.c.o
+Compiling .pioenvs/dsc-minimal-test/unity/unity_compat.c.o
+Compiling .pioenvs/dsc-minimal-test/unity/unity_runner.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/spiffs/libspiffs.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/spiffs/libspiffs.a
+Compiling .pioenvs/dsc-minimal-test/unity/unity_utils_freertos.c.o
+Compiling .pioenvs/dsc-minimal-test/unity/unity_utils_cache.c.o
+Compiling .pioenvs/dsc-minimal-test/unity/unity_utils_memory.c.o
+Compiling .pioenvs/dsc-minimal-test/unity/unity_port_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/unity/port/esp/unity_utils_memory_esp.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/tcp_transport/libtcp_transport.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/tcp_transport/libtcp_transport.a
+Compiling .pioenvs/dsc-minimal-test/vfs/vfs.c.o
+Compiling .pioenvs/dsc-minimal-test/vfs/vfs_eventfd.c.o
+Compiling .pioenvs/dsc-minimal-test/vfs/vfs_semihost.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/unity/libunity.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/unity/libunity.a
+Compiling .pioenvs/dsc-minimal-test/wear_levelling/Partition.cpp.o
+Compiling .pioenvs/dsc-minimal-test/wear_levelling/SPI_Flash.cpp.o
+Compiling .pioenvs/dsc-minimal-test/wear_levelling/WL_Ext_Perf.cpp.o
+Compiling .pioenvs/dsc-minimal-test/wear_levelling/WL_Ext_Safe.cpp.o
+Compiling .pioenvs/dsc-minimal-test/wear_levelling/WL_Flash.cpp.o
+Compiling .pioenvs/dsc-minimal-test/wear_levelling/crc32.cpp.o
+Compiling .pioenvs/dsc-minimal-test/wear_levelling/wear_levelling.cpp.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/src/wifi_config.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/src/wifi_scan.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/vfs/libvfs.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/vfs/libvfs.a
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/src/wifi_ctrl.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/src/manager.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/src/handlers.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/src/scheme_console.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/wear_levelling/libwear_levelling.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/wear_levelling/libwear_levelling.a
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/proto-c/wifi_config.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/proto-c/wifi_scan.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/proto-c/wifi_ctrl.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/proto-c/wifi_constants.pb-c.c.o
+Compiling .pioenvs/dsc-minimal-test/wifi_provisioning/src/scheme_softap.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/port/os_xtensa.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/port/eloop.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/ap_config.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/ieee802_1x.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/wifi_provisioning/libwifi_provisioning.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/wifi_provisioning/libwifi_provisioning.a
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/wpa_auth.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/wpa_auth_ie.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/pmksa_cache_auth.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/sta_info.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/ieee802_11.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/ap/comeback_token.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/common/sae.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/common/dragonfly.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/common/wpa_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/bitfield.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/aes-siv.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha256-kdf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/ccmp.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/aes-gcm.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/crypto_ops.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/dh_group5.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/dh_groups.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/ms_funcs.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha1-tlsprf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha256-tlsprf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha384-tlsprf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha256-prf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha1-prf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha384-prf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/md4-internal.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/sha1-tprf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_common/eap_wsc_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/common/ieee802_11_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/chap.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_mschapv2.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_peap.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_peap_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_tls.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_tls_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_ttls.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/mschapv2.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_fast.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_fast_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/eap_peer/eap_fast_pac.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/rsn_supp/pmksa_cache.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/rsn_supp/wpa.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/rsn_supp/wpa_ie.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/base64.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/ext_password.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/uuid.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/wpabuf.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/wpa_debug.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/utils/json.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/wps/wps.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/wps/wps_attr_build.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/wps/wps_attr_parse.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/wps/wps_attr_process.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/wps/wps_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/wps/wps_dev_attr.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/wps/wps_enrollee.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/common/sae_pk.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_eap_client.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_wpa2_api_port.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_wpa_main.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_wpas_glue.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_common.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_wps.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_wpa3.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_owe.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/esp_hostap.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/crypto/tls_mbedtls.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/crypto/fastpbkdf2.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls-bignum.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls-rsa.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls-ec.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/rc4.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/des-internal.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/aes-wrap.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/aes-unwrap.c.o
+Compiling .pioenvs/dsc-minimal-test/wpa_supplicant/src/crypto/aes-ccm.c.o
+Compiling .pioenvs/dsc-minimal-test/xtensa/eri.c.o
+Compiling .pioenvs/dsc-minimal-test/xtensa/xt_trax.c.o
+Compiling .pioenvs/dsc-minimal-test/xtensa/xtensa_context.S.o
+Compiling .pioenvs/dsc-minimal-test/xtensa/xtensa_intr_asm.S.o
+Compiling .pioenvs/dsc-minimal-test/xtensa/xtensa_intr.c.o
+Compiling .pioenvs/dsc-minimal-test/xtensa/xtensa_vectors.S.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/3rdparty/everest/library/everest.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/3rdparty/everest/library/x25519.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/wpa_supplicant/libwpa_supplicant.a
+Archiving .pioenvs/dsc-minimal-test/esp-idf/xtensa/libxtensa.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/xtensa/libxtensa.a
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/3rdparty/everest/library/Hacl_Curve25519_joined.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/wpa_supplicant/libwpa_supplicant.a
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/aes.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/3rdparty/everest/libeverest.a
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/aesni.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/3rdparty/everest/libeverest.a
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/aesce.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/aria.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/asn1parse.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/asn1write.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/base64.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/bignum.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/bignum_core.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/bignum_mod.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/bignum_mod_raw.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/block_cipher.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/camellia.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ccm.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/chacha20.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/chachapoly.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/cipher.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/cipher_wrap.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/constant_time.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/cmac.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ctr_drbg.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/des.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/dhm.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ecdh.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ecdsa.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ecjpake.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ecp.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ecp_curves.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ecp_curves_new.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/entropy.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/entropy_poll.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/error.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/gcm.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/hkdf.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/hmac_drbg.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/lmots.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/lms.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/md.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/md5.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/memory_buffer_alloc.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/nist_kw.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/oid.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/padlock.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pem.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pk.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pk_ecc.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pk_wrap.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pkcs12.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pkcs5.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pkparse.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pkwrite.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/platform.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/platform_util.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/poly1305.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_aead.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_cipher.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_client.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_driver_wrappers_no_static.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_ecp.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_ffdh.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_hash.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_mac.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_pake.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_rsa.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_se.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_slot_management.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_crypto_storage.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_its_file.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/psa_util.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ripemd160.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/rsa.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/rsa_alt_helpers.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/sha1.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/sha256.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/sha512.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/sha3.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/threading.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/timing.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/version.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/version_features.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/esp_hardware.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/esp_mem.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/esp_timing.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/aes/esp_aes_xts.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/aes/esp_aes_common.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/aes/block/esp_aes.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/sha/esp_sha.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/sha/parallel_engine/sha.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/bignum/esp_bignum.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/bignum/bignum_alt.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/sha/parallel_engine/esp_sha1.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/sha/parallel_engine/esp_sha256.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/sha/parallel_engine/esp_sha512.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/aes/esp_aes_gcm.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/md/esp_md.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/debug.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/mps_reader.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/mps_trace.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_cache.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/library/libmbedcrypto.a
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_ciphersuites.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_client.c.o
+Indexing .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/library/libmbedcrypto.a
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_cookie.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_debug_helpers_generated.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_msg.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_ticket.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_tls.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_tls12_client.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_tls12_server.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_tls13_keys.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_tls13_server.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_tls13_client.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/ssl_tls13_generic.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/mbedtls_debug.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/esp_platform_time.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/port/net_sockets.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/pkcs7.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509_create.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509_crl.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/library/libmbedtls.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/library/libmbedtls.a
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509_crt.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509_csr.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509write.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509write_crt.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/library/x509write_csr.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/3rdparty/p256-m/p256-m_driver_entrypoints.c.o
+Compiling .pioenvs/dsc-minimal-test/mbedtls/mbedtls/3rdparty/p256-m/p256-m/p256-m.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/xtensa/eri.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/xtensa/xt_trax.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader/subproject/main/bootloader_start.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/libp256m.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/libp256m.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_common.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/xtensa/libxtensa.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/xtensa/libxtensa.a
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/main/libmain.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/main/libmain.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_common_loader.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_clock_init.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_mem.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_random.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_efuse.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/flash_encrypt.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/secure_boot.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_random_esp32.c.o
+Archiving .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/library/libmbedx509.a
+Indexing .pioenvs/dsc-minimal-test/esp-idf/mbedtls/mbedtls/library/libmbedx509.a
+Generating project linker script .pioenvs/dsc-minimal-test/sections.ld
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/bootloader_flash/src/bootloader_flash.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/bootloader_flash/src/flash_qio_mode.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_utility.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/flash_partitions.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/esp_image_format.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_init.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_clock_loader.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_console.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_console_loader.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/esp32/bootloader_sha.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/esp32/bootloader_soc.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/esp32/bootloader_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader_support/src/bootloader_panic.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/efuse/esp32/esp_efuse_table.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/efuse/esp32/esp_efuse_fields.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/efuse/esp32/esp_efuse_utility.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/bootloader_support/libbootloader_support.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/bootloader_support/libbootloader_support.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/efuse/src/esp_efuse_api.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/efuse/src/esp_efuse_fields.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/efuse/src/esp_efuse_utility.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/efuse/src/efuse_controller/keys/without_key_purposes/three_key_blocks/esp_efuse_api_key.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_bootloader_format/esp_bootloader_desc.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_common/src/esp_err_to_name.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/cpu.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_common/libesp_common.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_common/libesp_common.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/esp_cpu_intr.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/efuse/libefuse.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/efuse/libefuse.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/esp_memory_utils.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/cpu_region_protect.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/rtc_clk.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/rtc_clk_init.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/rtc_init.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/rtc_sleep.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/rtc_time.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_hw_support/port/esp32/chip_info.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_rom/patches/esp_rom_crc.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_rom/patches/esp_rom_sys.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_rom/patches/esp_rom_uart.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_hw_support/libesp_hw_support.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_rom/patches/esp_rom_spiflash.c.o
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_hw_support/libesp_hw_support.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_rom/patches/esp_rom_efuse.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_rom/patches/esp_rom_longjmp.S.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/esp_system/esp_err.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/hal/hal_utils.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_system/libesp_system.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_system/libesp_system.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/hal/mpu_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/hal/efuse_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/hal/esp32/efuse_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/hal/wdt_hal_iram.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_rom/libesp_rom.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/esp_rom/libesp_rom.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/hal/mmu_hal.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/hal/esp32/cache_hal_esp32.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/log/log.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/log/log_buffers.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/hal/libhal.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/hal/libhal.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/log/log_noos.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/bootloader/subproject/components/micro-ecc/uECC_verify_antifault.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/lldesc.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/log/liblog.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/log/liblog.a
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/dport_access_common.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/interrupts.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/gpio_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/uart_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/dport_access.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/adc_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/emac_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/spi_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/ledc_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/pcnt_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/rmt_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/sdm_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/i2s_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/i2c_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/timer_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/lcd_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/mcpwm_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/mpi_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/sdmmc_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/touch_sensor_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/twai_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/wdt_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/dac_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/rtc_io_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/soc/esp32/sdio_slave_periph.c.o
+Compiling .pioenvs/dsc-minimal-test/bootloader/spi_flash/spi_flash_wrap.c.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/soc/libsoc.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/soc/libsoc.a
+Generating partitions .pioenvs/dsc-minimal-test/partitions.bin
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/spi_flash/libspi_flash.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/spi_flash/libspi_flash.a
+Generating an empty partition .pioenvs/dsc-minimal-test/ota_data_initial.bin
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_core/salsa/ref/core_salsa_ref.o
+Archiving .pioenvs/dsc-minimal-test/bootloader/esp-idf/micro-ecc/libmicro-ecc.a
+Indexing .pioenvs/dsc-minimal-test/bootloader/esp-idf/micro-ecc/libmicro-ecc.a
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_hash/crypto_hash.o
+Linking .pioenvs/dsc-minimal-test/bootloader.elf
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_hash/sha256/cp/hash_sha256_cp.o
+Building .pioenvs/dsc-minimal-test/bootloader.bin
+Creating esp32 image...
+Successfully created esp32 image.
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_hash/sha256/hash_sha256.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_onetimeauth/crypto_onetimeauth.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_onetimeauth/poly1305/donna/poly1305_donna.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_onetimeauth/poly1305/onetimeauth_poly1305.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_scalarmult/crypto_scalarmult.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_scalarmult/curve25519/scalarmult_curve25519.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/chacha20/ref/chacha20_ref.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/chacha20/stream_chacha20.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/crypto_stream.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/salsa20/ref/salsa20_ref.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/salsa20/stream_salsa20.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/salsa20/xmm6/salsa20_xmm6-asm.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/salsa20/xmm6/salsa20_xmm6.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/salsa20/xmm6int/salsa20_xmm6int-avx2.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_stream/salsa20/xmm6int/salsa20_xmm6int-sse2.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/crypto_verify/verify.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/randombytes/internal/randombytes_internal_random.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/randombytes/randombytes.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/randombytes/sysrandom/randombytes_sysrandom.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/sodium/codecs.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/sodium/core.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/sodium/runtime.o
+Compiling .pioenvs/dsc-minimal-test/libf89/libsodium/sodium/utils.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/openssl/cipher-aesgcm.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/ref/cipher-aesgcm.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/ref/cipher-chachapoly.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/ref/dh-curve25519.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/ref/hash-blake2b.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/ref/hash-blake2s.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/ref/hash-sha256.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/sodium/cipher-aesgcm.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/sodium/cipher-chachapoly.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/sodium/dh-curve25519.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/sodium/hash-blake2b.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/backend/sodium/hash-sha256.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/aes/rijndael-alg-fst.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/blake2/blake2b.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/blake2/blake2s.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/chacha/chacha.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/donna/curve25519-donna-c64.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/donna/curve25519-donna.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/donna/poly1305-donna.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/sha2/sha256.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/sha2/sha512.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/crypto/x25519/x25519.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/cipherstate.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/dhstate.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/errors.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/handshakestate.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/hashstate.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/internal.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/names.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/patterns.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/rand_os.o
+Archiving .pioenvs/dsc-minimal-test/libf89/libsodium.a
+Indexing .pioenvs/dsc-minimal-test/libf89/libsodium.a
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/rand_sodium.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/randstate.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/signstate.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/symmetricstate.o
+Compiling .pioenvs/dsc-minimal-test/lib6c7/noise-c/protocol/util.o
+Archiving .pioenvs/dsc-minimal-test/lib6c7/libnoise-c.a
+Indexing .pioenvs/dsc-minimal-test/lib6c7/libnoise-c.a
+Linking .pioenvs/dsc-minimal-test/firmware.elf
+RAM:   [=         ]  11.1% (used 36220 bytes from 327680 bytes)
+Flash: [=====     ]  48.3% (used 887132 bytes from 1835008 bytes)
+Building .pioenvs/dsc-minimal-test/firmware.bin
+Creating esp32 image...
+Successfully created esp32 image.
+esp32_create_combined_bin([".pioenvs/dsc-minimal-test/firmware.bin"], [".pioenvs/dsc-minimal-test/firmware.elf"])
+SHA digest in image updated
+Wrote 0xe8ad0 bytes to file /home/runner/work/New-DSC-Alarm-Control-HA/New-DSC-Alarm-Control-HA/extras/ESPHome/.esphome/build/dsc-minimal-test/.pioenvs/dsc-minimal-test/firmware.factory.bin, ready to flash to offset 0x0
+esp32_copy_ota_bin([".pioenvs/dsc-minimal-test/firmware.bin"], [".pioenvs/dsc-minimal-test/firmware.elf"])
+========================= [SUCCESS] Took 85.04 seconds =========================
+INFO Successfully compiled program.

@@ -1,0 +1,64 @@
+# DSC Keybus Minimal Test Configuration
+# Tests just the DSC component without extensive sensors to isolate compilation issues
+
+substitutions:
+  device_name: dsc-minimal-test
+
+esphome:
+  name: ${device_name}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    # Minimal ESP-IDF settings to test DSC component
+    sdkconfig_options:
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "32768"
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "300"
+      CONFIG_ESP_TASK_WDT_EN: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "240"
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [dsc_keybus]
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "DSC-Minimal-Test"
+    password: !secret wifi_password
+
+logger:
+  baud_rate: 0
+  level: INFO
+
+api:
+  encryption:
+    key: !secret encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Minimal DSC configuration
+dsc_keybus:
+  id: dsc_interface
+  access_code: !secret access_code
+  series_type: "Classic"
+  standalone_mode: true  # Enable standalone mode for testing
+  debug: 1
+  clock_pin: 18
+  read_pin: 19
+  write_pin: 21
+  pc16_pin: 17
+
+# Basic sensors to test DSC component
+text_sensor:
+  - platform: template
+    id: system_status
+    name: "DSC System Status"
+    icon: "mdi:shield"
