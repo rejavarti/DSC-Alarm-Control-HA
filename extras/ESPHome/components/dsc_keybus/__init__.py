@@ -49,6 +49,12 @@ CONF_ON_FIRE_STATUS_CHANGE = "on_fire_status_change"
 CONF_ON_ZONE_STATUS_CHANGE = "on_zone_status_change"
 CONF_ON_ZONE_ALARM_CHANGE = "on_zone_alarm_change"
 
+# Debug timing configuration keys for DSC Classic hardware troubleshooting
+CONF_CLASSIC_TIMING_MODE = "classic_timing_mode"
+CONF_HARDWARE_DETECTION_DELAY = "hardware_detection_delay"
+CONF_INITIALIZATION_TIMEOUT = "initialization_timeout"
+CONF_RETRY_DELAY = "retry_delay"
+
 # Component configuration schema
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(DSCKeybusComponent),
@@ -61,6 +67,13 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_READ_PIN): cv.int_range(0, 40),   # DSC Data read pin  
     cv.Optional(CONF_WRITE_PIN): cv.int_range(0, 40),  # DSC Data write pin
     cv.Optional(CONF_STANDALONE_MODE, default=False): cv.boolean,  # Enable standalone mode for testing without panel
+    
+    # Debug timing configuration options for DSC Classic hardware troubleshooting
+    cv.Optional(CONF_CLASSIC_TIMING_MODE, default=False): cv.boolean,  # Enable Classic-specific timing adjustments
+    cv.Optional(CONF_HARDWARE_DETECTION_DELAY, default=2000): cv.int_range(500, 10000),  # Hardware detection delay in ms
+    cv.Optional(CONF_INITIALIZATION_TIMEOUT, default=30000): cv.int_range(10000, 60000),  # Init timeout in ms
+    cv.Optional(CONF_RETRY_DELAY, default=2000): cv.int_range(1000, 5000),  # Retry delay between attempts in ms
+    
     cv.Optional(CONF_ON_SYSTEM_STATUS_CHANGE): automation.validate_automation(
         {
             cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(SystemStatusChangeTrigger),
@@ -108,6 +121,12 @@ async def to_code(config):
     cg.add(var.set_debug_level(config["debug"]))
     cg.add(var.set_enable_05_messages(config["enable_05_messages"]))
     cg.add(var.set_standalone_mode(config[CONF_STANDALONE_MODE]))
+    
+    # Set debug timing configuration parameters for DSC Classic hardware troubleshooting
+    cg.add(var.set_classic_timing_mode(config[CONF_CLASSIC_TIMING_MODE]))
+    cg.add(var.set_hardware_detection_delay(config[CONF_HARDWARE_DETECTION_DELAY]))
+    cg.add(var.set_initialization_timeout(config[CONF_INITIALIZATION_TIMEOUT]))
+    cg.add(var.set_retry_delay(config[CONF_RETRY_DELAY]))
     
     # Set pin configurations if specified
     if CONF_CLOCK_PIN in config:

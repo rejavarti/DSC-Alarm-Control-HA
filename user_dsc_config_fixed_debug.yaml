@@ -41,11 +41,11 @@
 # ✅ Updated event handlers to only use defined IDs
 # ✅ Fixed component path reference
 # ✅ Removed API encryption (optional, can be re-added)
-# ✅ FIXED: Removed invalid dsc_keybus configuration options:
-#     - classic_timing_mode (not supported by component)
-#     - hardware_detection_delay (not supported by component)  
-#     - initialization_timeout (not supported by component)
-#     - retry_delay (not supported by component)
+# ✅ RESTORED: Added configurable debug timing options to component:
+#     - classic_timing_mode: Enable Classic-specific timing adjustments
+#     - hardware_detection_delay: Configurable hardware detection delay
+#     - initialization_timeout: Configurable initialization timeout
+#     - retry_delay: Configurable retry delay between attempts
 # ✅ All configuration validated with ESPHome
 
 substitutions:
@@ -284,6 +284,13 @@ dsc_keybus:
   # Enhanced message processing
   enable_05_messages: true
   
+  # NEW: Debug timing configuration for DSC Classic hardware troubleshooting
+  # These options allow fine-tuning of timing parameters to diagnose connection issues
+  classic_timing_mode: true              # Enable Classic-specific timing adjustments (adds delays)
+  hardware_detection_delay: 5000         # Hardware detection delay in ms (default: 2000, range: 500-10000)
+  initialization_timeout: 30000          # Initialization timeout in ms (default: 30000, range: 10000-60000)
+  retry_delay: 2000                      # Retry delay between attempts in ms (default: 2000, range: 1000-5000)
+  
   # Event handlers for system integration - FIXED TO MATCH USER'S ENTITIES
   on_system_status_change:
     then:
@@ -514,12 +521,18 @@ button:
 # 2. Updated event handlers to only use defined IDs
 # 3. Fixed component path from 'components' to 'extras/ESPHome/components'
 # 4. Removed API encryption for simplicity (can be re-added)
-# 5. FIXED: Removed invalid dsc_keybus configuration options that caused validation errors:
-#    - classic_timing_mode (not supported by component schema)
-#    - hardware_detection_delay (not supported by component schema)
-#    - initialization_timeout (not supported by component schema)  
-#    - retry_delay (not supported by component schema)
+# 5. RESTORED: Added configurable debug timing options to DSC component:
+#    - classic_timing_mode: Enable Classic-specific timing adjustments  
+#    - hardware_detection_delay: Configurable hardware detection delay
+#    - initialization_timeout: Configurable initialization timeout
+#    - retry_delay: Configurable retry delay between attempts
 # 6. All configuration validated and compiles successfully with ESPHome
+#
+# DEBUG TIMING OPTIONS USAGE:
+# - classic_timing_mode: Set to true for DSC Classic panels with timing issues
+# - hardware_detection_delay: Increase if hardware takes longer to initialize
+# - initialization_timeout: Increase if getting timeout errors during startup  
+# - retry_delay: Increase if getting rapid retry errors
 #
 # TO CUSTOMIZE FURTHER:
 # 1. Add more zones by copying zone_1 template and updating ID/name
