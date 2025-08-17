@@ -72,9 +72,8 @@ esphome:
       - -DBOARD_HAS_PSRAM                      # Enable PSRAM for additional memory
       - -DESP_IDF_VERSION_MAJOR=5              # Ensure ESP-IDF 5.x compatibility
       - -DESP_IDF_VERSION_MINOR=3              # ESP-IDF 5.3.x specific optimizations
-      - -DDSC_ESP_IDF_5_3_PLUS                 # Enable ESP-IDF 5.3+ specific fixes
-      - -DDSC_ENHANCED_MEMORY_SAFETY           # Enhanced memory safety checks
-      - -DDSC_LOADPROHIBITED_CRASH_FIX         # LoadProhibited crash fix flag
+      # Note: DSC_ESP_IDF_5_3_PLUS, DSC_ENHANCED_MEMORY_SAFETY, DSC_LOADPROHIBITED_CRASH_FIX 
+      # are defined by the component to avoid redefinition warnings
       # DSC Classic series support (automatically managed by component)
       # - -DdscClassicSeries                   # Uncomment ONLY if you have Classic series panel
     lib_deps:
@@ -597,7 +596,7 @@ button:
       - logger.log: "ARM AWAY INITIATED"
       - lambda: |-
           std::string arm_cmd = "${accessCode}";
-          id(dsc_interface).write(arm_cmd.c_str());
+          id(dsc_interface).alarm_keypress(arm_cmd);
 
   - platform: template
     name: "Arm Stay"
@@ -607,7 +606,7 @@ button:
       - logger.log: "ARM STAY INITIATED" 
       - lambda: |-
           std::string arm_cmd = "*3${accessCode}";
-          id(dsc_interface).write(arm_cmd.c_str());
+          id(dsc_interface).alarm_keypress(arm_cmd);
 
   - platform: template
     name: "Disarm"
@@ -617,7 +616,7 @@ button:
       - logger.log: "DISARM INITIATED"
       - lambda: |-
           std::string disarm_cmd = "${accessCode}";
-          id(dsc_interface).write(disarm_cmd.c_str());
+          id(dsc_interface).alarm_keypress(disarm_cmd);
 
 # ===== PANEL LIGHTS MONITORING SCRIPT =====
 # This script periodically checks the panel lights to detect state changes
@@ -636,49 +635,46 @@ script:
                 // Get current lights status from DSC component
                 // Note: This assumes the component exposes a get_lights() method
                 // If not available, this will be logged as an error but won't crash
-                try {
-                  // In the actual DSC component, lights data should be accessible
-                  // For now, we'll simulate based on partition status
-                  std::string current_status = id(partition_1_status).state;
-                  uint8_t simulated_lights = 0;
+                
+                // In the actual DSC component, lights data should be accessible
+                // For now, we'll simulate based on partition status
+                std::string current_status = id(partition_1_status).state;
+                uint8_t simulated_lights = 0;
+                
+                if (current_status == "Exit delay in progress") {
+                  simulated_lights = 0x0B;  // Ready + Armed + Bypass
+                } else if (current_status == "Armed: Stay" || current_status == "Armed: Stay with no entry delay") {
+                  simulated_lights = 0x0A;  // Armed + Bypass  
+                } else if (current_status == "Armed: Away" || current_status == "Armed: Away with no entry delay") {
+                  simulated_lights = 0x02;  // Armed only
+                } else if (current_status == "Partition ready" || current_status == "Partition disarmed") {
+                  simulated_lights = 0x01;  // Ready only
+                } else {
+                  simulated_lights = 0x00;  // No lights
+                }
+                
+                // Only process if lights changed
+                if (simulated_lights != previous_lights) {
+                  previous_lights = simulated_lights;
                   
-                  if (current_status == "Exit delay in progress") {
-                    simulated_lights = 0x0B;  // Ready + Armed + Bypass
-                  } else if (current_status == "Armed: Stay" || current_status == "Armed: Stay with no entry delay") {
-                    simulated_lights = 0x0A;  // Armed + Bypass  
-                  } else if (current_status == "Armed: Away" || current_status == "Armed: Away with no entry delay") {
-                    simulated_lights = 0x02;  // Armed only
-                  } else if (current_status == "Partition ready" || current_status == "Partition disarmed") {
-                    simulated_lights = 0x01;  // Ready only
-                  } else {
-                    simulated_lights = 0x00;  // No lights
+                  // Determine comprehensive state based on lights
+                  std::string panel_state = "unknown";
+                  if ((simulated_lights & 0x0B) == 0x0B) {
+                    panel_state = "pending";
+                  } else if ((simulated_lights & 0x0A) == 0x0A) {
+                    panel_state = "armed_home";
+                  } else if ((simulated_lights & 0x02) == 0x02) {
+                    panel_state = "armed_away";
+                  } else if ((simulated_lights & 0x01) == 0x01) {
+                    panel_state = "disarmed";
                   }
                   
-                  // Only process if lights changed
-                  if (simulated_lights != previous_lights) {
-                    previous_lights = simulated_lights;
-                    
-                    // Determine comprehensive state based on lights
-                    std::string panel_state = "unknown";
-                    if ((simulated_lights & 0x0B) == 0x0B) {
-                      panel_state = "pending";
-                    } else if ((simulated_lights & 0x0A) == 0x0A) {
-                      panel_state = "armed_home";
-                    } else if ((simulated_lights & 0x02) == 0x02) {
-                      panel_state = "armed_away";
-                    } else if ((simulated_lights & 0x01) == 0x01) {
-                      panel_state = "disarmed";
-                    }
-                    
-                    ESP_LOGI("panel_lights", "Lights: 0x%02X, State: %s", simulated_lights, panel_state.c_str());
-                    
-                    // Update state sensor if state changed
-                    if (panel_state != id(panel_state_sensor).state) {
-                      id(panel_state_sensor).publish_state(panel_state);
-                    }
+                  ESP_LOGI("panel_lights", "Lights: 0x%02X, State: %s", simulated_lights, panel_state.c_str());
+                  
+                  // Update state sensor if state changed
+                  if (panel_state != id(panel_state_sensor).state) {
+                    id(panel_state_sensor).publish_state(panel_state);
                   }
-                } catch (...) {
-                  // Silently continue if lights data not available
                 }
             - delay: 500ms  # Check every 500ms for responsive state changes
 
