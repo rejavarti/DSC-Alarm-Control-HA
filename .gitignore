@@ -70,3 +70,4 @@ build/
 flash_recovery.sh
 esp32_boot_diagnostic.yaml
 esp32_recovery_test.yaml
+secrets.yaml
