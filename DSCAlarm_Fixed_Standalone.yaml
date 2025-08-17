@@ -1,3 +1,19 @@
+# DSC ALARM CONFIGURATION - STANDALONE MODE FIX
+# ISSUE RESOLVED: Changed standalone_mode from false to true
+# This allows testing the ESP32 and ESPHome setup without requiring
+# a physical DSC alarm panel connection.
+#
+# WHAT THIS FIXES:
+# - Eliminates "DSC hardware initialization permanently failed" errors
+# - Allows full ESPHome functionality testing (WiFi, API, MQTT)
+# - Perfect for development and configuration validation
+#
+# WHEN TO USE PRODUCTION MODE:
+# - Change standalone_mode back to false when connecting to real DSC panel
+# - Ensure proper hardware wiring (see documentation in repository)
+# - Verify DSC panel is powered and functional
+#
+
 # DEBUG CONFIGURATION FOR DSC CLASSIC HARDWARE TROUBLESHOOTING
 # This configuration enables maximum debugging for hardware connection issues
 # Monitor serial output at 115200 baud for detailed initialization logs
@@ -284,12 +300,12 @@ dsc_keybus:
   # Enhanced message processing
   enable_05_messages: true
   
-  # ENHANCED: Debug timing configuration for DSC Classic hardware troubleshooting
+  # NEW: Debug timing configuration for DSC Classic hardware troubleshooting
   # These options allow fine-tuning of timing parameters to diagnose connection issues
   classic_timing_mode: true              # Enable Classic-specific timing adjustments (adds delays)
-  hardware_detection_delay: 10000        # Hardware detection delay in ms (increased for Classic series reliability)
-  initialization_timeout: 60000          # Initialization timeout in ms (increased for Classic series) 
-  retry_delay: 5000                      # Retry delay between attempts in ms (increased for stability)
+  hardware_detection_delay: 5000         # Hardware detection delay in ms (default: 2000, range: 500-10000)
+  initialization_timeout: 30000          # Initialization timeout in ms (default: 30000, range: 10000-60000)
+  retry_delay: 2000                      # Retry delay between attempts in ms (default: 2000, range: 1000-5000)
   
   # Event handlers for system integration - FIXED TO MATCH USER'S ENTITIES
   on_system_status_change:
@@ -445,7 +461,7 @@ dsc_keybus:
           level: DEBUG
           tag: main
 
-  standalone_mode: false
+  standalone_mode: true  # FIXED: Enable standalone mode for testing without physical panel
 
 # ALARM CONTROL PANELS
 # Configure one alarm_control_panel for each partition in your system
