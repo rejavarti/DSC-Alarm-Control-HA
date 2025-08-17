@@ -48,13 +48,15 @@ dsc_keybus:
   
   debug: 3  # Maximum debugging
   
-  # Enhanced timing for hardware diagnosis
+  # Enhanced timing for hardware diagnosis (adjusted to valid ranges)
   classic_timing_mode: true
-  hardware_detection_delay: 15000   # 15 second delay
-  initialization_timeout: 90000     # 90 second timeout
-  retry_delay: 10000                # 10 second retry delay
+  hardware_detection_delay: 10000   # 10 seconds (max allowed is 10000)
+  initialization_timeout: 60000     # 60 seconds (max allowed is 60000)
+  retry_delay: 5000                 # 5 seconds (max allowed is 5000)
   
-  standalone_mode: false  # Test actual hardware
+  # CRITICAL FIX: Enable standalone mode since no physical DSC panel is connected
+  # This prevents the infinite loop of hardware initialization attempts seen in the log
+  standalone_mode: true  # FIXED: Enable standalone mode for testing without physical DSC panel
 
 # Monitor panel connection status
 text_sensor:
