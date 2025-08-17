@@ -77,6 +77,45 @@ logger:
 api:
   encryption:
     key: !secret api_encryption_key
+  services:
+    - service: send_keypad_command
+      variables:
+        command: string
+      then:
+        - lambda: |-
+            id(dsc_interface).write(command.c_str());
+            
+    - service: arm_stay_partition_1
+      then:
+        - lambda: |-
+            id(dsc_interface).write("s");
+            
+    - service: arm_away_partition_1  
+      then:
+        - lambda: |-
+            id(dsc_interface).write("w");
+            
+    - service: disarm_partition_1
+      then:
+        - lambda: |-
+            // CRITICAL FIX: Immediate disarm using access code without waiting for flags
+            std::string disarm_cmd = "${accessCode}";
+            id(dsc_interface).write(disarm_cmd.c_str());
+            
+    - service: panic_alarm
+      then:
+        - lambda: |-
+            id(dsc_interface).write("p");
+            
+    - service: fire_alarm
+      then:
+        - lambda: |-
+            id(dsc_interface).write("f");
+            
+    - service: aux_alarm
+      then:
+        - lambda: |-
+            id(dsc_interface).write("a");
 
 # OTA configuration  
 ota:
@@ -455,48 +494,6 @@ sensor:
     device_class: signal_strength
     state_class: measurement
     icon: "mdi:wifi"
-
-# Advanced services for Home Assistant integration
-api:
-  services:
-    - service: send_keypad_command
-      variables:
-        command: string
-      then:
-        - lambda: |-
-            id(dsc_interface).write(command.c_str());
-            
-    - service: arm_stay_partition_1
-      then:
-        - lambda: |-
-            id(dsc_interface).write("s");
-            
-    - service: arm_away_partition_1  
-      then:
-        - lambda: |-
-            id(dsc_interface).write("w");
-            
-    - service: disarm_partition_1
-      then:
-        - lambda: |-
-            // CRITICAL FIX: Immediate disarm using access code without waiting for flags
-            std::string disarm_cmd = "${accessCode}";
-            id(dsc_interface).write(disarm_cmd.c_str());
-            
-    - service: panic_alarm
-      then:
-        - lambda: |-
-            id(dsc_interface).write("p");
-            
-    - service: fire_alarm
-      then:
-        - lambda: |-
-            id(dsc_interface).write("f");
-            
-    - service: aux_alarm
-      then:
-        - lambda: |-
-            id(dsc_interface).write("a");
 
 # Time component for DSC timing functions
 time:

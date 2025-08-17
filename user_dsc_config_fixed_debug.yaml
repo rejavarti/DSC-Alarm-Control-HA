@@ -629,58 +629,58 @@ script:
       - while:
           condition:
             lambda: 'return true;'  # Run continuously
-        then:
-          - lambda: |-
-              static uint8_t previous_lights = 0xFF;  // Initialize to invalid value
-              
-              // Get current lights status from DSC component
-              // Note: This assumes the component exposes a get_lights() method
-              // If not available, this will be logged as an error but won't crash
-              try {
-                // In the actual DSC component, lights data should be accessible
-                // For now, we'll simulate based on partition status
-                std::string current_status = id(partition_1_status).state;
-                uint8_t simulated_lights = 0;
+          then:
+            - lambda: |-
+                static uint8_t previous_lights = 0xFF;  // Initialize to invalid value
                 
-                if (current_status == "Exit delay in progress") {
-                  simulated_lights = 0x0B;  // Ready + Armed + Bypass
-                } else if (current_status == "Armed: Stay" || current_status == "Armed: Stay with no entry delay") {
-                  simulated_lights = 0x0A;  // Armed + Bypass  
-                } else if (current_status == "Armed: Away" || current_status == "Armed: Away with no entry delay") {
-                  simulated_lights = 0x02;  // Armed only
-                } else if (current_status == "Partition ready" || current_status == "Partition disarmed") {
-                  simulated_lights = 0x01;  // Ready only
-                } else {
-                  simulated_lights = 0x00;  // No lights
-                }
-                
-                // Only process if lights changed
-                if (simulated_lights != previous_lights) {
-                  previous_lights = simulated_lights;
+                // Get current lights status from DSC component
+                // Note: This assumes the component exposes a get_lights() method
+                // If not available, this will be logged as an error but won't crash
+                try {
+                  // In the actual DSC component, lights data should be accessible
+                  // For now, we'll simulate based on partition status
+                  std::string current_status = id(partition_1_status).state;
+                  uint8_t simulated_lights = 0;
                   
-                  // Determine comprehensive state based on lights
-                  std::string panel_state = "unknown";
-                  if ((simulated_lights & 0x0B) == 0x0B) {
-                    panel_state = "pending";
-                  } else if ((simulated_lights & 0x0A) == 0x0A) {
-                    panel_state = "armed_home";
-                  } else if ((simulated_lights & 0x02) == 0x02) {
-                    panel_state = "armed_away";
-                  } else if ((simulated_lights & 0x01) == 0x01) {
-                    panel_state = "disarmed";
+                  if (current_status == "Exit delay in progress") {
+                    simulated_lights = 0x0B;  // Ready + Armed + Bypass
+                  } else if (current_status == "Armed: Stay" || current_status == "Armed: Stay with no entry delay") {
+                    simulated_lights = 0x0A;  // Armed + Bypass  
+                  } else if (current_status == "Armed: Away" || current_status == "Armed: Away with no entry delay") {
+                    simulated_lights = 0x02;  // Armed only
+                  } else if (current_status == "Partition ready" || current_status == "Partition disarmed") {
+                    simulated_lights = 0x01;  // Ready only
+                  } else {
+                    simulated_lights = 0x00;  // No lights
                   }
                   
-                  ESP_LOGI("panel_lights", "Lights: 0x%02X, State: %s", simulated_lights, panel_state.c_str());
-                  
-                  // Update state sensor if state changed
-                  if (panel_state != id(panel_state_sensor).state) {
-                    id(panel_state_sensor).publish_state(panel_state);
+                  // Only process if lights changed
+                  if (simulated_lights != previous_lights) {
+                    previous_lights = simulated_lights;
+                    
+                    // Determine comprehensive state based on lights
+                    std::string panel_state = "unknown";
+                    if ((simulated_lights & 0x0B) == 0x0B) {
+                      panel_state = "pending";
+                    } else if ((simulated_lights & 0x0A) == 0x0A) {
+                      panel_state = "armed_home";
+                    } else if ((simulated_lights & 0x02) == 0x02) {
+                      panel_state = "armed_away";
+                    } else if ((simulated_lights & 0x01) == 0x01) {
+                      panel_state = "disarmed";
+                    }
+                    
+                    ESP_LOGI("panel_lights", "Lights: 0x%02X, State: %s", simulated_lights, panel_state.c_str());
+                    
+                    // Update state sensor if state changed
+                    if (panel_state != id(panel_state_sensor).state) {
+                      id(panel_state_sensor).publish_state(panel_state);
+                    }
                   }
+                } catch (...) {
+                  // Silently continue if lights data not available
                 }
-              } catch (...) {
-                // Silently continue if lights data not available
-              }
-          - delay: 500ms  # Check every 500ms for responsive state changes
+            - delay: 500ms  # Check every 500ms for responsive state changes
 
 # Auto-start the monitoring script
 interval:
