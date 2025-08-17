@@ -1,0 +1,95 @@
+# DSC Minimal Standalone Test Configuration
+# Fixed configuration for testing without physical DSC panel
+
+substitutions:
+  device_name: "dsc-test"
+  friendly_name: "DSC Test Device"
+
+esphome:
+  name: ${device_name}
+  comment: "DSC standalone test - no hardware required"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# WiFi Configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "DSC-Test Fallback Hotspot"
+    password: "12345678"
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: DEBUG
+  logs:
+    dsc_keybus: DEBUG
+
+# Enable Home Assistant API
+api:
+
+# Enable OTA updates
+ota:
+  platform: esphome
+
+# External Components
+external_components:
+  - source:
+      type: local
+      path: extras/ESPHome/components
+    components: [dsc_keybus]
+
+# DSC Configuration - STANDALONE MODE ENABLED
+dsc_keybus:
+  id: dsc_interface
+  access_code: !secret access_code
+  series_type: "Classic"
+  
+  # Pin configuration (not used in standalone mode but required for validation)
+  clock_pin: 18
+  read_pin: 19  
+  write_pin: 21
+  pc16_pin: 17
+  
+  # CRITICAL: Enable standalone mode for testing without physical hardware
+  standalone_mode: true
+  
+  # Debugging
+  debug: 1
+  
+  # Timing configuration
+  classic_timing_mode: true
+  hardware_detection_delay: 2000    # Use default safe values
+  initialization_timeout: 30000
+  retry_delay: 2000
+
+# Status sensors for monitoring
+text_sensor:
+  - platform: template
+    id: dsc_status
+    name: "DSC Status"
+    lambda: |-
+      return {"Standalone Mode - Testing"};
+    update_interval: 30s
+
+binary_sensor:
+  - platform: template
+    id: dsc_ready
+    name: "DSC Ready"
+    lambda: |-
+      return true;  // Always ready in standalone mode
+
+sensor:
+  - platform: uptime
+    name: "Uptime"
+    
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
