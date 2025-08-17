@@ -22,6 +22,11 @@
 esphome:
   name: dsc-esphome-classic-fix
   friendly_name: "DSC Classic Panel (Fixed)"
+  # Enhanced boot sequence for Classic panels
+  on_boot:
+    priority: 600
+    then:
+      - logger.log: "DSC Classic Panel Interface Initialized"
   platformio_options:
     build_flags:
       # CRITICAL: Enable classic timing compatibility mode
@@ -110,10 +115,11 @@ external_components:
 
 # Classic Panel DSC Configuration
 dsc_keybus:
-  # Essential pin configuration
+  # Essential pin configuration for DSC Classic series
   clock_pin: GPIO18
   read_pin: GPIO19
   write_pin: GPIO21  # Optional for virtual keypad
+  pc16_pin: GPIO17   # CRITICAL: PC-16 pin for Classic series - connect with 1kΩ resistor
   
   # Classic panel timing configuration
   # These values restore original Arduino library characteristics
@@ -123,7 +129,8 @@ dsc_keybus:
   max_initialization_attempts: 5        # Conservative retry limit
   
   # Classic series specific configuration
-  classic_series: true
+  series_type: "Classic"                 # Explicitly set for DSC Classic series panels
+  classic_series: true                   # Legacy compatibility flag
   
   # Enable standalone mode as fallback for connection issues
   standalone_mode: false  # Try hardware connection first
@@ -133,130 +140,363 @@ dsc_keybus:
   
   # Access codes for classic panels
   access_code: !secret dsc_access_code
+  
+  # Enhanced debugging and monitoring
+  debug: 1  # Enable debug output: 0=off, 1=status changes, 2=+05/27 packets, 3=all packets
+  
+  # Enhanced message processing for Classic panels
+  enable_05_messages: true
+  
+  # Event handlers for system integration
+  on_system_status_change:
+    then:
+      - text_sensor.template.publish:
+          id: system_status
+          state: !lambda 'return status;'
+      - logger.log:
+          format: "DSC System Status Changed: %s"
+          args: ['status.c_str()']
+          
+  on_partition_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(p1).publish_state(status); break;
+          }
+      - logger.log:
+          format: "DSC Partition %d Status Changed: %s"
+          args: ['partition', 'status.c_str()']
+          
+  on_partition_msg_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(m1).publish_state(msg); break;
+          }
+          
+  on_trouble_status_change:
+    then:
+      - binary_sensor.template.publish:
+          id: trouble_status
+          state: !lambda 'return trouble;'
+          
+  on_fire_status_change:
+    then:
+      - lambda: |-
+          switch(partition) {
+            case 1: id(fire_alarm_status).publish_state(fire); break;
+          }
+          
+  on_zone_status_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(zone_1).publish_state(open); break;
+            case 2: id(zone_2).publish_state(open); break;
+            case 3: id(zone_3).publish_state(open); break;
+            case 4: id(zone_4).publish_state(open); break;
+            case 5: id(zone_5).publish_state(open); break;
+            case 6: id(zone_6).publish_state(open); break;
+            case 7: id(zone_7).publish_state(open); break;
+            case 8: id(zone_8).publish_state(open); break;
+          }
+          
+  on_zone_alarm_change:
+    then:
+      - lambda: |-
+          switch(zone) {
+            case 1: id(zone_1_alarm).publish_state(open); break;
+            case 2: id(zone_2_alarm).publish_state(open); break;
+            case 3: id(zone_3_alarm).publish_state(open); break;
+            case 4: id(zone_4_alarm).publish_state(open); break;
+            case 5: id(zone_5_alarm).publish_state(open); break;
+            case 6: id(zone_6_alarm).publish_state(open); break;
+            case 7: id(zone_7_alarm).publish_state(open); break;
+            case 8: id(zone_8_alarm).publish_state(open); break;
+          }
 
 # Text sensors for DSC status
 text_sensor:
-  - platform: dsc_keybus
-    partition_status_1:
-      name: "Partition 1 Status"
+  - platform: template
+    id: system_status
+    name: "DSC System Status"
+    icon: "mdi:shield"
     
-  - platform: dsc_keybus  
-    system_status:
-      name: "System Status"
+  - platform: template
+    id: p1
+    name: "DSC Partition 1 Status"  
+    icon: "mdi:shield"
+    
+  - platform: template
+    id: m1
+    name: "DSC Partition 1 Message"
+    icon: "mdi:alert-box"
+    
+  # System version and build info (MISSING from original config)
+  - platform: version
+    name: "DSC Alarm ESPHome Version"
+    icon: "mdi:tag"
+    
+  # WiFi connection info (MISSING from original config)
+  - platform: wifi_info
+    ip_address:
+      name: "DSC Alarm IP Address"
+    ssid:
+      name: "DSC Alarm WiFi SSID"
+    mac_address:
+      name: "DSC Alarm MAC Address"
 
 # Binary sensors for DSC zones and partitions
 binary_sensor:
-  # Partition 1 sensors
-  - platform: dsc_keybus
-    partition_ready_1:
-      name: "Partition 1 Ready"
+  # Partition 1 sensors - using platform template for ESPHome compatibility
+  - platform: template
+    id: partition_1_ready
+    name: "Partition 1 Ready"
+    device_class: safety
       
-  - platform: dsc_keybus
-    partition_armed_1:
-      name: "Partition 1 Armed"
+  - platform: template
+    id: partition_1_armed
+    name: "Partition 1 Armed"
+    device_class: safety
       
-  - platform: dsc_keybus
-    partition_armed_stay_1:
-      name: "Partition 1 Armed Stay"
+  - platform: template
+    id: partition_1_armed_stay
+    name: "Partition 1 Armed Stay"
+    device_class: safety
       
-  - platform: dsc_keybus
-    partition_armed_away_1:
-      name: "Partition 1 Armed Away"
+  - platform: template
+    id: partition_1_armed_away
+    name: "Partition 1 Armed Away" 
+    device_class: safety
       
-  - platform: dsc_keybus
-    partition_entry_delay_1:
-      name: "Partition 1 Entry Delay"
+  - platform: template
+    id: partition_1_entry_delay
+    name: "Partition 1 Entry Delay"
+    device_class: safety
       
-  - platform: dsc_keybus
-    partition_exit_delay_1:
-      name: "Partition 1 Exit Delay"
+  - platform: template
+    id: partition_1_exit_delay
+    name: "Partition 1 Exit Delay"
+    device_class: safety
       
-  - platform: dsc_keybus
-    partition_alarm_1:
-      name: "Partition 1 Alarm"
+  - platform: template
+    id: partition_1_alarm
+    name: "Partition 1 Alarm"
+    device_class: safety
 
   # System status sensors
-  - platform: dsc_keybus
-    keybus_connected:
-      name: "DSC Keybus Connected"
+  - platform: template
+    id: keybus_connected
+    name: "DSC Keybus Connected"
+    device_class: connectivity
       
-  - platform: dsc_keybus
-    trouble:
-      name: "System Trouble"
+  - platform: template
+    id: trouble_status
+    name: "System Trouble"
+    device_class: problem
+    
+  - platform: template
+    id: fire_alarm_status
+    name: "Fire Alarm Status"
+    device_class: safety
 
   # Zone sensors (8 zones for classic panels)
-  - platform: dsc_keybus
-    zone_1:
-      name: "Zone 1"
+  - platform: template
+    id: zone_1
+    name: "Zone 1"
+    device_class: door
       
-  - platform: dsc_keybus
-    zone_2:
-      name: "Zone 2"
+  - platform: template
+    id: zone_2
+    name: "Zone 2"
+    device_class: door
       
-  - platform: dsc_keybus
-    zone_3:
-      name: "Zone 3"
+  - platform: template
+    id: zone_3
+    name: "Zone 3"
+    device_class: window
       
-  - platform: dsc_keybus
-    zone_4:
-      name: "Zone 4"
+  - platform: template
+    id: zone_4
+    name: "Zone 4"
+    device_class: window
       
-  - platform: dsc_keybus
-    zone_5:
-      name: "Zone 5"
+  - platform: template
+    id: zone_5
+    name: "Zone 5"
+    device_class: motion
       
-  - platform: dsc_keybus
-    zone_6:
-      name: "Zone 6"
+  - platform: template
+    id: zone_6
+    name: "Zone 6"
+    device_class: motion
       
-  - platform: dsc_keybus
-    zone_7:
-      name: "Zone 7"
+  - platform: template
+    id: zone_7
+    name: "Zone 7"
+    device_class: motion
       
-  - platform: dsc_keybus
-    zone_8:
-      name: "Zone 8"
+  - platform: template
+    id: zone_8
+    name: "Zone 8"
+    device_class: motion
+    
+  # Zone alarm status sensors (MISSING from original config)
+  - platform: template
+    id: zone_1_alarm
+    name: "Zone 1 Alarm"
+    device_class: safety
+    
+  - platform: template
+    id: zone_2_alarm
+    name: "Zone 2 Alarm"
+    device_class: safety
+    
+  - platform: template
+    id: zone_3_alarm
+    name: "Zone 3 Alarm"
+    device_class: safety
+    
+  - platform: template
+    id: zone_4_alarm
+    name: "Zone 4 Alarm"
+    device_class: safety
+    
+  - platform: template
+    id: zone_5_alarm
+    name: "Zone 5 Alarm"
+    device_class: safety
+    
+  - platform: template
+    id: zone_6_alarm
+    name: "Zone 6 Alarm"
+    device_class: safety
+    
+  - platform: template
+    id: zone_7_alarm
+    name: "Zone 7 Alarm"
+    device_class: safety
+    
+  - platform: template
+    id: zone_8_alarm
+    name: "Zone 8 Alarm"
+    device_class: safety
 
 # Switches for DSC control
 switch:
-  - platform: dsc_keybus
-    partition_arm_stay_1:
-      name: "Partition 1 Arm Stay"
+  - platform: template
+    name: "Partition 1 Arm Stay"
+    id: partition_1_arm_stay
+    icon: "mdi:shield-home"
+    turn_on_action:
+      - lambda: |-
+          id(dsc_interface).write("s");
       
-  - platform: dsc_keybus
-    partition_arm_away_1:
-      name: "Partition 1 Arm Away"
+  - platform: template
+    name: "Partition 1 Arm Away"
+    id: partition_1_arm_away
+    icon: "mdi:shield-lock"
+    turn_on_action:
+      - lambda: |-
+          id(dsc_interface).write("w");
       
-  - platform: dsc_keybus
-    partition_disarm_1:
-      name: "Partition 1 Disarm"
+  - platform: template
+    name: "Partition 1 Disarm"
+    id: partition_1_disarm
+    icon: "mdi:shield-off"
+    turn_on_action:
+      - lambda: |-
+          // Use access code for disarm - allows immediate disarm without waiting for flags
+          std::string disarm_cmd = "${accessCode}";
+          id(dsc_interface).write(disarm_cmd.c_str());
 
-# Services for advanced DSC control
-dsc_keybus:
+# Emergency alarm buttons (MISSING from original config - based on @taligentx interface)
+button:
+  - platform: template
+    name: "Fire Alarm"
+    id: fire_alarm_button
+    icon: "mdi:fire"
+    on_press:
+      - lambda: |-
+          id(dsc_interface).write("f");
+          
+  - platform: template  
+    name: "Aux Alarm"
+    id: aux_alarm_button
+    icon: "mdi:hospital-box"
+    on_press:
+      - lambda: |-
+          id(dsc_interface).write("a");
+          
+  - platform: template
+    name: "Panic Alarm" 
+    id: panic_alarm_button
+    icon: "mdi:police-badge"
+    on_press:
+      - lambda: |-
+          id(dsc_interface).write("p");
+
+# System health monitoring sensors (MISSING from original config)
+sensor:
+  - platform: uptime
+    name: "DSC Alarm Uptime"
+    id: uptime_seconds
+    update_interval: 60s
+    icon: "mdi:timer-outline"
+    unit_of_measurement: s
+    device_class: duration
+    state_class: total_increasing
+  
+  - platform: wifi_signal
+    name: "DSC Alarm WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    unit_of_measurement: dBm
+    device_class: signal_strength
+    state_class: measurement
+    icon: "mdi:wifi"
+
+# Advanced services for Home Assistant integration
+api:
   services:
     - service: send_keypad_command
       variables:
         command: string
       then:
         - lambda: |-
-            id(dsc_keybus_component).write(command.c_str());
+            id(dsc_interface).write(command.c_str());
             
     - service: arm_stay_partition_1
       then:
         - lambda: |-
-            id(dsc_keybus_component).write("s");
+            id(dsc_interface).write("s");
             
     - service: arm_away_partition_1  
       then:
         - lambda: |-
-            id(dsc_keybus_component).write("w");
+            id(dsc_interface).write("w");
             
     - service: disarm_partition_1
       then:
         - lambda: |-
-            // Use access code from secrets
-            std::string disarm_cmd = std::string(ESPHOME_STRINGIFY(SECRET_DSC_ACCESS_CODE));
-            id(dsc_keybus_component).write(disarm_cmd.c_str());
+            // CRITICAL FIX: Immediate disarm using access code without waiting for flags
+            std::string disarm_cmd = "${accessCode}";
+            id(dsc_interface).write(disarm_cmd.c_str());
+            
+    - service: panic_alarm
+      then:
+        - lambda: |-
+            id(dsc_interface).write("p");
+            
+    - service: fire_alarm
+      then:
+        - lambda: |-
+            id(dsc_interface).write("f");
+            
+    - service: aux_alarm
+      then:
+        - lambda: |-
+            id(dsc_interface).write("a");
 
 # Time component for DSC timing functions
 time:
