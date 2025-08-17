@@ -279,17 +279,17 @@ dsc_keybus:
   pc16_pin: ${pc16_pin}  # Enabled for Classic series panels
   
   # Enhanced debugging and monitoring for hardware connection troubleshooting
-  debug: 3  # Enable debug output: 0=off, 1=status changes, 2=+05/27 packets, 3=all packets
+  debug: 3  # Maximum debugging - monitor for esp32_hardware_initialized status  # Enable debug output: 0=off, 1=status changes, 2=+05/27 packets, 3=all packets
   
   # Enhanced message processing
   enable_05_messages: true
   
-  # ENHANCED: Debug timing configuration for DSC Classic hardware troubleshooting
+  # NEW: Debug timing configuration for DSC Classic hardware troubleshooting
   # These options allow fine-tuning of timing parameters to diagnose connection issues
   classic_timing_mode: true              # Enable Classic-specific timing adjustments (adds delays)
-  hardware_detection_delay: 10000        # Hardware detection delay in ms (increased for Classic series reliability)
-  initialization_timeout: 60000          # Initialization timeout in ms (increased for Classic series) 
-  retry_delay: 5000                      # Retry delay between attempts in ms (increased for stability)
+  hardware_detection_delay: 10000         # Increased for Classic series reliability         # Hardware detection delay in ms (default: 2000, range: 500-10000)
+  initialization_timeout: 60000          # Increased timeout for Classic series          # Initialization timeout in ms (default: 30000, range: 10000-60000)
+  retry_delay: 5000                      # Longer delay between retry attempts                      # Retry delay between attempts in ms (default: 2000, range: 1000-5000)
   
   # Event handlers for system integration - FIXED TO MATCH USER'S ENTITIES
   on_system_status_change:
@@ -445,7 +445,7 @@ dsc_keybus:
           level: DEBUG
           tag: main
 
-  standalone_mode: false
+  standalone_mode: false  # Hardware mode - monitor logs for communication status
 
 # ALARM CONTROL PANELS
 # Configure one alarm_control_panel for each partition in your system
