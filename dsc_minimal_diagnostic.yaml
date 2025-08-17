@@ -54,9 +54,8 @@ dsc_keybus:
   initialization_timeout: 60000     # 60 seconds (max allowed is 60000)
   retry_delay: 5000                 # 5 seconds (max allowed is 5000)
   
-  # CRITICAL FIX: Enable standalone mode since no physical DSC panel is connected
-  # This prevents the infinite loop of hardware initialization attempts seen in the log
-  standalone_mode: true  # FIXED: Enable standalone mode for testing without physical DSC panel
+  # Panel is now connected - disable standalone mode to test actual hardware communication
+  standalone_mode: false  # Test actual hardware communication with connected DSC panel
 
 # Monitor panel connection status
 text_sensor:
