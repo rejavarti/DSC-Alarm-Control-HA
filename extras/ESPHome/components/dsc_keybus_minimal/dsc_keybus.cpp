@@ -276,15 +276,29 @@ void DSCKeybusComponent::loop() {
     }
 #endif
     
-    // Enhanced stabilization timing with longer delays for ESP-IDF 5.3.2+
+    // Enhanced stabilization timing with configurable delays for DSC Classic troubleshooting
     static uint32_t init_attempt_time = 0;
     static bool init_timing_logged = false;
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
-    uint32_t required_delay = 2000;  // CRITICAL FIX: Increase default delay from 1s to 2s to reduce system load
+    
+    // Use configurable hardware detection delay instead of hardcoded values
+    uint32_t required_delay = this->hardware_detection_delay_;
+    
+    // Apply Classic timing mode adjustments if enabled
+    if (this->classic_timing_mode_) {
+      if (!init_timing_logged) {
+        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
+        init_timing_logged = true;
+      }
+      required_delay += 1000;  // Add extra 1 second for Classic panels
+    }
     
     #ifdef DSC_ESP_IDF_5_3_PLUS_COMPONENT
-    required_delay = 3000;  // 3 seconds for ESP-IDF 5.3.2+ (increased from 2s)
+    // For ESP-IDF 5.3.2+, ensure minimum 3 seconds even with Classic timing
+    if (required_delay < 3000) {
+      required_delay = 3000;  // Minimum 3 seconds for ESP-IDF 5.3.2+
+    }
     #endif
     
     // CRITICAL FIX: Prevent infinite loop by implementing permanent failure detection
@@ -469,7 +483,14 @@ void DSCKeybusComponent::loop() {
     // that could contribute to the infinite loop condition
     static uint32_t last_begin_attempt = 0;
     uint32_t now = millis();
-    if (now - last_begin_attempt < 2000) {  // CRITICAL FIX: Increase minimum delay from 1s to 2s between attempts
+    uint32_t min_retry_delay = this->retry_delay_;  // Use configurable retry delay (default: 2000ms)
+    
+    // Apply Classic timing mode adjustments for retry delay if enabled
+    if (this->classic_timing_mode_) {
+      min_retry_delay += 500;  // Add extra 500ms for Classic panels
+    }
+    
+    if (now - last_begin_attempt < min_retry_delay) {
       // CRITICAL FIX: Add circuit breaker to prevent infinite rate limiting
       static uint32_t rate_limit_count = 0;
       rate_limit_count++;
@@ -480,13 +501,40 @@ void DSCKeybusComponent::loop() {
       yield();  // Allow IDLE task to run
       #endif
       
-      if (rate_limit_count > 100) {  // Revert to 100 attempts to allow more time for real panel connections
+      // CRITICAL FIX: Use different rate limits for Classic vs PowerSeries panels
+      uint32_t max_rate_limit_attempts = 100;  // Default for PowerSeries panels
+      
+      if (this->classic_timing_mode_) {
+        max_rate_limit_attempts = 300;  // Allow 3x more attempts for Classic panels that may be slower to initialize
+        
+        // ENHANCED DEBUG: Log Classic timing mode detection for verification
+        static bool classic_rate_limit_logged = false;
+        if (!classic_rate_limit_logged && rate_limit_count % 50 == 1) {
+          ESP_LOGD(TAG, "Classic timing mode rate limiting: allowing %u attempts instead of 100", max_rate_limit_attempts);
+          classic_rate_limit_logged = true;
+        }
+      }
+      
+      if (rate_limit_count > max_rate_limit_attempts) {
         ESP_LOGE(TAG, "Hardware initialization rate limiting exceeded maximum attempts (%u) - forcing continuation", rate_limit_count);
-        ESP_LOGW(TAG, "This usually indicates no DSC panel is connected - consider enabling standalone_mode: true");
+        ESP_LOGE(TAG, "Classic timing mode: %s, Max attempts allowed: %u", 
+                 this->classic_timing_mode_ ? "ENABLED" : "DISABLED", max_rate_limit_attempts);
+                 
+        if (this->classic_timing_mode_) {
+          ESP_LOGW(TAG, "Classic timing mode was enabled - panel may be connected but taking longer than expected to initialize");
+          ESP_LOGW(TAG, "If panel is physically connected, verify: 1) Power supply, 2) Wiring connections, 3) Resistor values");
+          ESP_LOGW(TAG, "Required resistors for Classic: 33kΩ (CLK-DATA), 10kΩ (DATA-GND), 1kΩ (PC16 if used)");
+        } else {
+          ESP_LOGW(TAG, "This usually indicates no DSC panel is connected - consider enabling standalone_mode: true");
+        }
         rate_limit_count = 0;  // Reset counter
       } else {
-        if (should_log && rate_limit_count % 25 == 0) {  // Revert to every 25 attempts
-          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/100)", rate_limit_count);
+        if (should_log && rate_limit_count % 25 == 0) {  // Log every 25 attempts for debugging
+          if (this->classic_timing_mode_) {
+            ESP_LOGD(TAG, "Classic panel hardware init rate limited, waiting... (attempt %u/%u)", rate_limit_count, max_rate_limit_attempts);
+          } else {
+            ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/%u)", rate_limit_count, max_rate_limit_attempts);
+          }
         }
         return;  // Wait before attempting initialization again
       }
@@ -743,6 +791,21 @@ void DSCKeybusComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Debug level: %u", this->debug_level_);
   ESP_LOGCONFIG(TAG, "  Access code configured: %s", this->access_code_.empty() ? "NO" : "YES");
   ESP_LOGCONFIG(TAG, "  Enable 05 messages: %s", YESNO(this->enable_05_messages_));
+  ESP_LOGCONFIG(TAG, "  Standalone mode: %s", YESNO(this->standalone_mode_));
+  
+  // Display debug timing configuration for DSC Classic hardware troubleshooting
+  ESP_LOGCONFIG(TAG, "  Debug Timing Configuration:");
+  ESP_LOGCONFIG(TAG, "    Classic timing mode: %s", YESNO(this->classic_timing_mode_));
+  ESP_LOGCONFIG(TAG, "    Hardware detection delay: %u ms", this->hardware_detection_delay_);
+  ESP_LOGCONFIG(TAG, "    Initialization timeout: %u ms", this->initialization_timeout_);
+  ESP_LOGCONFIG(TAG, "    Retry delay: %u ms", this->retry_delay_);
+  
+  // Pin configuration
+  ESP_LOGCONFIG(TAG, "  Pin Configuration:");
+  ESP_LOGCONFIG(TAG, "    Clock pin: %u", this->clock_pin_);
+  ESP_LOGCONFIG(TAG, "    Read pin: %u", this->read_pin_);
+  ESP_LOGCONFIG(TAG, "    Write pin: %u", this->write_pin_);
+  ESP_LOGCONFIG(TAG, "    PC16 pin: %u", this->pc16_pin_);
 }
 
 }  // namespace dsc_keybus

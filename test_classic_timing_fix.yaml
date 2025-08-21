@@ -1,0 +1,80 @@
+# Test configuration to verify DSC Classic timing mode rate limiting fix
+# This should show Classic panels get 300 attempts instead of 100
+
+substitutions:
+  accessCode: "1234"
+  clock_pin: "18"
+  read_pin: "19" 
+  write_pin: "21"
+  pc16_pin: "17"
+
+esphome:
+  name: dsc-classic-test
+  comment: "Test Classic timing mode rate limiting fix"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  logs:
+    dsc_keybus: DEBUG
+
+api:
+
+external_components:
+  - source:
+      type: local
+      path: extras/ESPHome/components
+    components: [dsc_keybus]
+
+# Test Classic timing mode with enhanced rate limiting
+dsc_keybus:
+  id: dsc_interface
+  access_code: ${accessCode}
+  series_type: "Classic"
+  
+  clock_pin: ${clock_pin}
+  read_pin: ${read_pin}
+  write_pin: ${write_pin}
+  pc16_pin: ${pc16_pin}
+  
+  debug: 3
+  
+  # CRITICAL: Test the Classic timing mode fix
+  classic_timing_mode: true              # Should allow 300 attempts instead of 100
+  hardware_detection_delay: 8000         # 8 seconds
+  initialization_timeout: 45000          # 45 seconds
+  retry_delay: 3000                      # 3 seconds
+  
+  standalone_mode: false                 # Test with real panel connection logic
+
+# Diagnostic script to show configuration at startup
+script:
+  - id: config_diagnostic
+    mode: restart
+    then:
+      - delay: 5s
+      - lambda: |-
+          ESP_LOGI("test_diag", "╔═══════════════════════════════════════════════════════════════╗");
+          ESP_LOGI("test_diag", "║                Classic Timing Mode Fix Test                   ║");
+          ESP_LOGI("test_diag", "╠═══════════════════════════════════════════════════════════════╣");
+          ESP_LOGI("test_diag", "║ Expected behavior:                                            ║");
+          ESP_LOGI("test_diag", "║ • Classic timing mode: ENABLED                                ║");
+          ESP_LOGI("test_diag", "║ • Rate limit should be 300 attempts (not 100)                ║");
+          ESP_LOGI("test_diag", "║ • Should see 'Classic timing mode rate limiting: allowing'   ║");
+          ESP_LOGI("test_diag", "║ • Error should show 'Classic timing mode: ENABLED'           ║");
+          ESP_LOGI("test_diag", "╚═══════════════════════════════════════════════════════════════╝");
+
+interval:
+  - interval: 60s
+    startup_delay: 10s
+    then:
+      - script.execute: config_diagnostic
