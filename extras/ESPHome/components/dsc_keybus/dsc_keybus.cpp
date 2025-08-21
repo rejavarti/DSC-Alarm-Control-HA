@@ -279,6 +279,7 @@ void DSCKeybusComponent::loop() {
     // Enhanced stabilization timing with configurable delays for DSC Classic hardware troubleshooting
     static uint32_t init_attempt_time = 0;
     static bool init_timing_logged = false;
+    static bool classic_timing_logged = false;
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
     
@@ -287,7 +288,10 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
+      if (!classic_timing_logged) {
+        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
+        classic_timing_logged = true;
+      }
       required_delay += 1000;  // Add extra 1 second for Classic panels
     }
     
