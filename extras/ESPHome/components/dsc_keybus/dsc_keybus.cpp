@@ -489,8 +489,12 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments for retry delay if enabled
     if (this->classic_timing_mode_) {
+      static bool classic_retry_timing_logged = false;
       min_retry_delay += 500;  // Add extra 500ms for Classic panels
-      ESP_LOGD(TAG, "Classic timing mode: Using extended retry delay of %u ms", min_retry_delay);
+      if (!classic_retry_timing_logged) {
+        ESP_LOGD(TAG, "Classic timing mode: Using extended retry delay of %u ms", min_retry_delay);
+        classic_retry_timing_logged = true;
+      }
     }
     
     if (now - last_begin_attempt < min_retry_delay) {
