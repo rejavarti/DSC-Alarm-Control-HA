@@ -279,7 +279,6 @@ void DSCKeybusComponent::loop() {
     // Enhanced stabilization timing with configurable delays for DSC Classic hardware troubleshooting
     static uint32_t init_attempt_time = 0;
     static bool init_timing_logged = false;
-    static bool classic_timing_logged = false;
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
     
@@ -288,9 +287,11 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      if (!classic_timing_logged) {
+      // CRITICAL FIX: Add rate limiting to prevent infinite log spam
+      static uint32_t last_classic_timing_log = 0;
+      if (current_time - last_classic_timing_log >= 10000) {  // Log every 10 seconds max
         ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
-        classic_timing_logged = true;
+        last_classic_timing_log = current_time;
       }
       required_delay += 1000;  // Add extra 1 second for Classic panels
     }
@@ -489,11 +490,12 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments for retry delay if enabled
     if (this->classic_timing_mode_) {
-      static bool classic_retry_timing_logged = false;
       min_retry_delay += 500;  // Add extra 500ms for Classic panels
-      if (!classic_retry_timing_logged) {
+      // CRITICAL FIX: Add rate limiting to prevent infinite log spam
+      static uint32_t last_classic_retry_log = 0;
+      if (current_time - last_classic_retry_log >= 10000) {  // Log every 10 seconds max
         ESP_LOGD(TAG, "Classic timing mode: Using extended retry delay of %u ms", min_retry_delay);
-        classic_retry_timing_logged = true;
+        last_classic_retry_log = current_time;
       }
     }
     
