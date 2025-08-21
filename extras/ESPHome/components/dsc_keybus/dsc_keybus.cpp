@@ -508,13 +508,31 @@ void DSCKeybusComponent::loop() {
       yield();  // Allow IDLE task to run
       #endif
       
-      if (rate_limit_count > 100) {  // Revert to 100 attempts to allow more time for real panel connections
+      // CRITICAL FIX: Use different rate limits for Classic vs PowerSeries panels
+      uint32_t max_rate_limit_attempts = 100;  // Default for PowerSeries panels
+      
+      if (this->classic_timing_mode_) {
+        max_rate_limit_attempts = 300;  // Allow 3x more attempts for Classic panels that may be slower to initialize
+      }
+      
+      if (rate_limit_count > max_rate_limit_attempts) {
         ESP_LOGE(TAG, "Hardware initialization rate limiting exceeded maximum attempts (%u) - forcing continuation", rate_limit_count);
-        ESP_LOGW(TAG, "This usually indicates no DSC panel is connected - consider enabling standalone_mode: true");
+        
+        if (this->classic_timing_mode_) {
+          ESP_LOGW(TAG, "Classic timing mode was enabled - panel may be connected but taking longer than expected to initialize");
+          ESP_LOGW(TAG, "If panel is physically connected, verify: 1) Power supply, 2) Wiring connections, 3) Resistor values");
+          ESP_LOGW(TAG, "Required resistors for Classic: 33kΩ (CLK-DATA), 10kΩ (DATA-GND), 1kΩ (PC16 if used)");
+        } else {
+          ESP_LOGW(TAG, "This usually indicates no DSC panel is connected - consider enabling standalone_mode: true");
+        }
         rate_limit_count = 0;  // Reset counter
       } else {
-        if (should_log && rate_limit_count % 25 == 0) {  // Revert to every 25 attempts
-          ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/100)", rate_limit_count);
+        if (should_log && rate_limit_count % 25 == 0) {
+          if (this->classic_timing_mode_) {
+            ESP_LOGD(TAG, "Classic panel hardware init rate limited, waiting... (attempt %u/%u)", rate_limit_count, max_rate_limit_attempts);
+          } else {
+            ESP_LOGD(TAG, "Hardware init rate limited, waiting... (attempt %u/%u)", rate_limit_count, max_rate_limit_attempts);
+          }
         }
         return;  // Wait before attempting initialization again
       }
@@ -609,10 +627,21 @@ void DSCKeybusComponent::loop() {
     } else if (getDSC().isInitializationFailed()) {
       ESP_LOGE(TAG, "DSC Keybus hardware initialization failed permanently after multiple attempts");
       ESP_LOGE(TAG, "╔════════════════════════════════════════════════════════════════════════════════════════╗");
-      ESP_LOGE(TAG, "║                               DSC HARDWARE INITIALIZATION FAILED                        ║");
-      ESP_LOGE(TAG, "╠════════════════════════════════════════════════════════════════════════════════════════╣");
-      ESP_LOGE(TAG, "║ Possible causes:                                                                       ║");
-      ESP_LOGE(TAG, "║ 1. DSC alarm panel is not connected to the ESP32 module                              ║");
+      if (this->classic_timing_mode_) {
+        ESP_LOGE(TAG, "║                          DSC CLASSIC HARDWARE INITIALIZATION FAILED                      ║");
+        ESP_LOGE(TAG, "╠════════════════════════════════════════════════════════════════════════════════════════╣");
+        ESP_LOGE(TAG, "║ Classic panel specific troubleshooting:                                               ║");
+        ESP_LOGE(TAG, "║ 1. Verify PC16 connection (brown wire) to GPIO %d is secure                           ║", this->pc16_pin_);
+        ESP_LOGE(TAG, "║ 2. Check resistor values: 33kΩ (CLK-DATA), 10kΩ (DATA-GND), 1kΩ (PC16)             ║");
+        ESP_LOGE(TAG, "║ 3. Ensure Classic panel is not in programming mode                                    ║");
+        ESP_LOGE(TAG, "║ 4. Verify panel power supply is stable (12V DC recommended)                          ║");
+        ESP_LOGE(TAG, "║ 5. Check for bus conflicts with other keypads/modules                                 ║");
+      } else {
+        ESP_LOGE(TAG, "║                               DSC HARDWARE INITIALIZATION FAILED                        ║");
+        ESP_LOGE(TAG, "╠════════════════════════════════════════════════════════════════════════════════════════╣");
+        ESP_LOGE(TAG, "║ Possible causes:                                                                       ║");
+        ESP_LOGE(TAG, "║ 1. DSC alarm panel is not connected to the ESP32 module                              ║");
+      }
       ESP_LOGE(TAG, "║ 2. Incorrect wiring - check Clock (GPIO %d), Data (GPIO %d), Write (GPIO %d)           ║", this->clock_pin_, this->read_pin_, this->write_pin_);
       ESP_LOGE(TAG, "║ 3. DSC alarm panel is powered off or not sending data                                ║");
       ESP_LOGE(TAG, "║ 4. Wrong resistor values (need 33kΩ for data lines, 1kΩ for PC-16 if Classic)       ║");
@@ -629,12 +658,23 @@ void DSCKeybusComponent::loop() {
       
       if (initialization_failures == 1) {
         ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/3) - will retry after delay", initialization_failures);
-        ESP_LOGW(TAG, "This is normal if the DSC panel is not connected or is powering up");
+        if (this->classic_timing_mode_) {
+          ESP_LOGW(TAG, "Classic timing mode enabled - panel may need additional time to initialize");
+        } else {
+          ESP_LOGW(TAG, "This is normal if the DSC panel is not connected or is powering up");
+        }
       } else if (initialization_failures == 2) {
         ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/3) - will retry after delay", initialization_failures);
-        ESP_LOGW(TAG, "If no DSC panel is connected, consider using standalone_mode: true for testing");
+        if (this->classic_timing_mode_) {
+          ESP_LOGW(TAG, "Classic panel still initializing - verify physical connections and power if this continues");
+        } else {
+          ESP_LOGW(TAG, "If no DSC panel is connected, consider using standalone_mode: true for testing");
+        }
       } else {
         ESP_LOGW(TAG, "DSC hardware initialization status unclear (attempt %d/3) - will retry after delay", initialization_failures);
+        if (this->classic_timing_mode_) {
+          ESP_LOGW(TAG, "Classic panel initialization taking longer than expected - checking hardware requirements");
+        }
       }
       
       // Add exponential backoff delay to prevent rapid retries

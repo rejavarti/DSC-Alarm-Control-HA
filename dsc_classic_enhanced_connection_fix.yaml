@@ -1,0 +1,114 @@
+# DSC Classic Hardware Communication Enhanced Fix
+# For users experiencing "Hardware initialization rate limiting exceeded" errors
+# with connected DSC Classic panels
+
+substitutions:
+  accessCode: !secret access_code
+  clock_pin: "18"    # Yellow wire - DSC Clock
+  read_pin: "19"     # Green wire - DSC Data  
+  write_pin: "21"    # Black wire - DSC Data Out
+  pc16_pin: "17"     # Brown/Purple - PC16 (CRITICAL for Classic)
+
+esphome:
+  name: dsc-classic-enhanced
+  comment: "DSC Classic with enhanced timing for connection issues"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  logs:
+    dsc_keybus: DEBUG
+
+api:
+
+external_components:
+  - source:
+      type: local
+      path: extras/ESPHome/components
+    components: [dsc_keybus]
+
+# Enhanced DSC Classic configuration for connection troubleshooting
+dsc_keybus:
+  id: dsc_interface
+  access_code: ${accessCode}
+  series_type: "Classic"
+  
+  # Pin assignments (verify these match your wiring)
+  clock_pin: ${clock_pin}
+  read_pin: ${read_pin}
+  write_pin: ${write_pin}
+  pc16_pin: ${pc16_pin}
+  
+  debug: 3  # Maximum debugging
+  
+  # ENHANCED TIMING: These settings now allow for much longer initialization
+  # With the fix, Classic panels get 300 attempts instead of 100
+  classic_timing_mode: true          # Enables Classic-specific timing (REQUIRED for Classic panels)
+  hardware_detection_delay: 8000     # 8 seconds - allows panel to stabilize after power-up
+  initialization_timeout: 45000      # 45 seconds - extended timeout for slower Classic panels
+  retry_delay: 3000                  # 3 seconds between attempts - prevents overwhelming the panel
+  
+  # Connected panel mode (disable standalone for real hardware testing)
+  standalone_mode: false
+
+# Enhanced monitoring for connection status
+text_sensor:
+  - platform: template
+    id: panel_status
+    name: "DSC Panel Status"
+    update_interval: 30s
+    lambda: |-
+      if (id(dsc_interface).getKeybusConnected()) {
+        return {"Connected"};
+      } else {
+        return {"Disconnected"};
+      }
+
+binary_sensor:
+  - platform: template
+    id: hardware_initialized
+    name: "Hardware Initialized"
+    lambda: |-
+      return id(dsc_interface).getKeybusConnected();
+
+# Connection diagnostics script
+script:
+  - id: enhanced_diagnostics
+    mode: restart
+    then:
+      - delay: 10s
+      - lambda: |-
+          ESP_LOGI("enhanced_diag", "╔══════════════════════════════════════════════════════════════╗");
+          ESP_LOGI("enhanced_diag", "║              DSC Classic Enhanced Diagnostic                 ║");
+          ESP_LOGI("enhanced_diag", "╠══════════════════════════════════════════════════════════════╣");
+          ESP_LOGI("enhanced_diag", "║ Configuration Summary:                                       ║");
+          ESP_LOGI("enhanced_diag", "║ • Classic timing mode: ENABLED                               ║");
+          ESP_LOGI("enhanced_diag", "║ • Rate limit attempts: 300 (3x standard)                    ║");
+          ESP_LOGI("enhanced_diag", "║ • Hardware detection delay: 8 seconds                       ║");
+          ESP_LOGI("enhanced_diag", "║ • Initialization timeout: 45 seconds                        ║");
+          ESP_LOGI("enhanced_diag", "║ • Retry delay: 3 seconds                                     ║");
+          ESP_LOGI("enhanced_diag", "║                                                              ║");
+          ESP_LOGI("enhanced_diag", "║ Expected behavior with connected Classic panel:              ║");
+          ESP_LOGI("enhanced_diag", "║ 1. Initial stabilization (8 seconds)                        ║");
+          ESP_LOGI("enhanced_diag", "║ 2. Hardware initialization attempts (up to 300)             ║");
+          ESP_LOGI("enhanced_diag", "║ 3. Success: 'DSC Keybus hardware initialization complete'   ║");
+          ESP_LOGI("enhanced_diag", "║                                                              ║");
+          ESP_LOGI("enhanced_diag", "║ If still failing after these enhancements:                  ║");
+          ESP_LOGI("enhanced_diag", "║ • Check physical wiring and resistor values                 ║");
+          ESP_LOGI("enhanced_diag", "║ • Verify panel power supply (stable 12V recommended)       ║");
+          ESP_LOGI("enhanced_diag", "║ • Ensure panel is not in programming mode                   ║");
+          ESP_LOGI("enhanced_diag", "╚══════════════════════════════════════════════════════════════╝");
+
+interval:
+  - interval: 120s  # Run diagnostics every 2 minutes
+    then:
+      - script.execute: enhanced_diagnostics
