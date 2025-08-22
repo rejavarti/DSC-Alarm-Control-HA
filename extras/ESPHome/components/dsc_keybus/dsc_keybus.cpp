@@ -511,14 +511,25 @@ void DSCKeybusComponent::loop() {
       #endif
       
       // CRITICAL FIX: Use different rate limits for Classic vs PowerSeries panels
+      // IMPORTANT: Check Classic timing mode first and ensure it's properly applied
       uint32_t max_rate_limit_attempts = 100;  // Default for PowerSeries panels
       
       if (this->classic_timing_mode_) {
         max_rate_limit_attempts = 300;  // Allow 3x more attempts for Classic panels that may be slower to initialize
+        
+        // ENHANCED DEBUG: Log Classic timing mode detection for verification
+        static bool classic_rate_limit_logged = false;
+        if (!classic_rate_limit_logged && rate_limit_count % 50 == 1) {
+          ESP_LOGD(TAG, "Classic timing mode rate limiting: allowing %u attempts instead of 100", max_rate_limit_attempts);
+          classic_rate_limit_logged = true;
+        }
       }
       
+      // ENHANCED DEBUG: Add more detailed logging about rate limiting state
       if (rate_limit_count > max_rate_limit_attempts) {
         ESP_LOGE(TAG, "Hardware initialization rate limiting exceeded maximum attempts (%u) - forcing continuation", rate_limit_count);
+        ESP_LOGE(TAG, "Classic timing mode: %s, Max attempts allowed: %u", 
+                 this->classic_timing_mode_ ? "ENABLED" : "DISABLED", max_rate_limit_attempts);
         
         if (this->classic_timing_mode_) {
           ESP_LOGW(TAG, "Classic timing mode was enabled - panel may be connected but taking longer than expected to initialize");
