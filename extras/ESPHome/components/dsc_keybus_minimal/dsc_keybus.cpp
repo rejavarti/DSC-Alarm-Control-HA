@@ -282,6 +282,9 @@ void DSCKeybusComponent::loop() {
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
     
+    // CRITICAL FIX: Consolidated rate limiting to prevent infinite log spam
+    static bool classic_rate_limit_logged = false;
+    
     // Use configurable hardware detection delay instead of hardcoded values
     uint32_t required_delay = this->hardware_detection_delay_;
     
@@ -508,7 +511,6 @@ void DSCKeybusComponent::loop() {
         max_rate_limit_attempts = 300;  // Allow 3x more attempts for Classic panels that may be slower to initialize
         
         // ENHANCED DEBUG: Log Classic timing mode detection for verification
-        static bool classic_rate_limit_logged = false;
         if (!classic_rate_limit_logged && rate_limit_count % 50 == 1) {
           ESP_LOGD(TAG, "Classic timing mode rate limiting: allowing %u attempts instead of 100", max_rate_limit_attempts);
           classic_rate_limit_logged = true;

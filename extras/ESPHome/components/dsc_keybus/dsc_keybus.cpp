@@ -282,13 +282,17 @@ void DSCKeybusComponent::loop() {
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
     
+    // CRITICAL FIX: Consolidated rate limiting to prevent infinite log spam
+    static bool classic_timing_logged = false;
+    static bool classic_retry_logged = false;
+    static bool classic_rate_limit_logged = false;
+    
     // Use configurable hardware detection delay instead of hardcoded values
     uint32_t required_delay = this->hardware_detection_delay_;
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      // CRITICAL FIX: Use one-time logging to prevent infinite log spam
-      static bool classic_timing_logged = false;
+      // CRITICAL FIX: Use consolidated one-time logging to prevent infinite log spam
       if (!classic_timing_logged) {
         ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
         classic_timing_logged = true;
@@ -491,8 +495,7 @@ void DSCKeybusComponent::loop() {
     // Apply Classic timing mode adjustments for retry delay if enabled
     if (this->classic_timing_mode_) {
       min_retry_delay += 500;  // Add extra 500ms for Classic panels
-      // CRITICAL FIX: Use one-time logging to prevent infinite log spam
-      static bool classic_retry_logged = false;
+      // CRITICAL FIX: Use consolidated one-time logging to prevent infinite log spam
       if (!classic_retry_logged) {
         ESP_LOGD(TAG, "Classic timing mode: Using extended retry delay of %u ms", min_retry_delay);
         classic_retry_logged = true;
@@ -518,7 +521,6 @@ void DSCKeybusComponent::loop() {
         max_rate_limit_attempts = 300;  // Allow 3x more attempts for Classic panels that may be slower to initialize
         
         // ENHANCED DEBUG: Log Classic timing mode detection for verification
-        static bool classic_rate_limit_logged = false;
         if (!classic_rate_limit_logged && rate_limit_count % 50 == 1) {
           ESP_LOGD(TAG, "Classic timing mode rate limiting: allowing %u attempts instead of 100", max_rate_limit_attempts);
           classic_rate_limit_logged = true;
