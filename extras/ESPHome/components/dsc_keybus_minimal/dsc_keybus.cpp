@@ -31,6 +31,10 @@ static bool setup_complete = false;
 static bool setup_in_progress = false;
 static uint8_t setup_failures = 0;
 
+// CRITICAL FIX: Classic timing mode log spam prevention at namespace scope
+static bool classic_timing_logged = false;
+static bool classic_rate_limit_logged = false;
+
 void DSCKeybusComponent::setup() {
   if (setup_complete) {
     return;  // Setup already completed successfully - don't run again
@@ -282,17 +286,15 @@ void DSCKeybusComponent::loop() {
     static uint8_t initialization_failures = 0;
     static uint32_t last_failure_time = 0;
     
-    // CRITICAL FIX: Consolidated rate limiting to prevent infinite log spam
-    static bool classic_rate_limit_logged = false;
-    
     // Use configurable hardware detection delay instead of hardcoded values
     uint32_t required_delay = this->hardware_detection_delay_;
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      if (!init_timing_logged) {
+      // CRITICAL FIX: Use namespace-scope static variable to prevent infinite log spam
+      if (!classic_timing_logged) {
         ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
-        init_timing_logged = true;
+        classic_timing_logged = true;
       }
       required_delay += 1000;  // Add extra 1 second for Classic panels
     }
