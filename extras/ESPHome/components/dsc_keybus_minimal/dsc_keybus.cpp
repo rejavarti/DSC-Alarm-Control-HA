@@ -31,10 +31,13 @@ static bool setup_complete = false;
 static bool setup_in_progress = false;
 static uint8_t setup_failures = 0;
 
-// CRITICAL FIX: Classic timing mode log spam prevention at namespace scope
+// CRITICAL FIX: Enhanced Classic timing mode log spam prevention at namespace scope  
+// Added additional protection with instance tracking and diagnostic counters
 static bool classic_timing_logged = false;
 static bool classic_rate_limit_logged = false;
 static uint32_t last_classic_timing_log = 0;
+static uint32_t classic_timing_call_count = 0;  // Diagnostic counter
+static void* last_component_instance = nullptr;  // Track component instance
 
 void DSCKeybusComponent::setup() {
   if (setup_complete) {
@@ -292,20 +295,39 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      // CRITICAL FIX: Dual-layer protection against infinite log spam
-      // Layer 1: Namespace-scope static variable (primary protection)
-      // Layer 2: Time-based rate limiting (backup protection)
+      // CRITICAL FIX: Enhanced 4-layer protection against infinite log spam
+      // Layer 1: Namespace-scope static variable (primary protection)  
+      // Layer 2: Instance tracking (detect multiple instances)
+      // Layer 3: Call frequency monitoring (detect rapid calls)
+      // Layer 4: Time-based rate limiting (backup protection)
+      
+      classic_timing_call_count++;
       uint32_t current_time_classic = millis();
       
+      // Detect if we have a new component instance
+      if (last_component_instance != this) {
+        if (last_component_instance != nullptr) {
+          ESP_LOGW(TAG, "Multiple DSC component instances detected - resetting log state");
+        }
+        last_component_instance = this;
+        classic_timing_logged = false;  // Reset for new instance
+      }
+      
+      // Enhanced protection with call frequency monitoring
       if (!classic_timing_logged) {
         // Primary protection: log only once per session
-        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
+        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels (call #%u)", classic_timing_call_count);
         classic_timing_logged = true;
         last_classic_timing_log = current_time_classic;
       } else if (current_time_classic - last_classic_timing_log >= 10000) {
         // Backup protection: if somehow the static variable failed, limit to once per 10 seconds
-        ESP_LOGD(TAG, "Classic timing mode reminder - extended delays active for DSC Classic panels");
+        ESP_LOGD(TAG, "Classic timing mode reminder - extended delays active for DSC Classic panels (call #%u)", classic_timing_call_count);
         last_classic_timing_log = current_time_classic;
+      } else {
+        // Additional diagnostic: count rapid calls without logging
+        if (classic_timing_call_count % 100 == 0) {
+          ESP_LOGW(TAG, "Classic timing mode called %u times rapidly - log suppression active", classic_timing_call_count);
+        }
       }
       required_delay += 1000;  // Add extra 1 second for Classic panels
     }
