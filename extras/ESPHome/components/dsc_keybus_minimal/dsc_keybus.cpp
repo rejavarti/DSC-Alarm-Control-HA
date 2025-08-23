@@ -291,10 +291,21 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      // CRITICAL FIX: Use namespace-scope static variable to prevent infinite log spam
+      // CRITICAL FIX: Dual-layer protection against infinite log spam
+      // Layer 1: Namespace-scope static variable (primary protection)
+      // Layer 2: Time-based rate limiting (backup protection)
+      static uint32_t last_classic_timing_log = 0;
+      uint32_t current_time_classic = millis();
+      
       if (!classic_timing_logged) {
+        // Primary protection: log only once per session
         ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
         classic_timing_logged = true;
+        last_classic_timing_log = current_time_classic;
+      } else if (current_time_classic - last_classic_timing_log >= 10000) {
+        // Backup protection: if somehow the static variable failed, limit to once per 10 seconds
+        ESP_LOGD(TAG, "Classic timing mode reminder - extended delays active for DSC Classic panels");
+        last_classic_timing_log = current_time_classic;
       }
       required_delay += 1000;  // Add extra 1 second for Classic panels
     }

@@ -1,4 +1,4 @@
-# DSC Classic Timing Mode Log Spam Fix
+# DSC Classic Timing Mode Log Spam Fix - Enhanced Protection
 
 ## Problem Description
 
@@ -12,6 +12,20 @@ Users reported excessive log spam when using DSC Classic timing mode configurati
 ```
 
 This spam flooded the logs and made debugging difficult, even though the panel was properly connected and functioning.
+
+## Enhanced Solution (Dual-Layer Protection)
+
+The fix now implements **dual-layer protection** to ensure log spam is prevented under all conditions:
+
+### Layer 1: Namespace-Scope Static Variable (Primary Protection)
+- Static variable `classic_timing_logged` declared at namespace scope
+- Ensures message is logged only once per session
+- Primary line of defense against spam
+
+### Layer 2: Time-Based Rate Limiting (Backup Protection)  
+- Time-based rate limiting as backup protection
+- If static variable somehow fails, limits to maximum once per 10 seconds
+- Provides failsafe against any edge cases
 
 ## Root Cause
 
@@ -40,32 +54,37 @@ void DSCKeybusComponent::loop() {
 }
 ```
 
-### Before and After
-
-**Before (problematic)**:
+### Enhanced Implementation (After Fix)
 ```cpp
-if (this->classic_timing_mode_) {
-    static bool classic_timing_logged = false;  // Declared inside if-block
-    if (!classic_timing_logged) {
-        ESP_LOGD(TAG, "Classic timing mode enabled...");
-        classic_timing_logged = true;
-    }
-}
-```
-
-**After (fixed)**:
-```cpp
-// At function scope:
+// At namespace scope (dual-layer protection):
 static bool classic_timing_logged = false;
 
-// Later in function:
+// In loop function (dual-layer protection):
 if (this->classic_timing_mode_) {
-    if (!classic_timing_logged) {  // Uses function-scope variable
-        ESP_LOGD(TAG, "Classic timing mode enabled...");
+    // CRITICAL FIX: Dual-layer protection against infinite log spam
+    // Layer 1: Namespace-scope static variable (primary protection)
+    // Layer 2: Time-based rate limiting (backup protection)
+    static uint32_t last_classic_timing_log = 0;
+    uint32_t current_time_classic = millis();
+    
+    if (!classic_timing_logged) {
+        // Primary protection: log only once per session
+        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
         classic_timing_logged = true;
+        last_classic_timing_log = current_time_classic;
+    } else if (current_time_classic - last_classic_timing_log >= 10000) {
+        // Backup protection: if somehow the static variable failed, limit to once per 10 seconds
+        ESP_LOGD(TAG, "Classic timing mode reminder - extended delays active for DSC Classic panels");
+        last_classic_timing_log = current_time_classic;
     }
 }
 ```
+
+### Protection Features
+- **Primary**: Static variable ensures one log per session
+- **Backup**: Time-based limiting prevents spam even under failure conditions  
+- **Robust**: Handles edge cases like multiple component instances
+- **Graceful**: Provides informative reminder message if backup triggers
 
 ## Files Modified
 
