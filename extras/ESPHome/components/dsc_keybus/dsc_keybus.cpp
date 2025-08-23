@@ -297,7 +297,7 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      // CRITICAL FIX: Enhanced protection against infinite log spam
+      // CRITICAL FIX: Enhanced 4-layer protection against infinite log spam
       // Layer 1: Namespace-scope static variable (primary protection)  
       // Layer 2: Instance tracking (detect multiple instances)
       // Layer 3: Call frequency monitoring (detect rapid calls)
