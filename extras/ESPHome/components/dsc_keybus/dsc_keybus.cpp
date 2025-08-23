@@ -36,6 +36,7 @@ static uint8_t setup_failures = 0;
 static bool classic_timing_logged = false;
 static bool classic_retry_logged = false;
 static bool classic_rate_limit_logged = false;
+static uint32_t last_classic_timing_log = 0;
 
 void DSCKeybusComponent::setup() {
   if (setup_complete) {
@@ -296,7 +297,6 @@ void DSCKeybusComponent::loop() {
       // CRITICAL FIX: Dual-layer protection against infinite log spam
       // Layer 1: Namespace-scope static variable (primary protection)
       // Layer 2: Time-based rate limiting (backup protection)
-      static uint32_t last_classic_timing_log = 0;
       uint32_t current_time_classic = millis();
       
       if (!classic_timing_logged) {
