@@ -295,39 +295,62 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      // ENHANCED ANTI-SPAM IMPLEMENTATION
-      // Uses multiple layers of protection to prevent any possible log spam
-      // Handles millis() overflow correctly and provides better diagnostics
+      // ENHANCED ANTI-SPAM IMPLEMENTATION WITH TRIPLE-LAYER PROTECTION
+      // Layer 1: Static boolean (primary protection)
+      // Layer 2: Time-based rate limiting (backup protection)  
+      // Layer 3: Global rate limiter (ultimate fallback protection)
       
       classic_timing_call_count++;
       uint32_t current_time_classic = millis();
       
-      // Initialize on first call
+      // CRITICAL FIX: Add absolute rate limiting as ultimate spam protection
+      // This provides guaranteed protection even if static variables fail
+      static uint32_t last_absolute_log_time = 0;
+      static uint32_t absolute_log_count = 0;
+      
+      // Layer 1: Primary protection with static boolean
       if (!classic_timing_logged) {
-        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
-        classic_timing_logged = true;
-        last_classic_timing_log = current_time_classic;
+        // Layer 3: Ultimate fallback - absolute rate limiting (max once per 10 seconds)
+        if (current_time_classic - last_absolute_log_time >= 10000) {
+          ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
+          classic_timing_logged = true;
+          last_classic_timing_log = current_time_classic;
+          last_absolute_log_time = current_time_classic;
+          absolute_log_count++;
+        }
+        // If within 10 seconds, silently set the flag without logging
+        else {
+          classic_timing_logged = true;
+          last_classic_timing_log = current_time_classic;
+        }
       } else {
+        // Layer 2: Time-based backup protection
         // Calculate time elapsed using overflow-safe arithmetic
         // For unsigned arithmetic, (a - b) correctly handles overflow when a > b originally
         uint32_t time_elapsed = current_time_classic - last_classic_timing_log;
         
-        // Only log reminder if more than 30 seconds have passed
+        // Only log reminder if more than 30 seconds have passed AND absolute rate limit allows
         // Using >= comparison with unsigned arithmetic naturally handles millis() overflow
-        if (time_elapsed >= 30000) {
+        if (time_elapsed >= 30000 && (current_time_classic - last_absolute_log_time >= 10000)) {
           ESP_LOGD(TAG, "Classic timing mode active - %u calls processed (reminder after %u ms)", 
                    classic_timing_call_count, time_elapsed);
           last_classic_timing_log = current_time_classic;
+          last_absolute_log_time = current_time_classic;
+          absolute_log_count++;
         }
         
         // Optional: Diagnostic message for excessive call rates to detect underlying issues
-        else if (classic_timing_call_count % 1000 == 0) {
+        else if (classic_timing_call_count % 1000 == 0 && (current_time_classic - last_absolute_log_time >= 10000)) {
           // Check if we're being called excessively (more than 100 times per second indicates a problem)
           if (time_elapsed > 0 && time_elapsed < 10000) {  // Less than 10 seconds for 1000 calls = 100+ calls/sec
             ESP_LOGW(TAG, "High classic timing call rate detected: %u calls in %u ms (potential loop issue)", 
                      classic_timing_call_count, time_elapsed);
-          } else {
+            last_absolute_log_time = current_time_classic;
+            absolute_log_count++;
+          } else if (current_time_classic - last_absolute_log_time >= 10000) {
             ESP_LOGD(TAG, "Classic timing mode: %u calls processed (log suppression active)", classic_timing_call_count);
+            last_absolute_log_time = current_time_classic;
+            absolute_log_count++;
           }
         }
       }
