@@ -38,6 +38,8 @@ static bool classic_retry_logged = false;
 static bool classic_rate_limit_logged = false;
 static uint32_t last_classic_timing_log = 0;
 static uint32_t classic_timing_call_count = 0;  // Diagnostic counter
+static uint32_t last_absolute_log_time = 0;     // FIXED: Moved to namespace scope
+static uint32_t absolute_log_count = 0;         // FIXED: Moved to namespace scope
 
 void DSCKeybusComponent::setup() {
   if (setup_complete) {
@@ -302,11 +304,6 @@ void DSCKeybusComponent::loop() {
       
       classic_timing_call_count++;
       uint32_t current_time_classic = millis();
-      
-      // CRITICAL FIX: Add absolute rate limiting as ultimate spam protection
-      // This provides guaranteed protection even if static variables fail
-      static uint32_t last_absolute_log_time = 0;
-      static uint32_t absolute_log_count = 0;
       
       // Layer 1: Primary protection with static boolean
       if (!classic_timing_logged) {
