@@ -295,28 +295,40 @@ void DSCKeybusComponent::loop() {
     
     // Apply Classic timing mode adjustments if enabled
     if (this->classic_timing_mode_) {
-      // CRITICAL FIX: Robust protection against infinite log spam
-      // This approach eliminates the problematic instance tracking that could reset the flag
-      // Uses only reliable static variables with extended timing to prevent any spam
+      // ENHANCED ANTI-SPAM IMPLEMENTATION
+      // Uses multiple layers of protection to prevent any possible log spam
+      // Handles millis() overflow correctly and provides better diagnostics
       
       classic_timing_call_count++;
       uint32_t current_time_classic = millis();
       
-      // Primary protection: log only once ever, unless 30+ seconds have passed
+      // Initialize on first call
       if (!classic_timing_logged) {
-        // First time logging - this should be the ONLY time we see this message
-        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels (call #%u)", classic_timing_call_count);
+        ESP_LOGD(TAG, "Classic timing mode enabled - applying extended delays for DSC Classic panels");
         classic_timing_logged = true;
         last_classic_timing_log = current_time_classic;
-      } else if (current_time_classic - last_classic_timing_log >= 30000) {
-        // Only allow one reminder every 30 seconds maximum (reduced frequency)
-        ESP_LOGD(TAG, "Classic timing mode reminder - extended delays active for DSC Classic panels (call #%u)", classic_timing_call_count);
-        last_classic_timing_log = current_time_classic;
       } else {
-        // Silent operation - count calls but don't log anything
-        // Only show diagnostic every 500 calls to reduce noise
-        if (classic_timing_call_count % 500 == 0) {
-          ESP_LOGD(TAG, "Classic timing mode: %u calls processed (log suppression active)", classic_timing_call_count);
+        // Calculate time elapsed using overflow-safe arithmetic
+        // For unsigned arithmetic, (a - b) correctly handles overflow when a > b originally
+        uint32_t time_elapsed = current_time_classic - last_classic_timing_log;
+        
+        // Only log reminder if more than 30 seconds have passed
+        // Using >= comparison with unsigned arithmetic naturally handles millis() overflow
+        if (time_elapsed >= 30000) {
+          ESP_LOGD(TAG, "Classic timing mode active - %u calls processed (reminder after %u ms)", 
+                   classic_timing_call_count, time_elapsed);
+          last_classic_timing_log = current_time_classic;
+        }
+        
+        // Optional: Diagnostic message for excessive call rates to detect underlying issues
+        else if (classic_timing_call_count % 1000 == 0) {
+          // Check if we're being called excessively (more than 100 times per second indicates a problem)
+          if (time_elapsed > 0 && time_elapsed < 10000) {  // Less than 10 seconds for 1000 calls = 100+ calls/sec
+            ESP_LOGW(TAG, "High classic timing call rate detected: %u calls in %u ms (potential loop issue)", 
+                     classic_timing_call_count, time_elapsed);
+          } else {
+            ESP_LOGD(TAG, "Classic timing mode: %u calls processed (log suppression active)", classic_timing_call_count);
+          }
         }
       }
       required_delay += 1000;  // Add extra 1 second for Classic panels
